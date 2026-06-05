@@ -253,6 +253,9 @@ input,select,textarea{font-family:inherit}
   font-size:12px;width:100%;min-width:110px;
 }
 .bem-inp:focus{outline:none;border-color:var(--navy-light)}
+.bem-wrap{display:flex;flex-direction:column;gap:4px}
+.bem-sel{font-family:inherit;font-size:12px;border:1px solid var(--g3);border-radius:5px;padding:4px 6px;background:#fff;color:var(--g9);cursor:pointer;width:100%}
+.bem-sel:focus{outline:none;border-color:var(--navy-light)}
 
 /* Summary row */
 .plan-summary{
@@ -339,7 +342,7 @@ input,select,textarea{font-family:inherit}
 .mo-tbl td.c-work{background:#f0fdf8;color:var(--green)}
 .mo-tbl td.c-abs{background:var(--red-bg);color:var(--red);font-weight:700}
 .mo-tbl td.c-sch{background:var(--blue-bg);color:var(--blue)}
-.mo-tbl td.c-spt{background:var(--purple-bg);color:var(--purple)}
+.mo-tbl td.c-slw{background:var(--amber-bg);color:var(--amber);font-weight:700}
 .mo-tbl td.c-off{background:var(--g1);color:var(--g4)}
 .mo-tbl td.c-stat{background:var(--g1);font-weight:700;color:var(--navy)}
 .mo-tbl td.c-ec-ok{color:var(--green)}
@@ -569,6 +572,9 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
             🗑 Woche leeren
           </button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="cleanupWeek()" title="Alle Einträge dieser Woche löschen">
+            🗑 Clean Up
+          </button>
         </div>
       </div>
       <div class="day-bar" id="dayBar"></div>
@@ -606,7 +612,7 @@ input,select,textarea{font-family:inherit}
         <span class="leg"><span class="leg-dot" style="background:#f0fdf8;border:1px solid var(--green)"></span>Gearbeitet</span>
         <span class="leg"><span class="leg-dot" style="background:var(--red-bg);border:1px solid var(--red)"></span>Absenz</span>
         <span class="leg"><span class="leg-dot" style="background:var(--blue-bg);border:1px solid var(--blue)"></span>Schule</span>
-        <span class="leg"><span class="leg-dot" style="background:var(--purple-bg);border:1px solid var(--purple)"></span>Sport</span>
+        <span class="leg"><span class="leg-dot" style="background:var(--amber-bg);border:1px solid var(--amber)"></span>S.LW</span>
         <span class="leg"><span class="leg-dot" style="background:var(--g2)"></span>Wochenende / inaktiv</span>
       </div>
       <div id="moArea"></div>
@@ -1011,12 +1017,6 @@ function getBlocks(p, date){
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
   if(p.status==='praktikum')
     return {vmB:true,nmB:true,fullB:true,vmL:'PRK',nmL:'PRK'};
-  // Schnupperwoche: eine bestimmte KW komplett als S.LW sperren
-  if(p.schnupperwoche){
-    const m=p.schnupperwoche.match(/^(\d{4})-W(\d{1,2})$/);
-    if(m){const wk=isoWeek(date);if(+m[1]===wk.y&&+m[2]===wk.w)
-      return {vmB:true,nmB:true,fullB:true,vmL:'S.LW',nmL:'S.LW'};}
-  }
   const dow=date.getDay();
   let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
   for(const s of (p.schultage||[])){
@@ -1175,8 +1175,15 @@ function renderDayPlan(){
 
     // Bemerkung
     const bem=plan.bemerkung||'';
-    const bemCell=`<input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
-      onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">`;
+    const isSlw=bem==='S.LW';
+    const bemCell=`<div class="bem-wrap">
+      <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
+        <option value=""${!isSlw?' selected':''}>–</option>
+        <option value="S.LW"${isSlw?' selected':''}>S.LW – Schnupperwoche LW</option>
+      </select>
+      ${!isSlw?`<input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
+        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">` : ''}
+    </div>`;
 
     rows+=`<tr class="${rowCls}">
       <td><span class="cell-name${nameGreen?' cell-name-green':''}">${p.vorname} ${p.nachname}</span>${chip}</td>
@@ -1487,23 +1494,17 @@ function renderFPs(){
     </div>`).join('');
 }
 
-function updateSwInfo(val){
-  const el=document.getElementById('swInfo'); if(!el) return;
-  if(!val){el.textContent='Keine Schnupperwoche gesetzt.';return;}
-  const m=val.match(/^(\d{4})-W(\d{1,2})$/);
-  if(m) el.innerHTML=`<span style="background:var(--amber-bg,#fef9c3);color:#92400e;padding:3px 10px;border-radius:6px;font-weight:700">S.LW aktiv – KW ${m[2]} / ${m[1]}</span>`;
-  else el.textContent=val;
-}
 
-function clearSchnupperwoche(){
-  document.getElementById('sw_kw').value='';
-  updateSwInfo('');
+function onBemChange(sel, pid, day){
+  const val=sel.value;
+  const {y,w}=curWeek;
+  if(val==='S.LW'){
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{bemerkung:'S.LW'}));
+  } else {
+    weekDays(y,w).forEach(d=>{ if(getPlan(ds(d),pid).bemerkung==='S.LW') setPlan(ds(d),pid,{bemerkung:''}); });
+  }
+  renderDayPlan();
 }
-
-// Live-Update der Info beim Ändern der Wochenwahl
-document.addEventListener('change',e=>{
-  if(e.target&&e.target.id==='sw_kw') updateSwInfo(e.target.value);
-});
 
 function savePM(){
   const vn=document.getElementById('f_vn').value.trim();
@@ -1521,7 +1522,6 @@ function savePM(){
     aktiviertAm:document.getElementById('f_aktiv').value,
     bemerkung:document.getElementById('f_pbm').value,
     schultage:[...tSch],sporttermine:[...tSpt],fixpraeferenzen:[...tFP],
-    schnupperwoche:document.getElementById('sw_kw').value||null,
   };
   if(editId){
     const idx=DB.participants.findIndex(p=>p.id===editId);
@@ -1626,8 +1626,8 @@ function renderMonthly(){
       if(plan.abwesenheit){
         cls='c-abs';txt=plan.abwesenheit;abs++;
         if(!plan.ecaseEntered){ecOff++;totalOpen++;}
-      } else if(blk.fullBlocked){cls='c-sch';txt=blk.vmL||'S';}
-      else if(blk.nmL==='SP'&&!blk.vmB){cls='c-spt';txt='SP';}
+      } else if(plan.bemerkung==='S.LW'){cls='c-slw';txt='S.LW';}
+      else if(blk.fullBlocked){cls='c-sch';txt=blk.vmL||'S';}
       else if(blk.vmB){cls='c-sch';txt=blk.vmL;}
       else{cls='c-work';txt='✓';at++;}
       tds+=`<td class="${cls}" title="${txt}">${txt}</td>`;
@@ -1887,13 +1887,13 @@ function genWeekPDF(){
     return row;
   });
 
-  const cs1={0:{cellWidth:32},1:{cellWidth:10},2:{cellWidth:10}};
-  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:21};cs1[4+i*2]={cellWidth:21};});
+  const cs1={0:{cellWidth:36,overflow:'ellipsize'},1:{cellWidth:9},2:{cellWidth:9}};
+  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:20};cs1[4+i*2]={cellWidth:20};});
 
   doc.autoTable({
     head:[head1],body:body1,startY:17,margin:{left:mg,right:mg},
-    styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:7,halign:'center'},
+    styles:{fontSize:6.5,cellPadding:1.5,overflow:'linebreak'},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:6.5,halign:'center'},
     columnStyles:cs1,
     alternateRowStyles:{fillColor:[248,250,253]},
     didParseCell:(data)=>{
