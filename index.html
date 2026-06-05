@@ -566,6 +566,9 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
             📄 PDF
           </button>
+          <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
+            🗑 Woche leeren
+          </button>
         </div>
       </div>
       <div class="day-bar" id="dayBar"></div>
@@ -1336,6 +1339,24 @@ function copyPrev(){
   saveDB(); toast(`📋 Vorwoche kopiert (${n} Einträge)`,'t-ok'); renderPlan();
 }
 
+function clearCurrentWeek(){
+  const{y,w}=curWeek;
+  const days=weekDays(y,w);
+  const label=`KW ${pad(w)} / ${y}`;
+  if(!confirm(`Wochenplanung ${label} wirklich leeren?\n\nAlle Werkstatt-Einteilungen dieser Woche werden gelöscht.\nTeilnehmerdaten und andere Wochen bleiben unverändert.`)) return;
+  let n=0;
+  days.forEach(d=>{
+    const dstr=ds(d);
+    if(DB.plans[dstr]){
+      n+=Object.keys(DB.plans[dstr]).length;
+      delete DB.plans[dstr];
+    }
+  });
+  saveDB(); dirty=true;
+  toast(`🗑 ${label} geleert (${n} Einträge entfernt)`,'t-ok');
+  renderPlan();
+}
+
 // ────────────────────────────────────────────
 // PARTICIPANT MANAGEMENT
 // ────────────────────────────────────────────
@@ -1902,7 +1923,7 @@ function genWeekPDF(){
     .filter(p=>isActiveOnDay(p,dayDate))
     .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
 
-  const head2=[['Name','JC','Bewerben','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
+  const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
     const plan=getPlan(curDay,p.id);
     const blk=getBlocks(p,dayDate);
@@ -1919,11 +1940,19 @@ function genWeekPDF(){
     ];
   });
 
+  // Dynamische Schriftgrösse: passt Tabelle auf genau 1 Seite an
+  const n2=dayActive.length;
+  const fs2 = n2>30?6 : n2>22?7 : 8;
+  const cp2 = n2>30?1.5 : n2>22?2 : 3;
+  // Spaltenbreiten: Name breiter + overflow ellipsize damit keine Zeilenumbrüche
+  const cs2={0:{cellWidth:50,overflow:'ellipsize'},1:{cellWidth:12},2:{cellWidth:14},
+             3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
+
   doc.autoTable({
-    head:head2,body:body2,startY:17,margin:{left:mg,right:mg},
-    styles:{fontSize:8,cellPadding:3,overflow:'linebreak'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:8},
-    columnStyles:{0:{cellWidth:38},1:{cellWidth:13},2:{cellWidth:13},3:{cellWidth:45},4:{cellWidth:45},5:{cellWidth:38},6:{cellWidth:'auto'}},
+    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:12},
+    styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize'},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2},
+    columnStyles:cs2,
     alternateRowStyles:{fillColor:[248,250,253]},
     didParseCell:(data)=>{
       if(data.section!=='body') return;
