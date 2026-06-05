@@ -1237,7 +1237,7 @@ function renderDayPlan(){
     </div>`;
 
     // eCase
-    const needEC=absCode!==''&&absCode!=='ZS'; // ZS wird nicht erfasst → kein eCase nötig
+    const needEC=absCode!==''; // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag
     const ecDone=plan.ecaseEntered||false;
     let ecCell;
     if(!needEC){
@@ -1776,7 +1776,8 @@ function getRptRows(p,year,month){
       const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
       if(isSchool){
         bem='Schule'+(note?' · '+note:'');
-        if(present) az='8';        // z.B. halber Schultag + nachmittags im LW → Tag zählt
+        // Ganzer Schultag (S) zählt automatisch als 8h; halber Schultag nur wenn nachmittags im LW
+        if(blk.vmL==='S' || present) az='8';
       } else if(present){
         az='8';bem=note;            // Stunden nur wenn tatsächlich vor Ort
       } else {
@@ -1811,6 +1812,13 @@ function buildRpt(){
     <div class="rpt-stat"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
   </div>`;
 
+  html+=`<div class="fg" style="margin-top:4px;margin-bottom:16px">
+    <label>Bemerkungen (Freitext) – erscheint im PDF unter dem Namen</label>
+    <textarea class="fi" id="rptBem" rows="2" placeholder="Freitext…"
+      style="width:100%;box-sizing:border-box;resize:vertical"
+      onchange="setRptNote('${pid}',${y},${month},this.value)">${esc(getRptNote(pid,y,month))}</textarea>
+  </div>`;
+
   html+=`<div class="rpt-legend">
     <strong>Absenzencode:</strong>&nbsp;&nbsp;
     FE = Ferien &nbsp;·&nbsp; KR = Krankheit &nbsp;·&nbsp; BA = bezahlte Absenz &nbsp;·&nbsp;
@@ -1838,13 +1846,6 @@ function buildRpt(){
     </tr>`;
   });
   html+='</tbody></table>';
-
-  html+=`<div class="fg" style="margin-top:18px">
-    <label>Bemerkungen (Freitext) – erscheint auf dem PDF</label>
-    <textarea class="fi" id="rptBem" rows="3" placeholder="Freitext…"
-      style="width:100%;box-sizing:border-box;resize:vertical"
-      onchange="setRptNote('${pid}',${y},${month},this.value)">${esc(getRptNote(pid,y,month))}</textarea>
-  </div>`;
 
   area.innerHTML=html;
 }
@@ -1885,7 +1886,21 @@ function genPDF(){
   doc.text(`Monat ${MON[month]} ${y}`,mg,yp);
   doc.setFontSize(10);doc.setFont('helvetica','normal');
   doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
-  yp+=9;
+  yp+=8;
+
+  // Freitext-Bemerkung direkt unter dem Namen
+  const rptNote=getRptNote(pid,y,month);
+  if(rptNote.trim()){
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0);
+    doc.text('Bemerkungen:',mg,yp);
+    const lblW=doc.getTextWidth('Bemerkungen: ');
+    doc.setFont('helvetica','normal');
+    const lines=doc.splitTextToSize(rptNote,W-2*mg-lblW);
+    doc.text(lines,mg+lblW,yp);
+    yp+=Math.max(lines.length*4.2, 4.2)+3;
+  } else {
+    yp+=1;
+  }
 
   // Table
   const body=rows.map(r=>{
@@ -1918,19 +1933,7 @@ function genPDF(){
     margin:{left:mg,right:mg},
   });
 
-  let fy=doc.lastAutoTable.finalY;
-
-  // Freitext-Bemerkung (falls vorhanden)
-  const rptNote=getRptNote(pid,y,month);
-  if(rptNote.trim()){
-    let ny=fy+8;
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0);
-    doc.text('Bemerkungen:',mg,ny);
-    doc.setFont('helvetica','normal');
-    const lines=doc.splitTextToSize(rptNote,W-2*mg);
-    doc.text(lines,mg,ny+5);
-    fy=ny+5+lines.length*4.2;
-  }
+  const fy=doc.lastAutoTable.finalY;
 
   if(fy<260){
     const sy=fy+16;
