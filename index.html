@@ -569,6 +569,9 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
             📄 PDF
           </button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="cleanupWeek()" title="Alle Einträge dieser Woche löschen">
+            🗑 Clean Up
+          </button>
         </div>
       </div>
       <div class="day-bar" id="dayBar"></div>
@@ -1112,11 +1115,10 @@ function renderDayPlan(){
     const nameGreen=p.status==='lehrstelle'||p.status==='praktikum';
 
     // VM cell
-    const isSlwB = plan.bemerkung === 'S.LW';
-    const vmCell = (blk.vmB || isSlwB) ? buildBlockedCell(blk.vmB ? blk.vmL : 'S.LW','school') : buildWsCell(pid,'vm',plan.vm||'',absent);
+    const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',absent);
 
     // NM cell
-    const nmCell = (blk.nmB || isSlwB) ? buildBlockedCell(blk.nmB ? blk.nmL : 'S.LW','school') : buildWsCell(pid,'nm',plan.nm||'',absent);
+    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL,'school') : buildWsCell(pid,'nm',plan.nm||'',absent);
 
     // Count werkstatten for summary
     if(!absent){
@@ -1327,6 +1329,14 @@ function copyPrev(){
     });
   });
   saveDB(); toast(`📋 Vorwoche kopiert (${n} Einträge)`,'t-ok'); renderPlan();
+}
+
+function cleanupWeek(){
+  const{y,w}=curWeek;
+  if(!confirm(`Wochenplan KW ${w}/${y} für alle Teilnehmer zurücksetzen?\n\nAlle Werkstatt-Einträge, Absenzen und Bemerkungen dieser Woche werden gelöscht.`)) return;
+  let count=0;
+  weekDays(y,w).forEach(d=>{ const dstr=ds(d); if(DB.plans[dstr]){count+=Object.keys(DB.plans[dstr]).length;delete DB.plans[dstr];} });
+  saveDB(); toast(`🗑 Wochenplan geleert (${count} Einträge)`,'t-ok'); renderPlan();
 }
 
 // ────────────────────────────────────────────
@@ -1839,19 +1849,18 @@ function genWeekPDF(){
       const plan=getPlan(ds(d),p.id);
       const blk=getBlocks(p,d);
       if(plan.abwesenheit){row.push(plan.abwesenheit,plan.abwesenheit);return;}
-      if(plan.bemerkung==='S.LW'){row.push('S.LW','S.LW');return;}
       row.push(blk.vmB?blk.vmL:(plan.vm||''),blk.nmB?blk.nmL:(plan.nm||''));
     });
     return row;
   });
 
-  const cs1={0:{cellWidth:32},1:{cellWidth:10},2:{cellWidth:10}};
-  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:21};cs1[4+i*2]={cellWidth:21};});
+  const cs1={0:{cellWidth:36,overflow:'ellipsize'},1:{cellWidth:9},2:{cellWidth:9}};
+  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:20};cs1[4+i*2]={cellWidth:20};});
 
   doc.autoTable({
     head:[head1],body:body1,startY:17,margin:{left:mg,right:mg},
-    styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:7,halign:'center'},
+    styles:{fontSize:6.5,cellPadding:1.5,overflow:'linebreak'},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:6.5,halign:'center'},
     columnStyles:cs1,
     alternateRowStyles:{fillColor:[248,250,253]},
     didParseCell:(data)=>{
@@ -1887,14 +1896,13 @@ function genWeekPDF(){
     .filter(p=>isActiveOnDay(p,dayDate))
     .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
 
-  const head2=[['Name','JC','Bewerben','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
+  const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
     const plan=getPlan(curDay,p.id);
     const blk=getBlocks(p,dayDate);
     const bwJC=p.bewerbenJC||p.jobCoach||'';
-    const isSlwDay=plan.bemerkung==='S.LW';
-    const vmVal=isSlwDay?'S.LW':(blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL):(plan.vm||''));
-    const nmVal=isSlwDay?'S.LW':(blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL):(plan.nm||''));
+    const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL):(plan.vm||'');
+    const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
     return[
       `${p.vorname} ${p.nachname}`,
@@ -1907,9 +1915,9 @@ function genWeekPDF(){
 
   doc.autoTable({
     head:head2,body:body2,startY:17,margin:{left:mg,right:mg},
-    styles:{fontSize:8,cellPadding:3,overflow:'linebreak'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:8},
-    columnStyles:{0:{cellWidth:38},1:{cellWidth:13},2:{cellWidth:13},3:{cellWidth:45},4:{cellWidth:45},5:{cellWidth:38},6:{cellWidth:'auto'}},
+    styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:7},
+    columnStyles:{0:{cellWidth:44,overflow:'ellipsize'},1:{cellWidth:10},2:{cellWidth:10},3:{cellWidth:42},4:{cellWidth:42},5:{cellWidth:32},6:{cellWidth:'auto'}},
     alternateRowStyles:{fillColor:[248,250,253]},
     didParseCell:(data)=>{
       if(data.section!=='body') return;
