@@ -36,7 +36,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .app-header{background:var(--primary);color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;box-shadow:var(--shadow-md)}
 .app-header h1{font-size:17px;font-weight:600;letter-spacing:.2px}
 .app-header .sub{font-size:11px;opacity:.65;margin-top:1px}
-.header-actions{display:flex;gap:8px}
+.header-actions{display:flex;gap:8px;align-items:center}
+.save-status{font-size:10px;opacity:.75;text-align:right;line-height:1.4;white-space:nowrap}
+.save-status strong{display:block;font-weight:700}
+.auto-banner{position:fixed;top:56px;left:0;right:0;z-index:198;padding:10px 20px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:slide-down .3s ease}
+.auto-banner.green{background:#16a34a;color:#fff}
+.auto-banner.orange{background:#d97706;color:#fff}
+.auto-banner button.close-x{background:none;border:none;color:inherit;font-size:20px;cursor:pointer;margin-left:auto;line-height:1;opacity:.8}
+.auto-banner button.close-x:hover{opacity:1}
+@keyframes slide-down{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
 
 /* NAV */
 .nav-tabs{display:flex;background:#fff;border-bottom:1px solid var(--gray-200);padding:0 20px;position:sticky;top:56px;z-index:199}
@@ -228,8 +236,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="sub">BASISJOB · Motivationssemester</div>
   </div>
   <div class="header-actions">
-    <button class="btn btn-secondary btn-sm" onclick="exportData()">💾 Export</button>
-    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">📂 Import</button>
+    <div class="save-status" id="saveStatus"></div>
+    <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten jetzt als JSON-Datei speichern">💾 Jetzt speichern</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()" title="Gespeicherte JSON-Datei laden">📂 Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
   </div>
 </div>
@@ -492,7 +501,8 @@ let curMonth = null; // {y,m}
 function loadS(){
   try{ const d=localStorage.getItem('lw_v2'); if(d){ const p=JSON.parse(d); S.participants=p.participants||[]; S.plans=p.plans||{}; } }catch(e){}
 }
-function saveS(){ localStorage.setItem('lw_v2',JSON.stringify(S)); }
+let dirty = false;
+function saveS(){ localStorage.setItem('lw_v2',JSON.stringify(S)); dirty = true; }
 
 // ─────────────────────────────────────────────
 // DATE HELPERS
@@ -1283,14 +1293,93 @@ function toast(msg,type=''){
 }
 
 // ─────────────────────────────────────────────
-// EXPORT / IMPORT
+// SPEICHERN / EXPORT / IMPORT
 // ─────────────────────────────────────────────
-function exportData(){
-  const blob=new Blob([JSON.stringify({participants:S.participants,plans:S.plans},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`lernwerkstatt_${new Date().toISOString().slice(0,10)}.json`;a.click();
-  URL.revokeObjectURL(a.href);toast('Daten exportiert','ok');
+const SAVE_TS_KEY = 'lw_lastsave';
+
+function manualSave(){
+  doExport('manuell');
 }
+
+function doExport(reason){
+  const now = new Date();
+  const blob = new Blob([JSON.stringify({participants:S.participants,plans:S.plans},null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  // Dateiname enthält Datum + Uhrzeit für einfache Zuordnung
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  a.download = `Lernwerkstatt_${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  dirty = false;
+  localStorage.setItem(SAVE_TS_KEY, now.toISOString());
+  updateSaveStatus();
+
+  if(reason === 'auto'){
+    toast('💾 Automatische Freitag-Sicherung gespeichert','ok');
+    showBanner('✅ Automatische Sicherung abgeschlossen – Freitag 13:05 Uhr','green',8000);
+  } else {
+    toast('💾 Datei gespeichert','ok');
+  }
+}
+
+function updateSaveStatus(){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  const ts = localStorage.getItem(SAVE_TS_KEY);
+  if(!ts){ el.innerHTML='<span style="opacity:.6">Noch nicht gespeichert</span>'; return; }
+  const d = new Date(ts);
+  el.innerHTML=`Letzte Sicherung:<strong>${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}</strong>`;
+}
+
+function showBanner(msg, type, duration=0){
+  document.getElementById('autoBanner')?.remove();
+  const b = document.createElement('div');
+  b.id = 'autoBanner';
+  b.className = `auto-banner ${type}`;
+  b.innerHTML = `${msg}<button class="close-x" onclick="this.parentNode.remove()">×</button>`;
+  // insert after nav
+  const nav = document.querySelector('.nav-tabs');
+  nav.insertAdjacentElement('afterend', b);
+  if(duration) setTimeout(()=>b?.remove(), duration);
+}
+
+// Läuft jede 30 Sek – prüft ob Freitag 13:05
+function checkAutoSave(){
+  const now = new Date();
+  if(now.getDay() !== 5) return;            // nur Freitag
+  if(now.getHours() !== 13) return;
+  if(now.getMinutes() !== 5) return;
+  // Verhindert Doppel-Speicherung in derselben Minute
+  const last = localStorage.getItem(SAVE_TS_KEY);
+  if(last){
+    const d = new Date(last);
+    if(d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() &&
+       d.getDate()===now.getDate() && d.getHours()===13 && d.getMinutes()===5) return;
+  }
+  doExport('auto');
+}
+
+// Beim Öffnen der Seite prüfen: Freitag nach 13:05 & heute noch nicht gespeichert
+function checkFridayMissed(){
+  const now = new Date();
+  const isFriAfter = now.getDay()===5 && (now.getHours()>13 || (now.getHours()===13 && now.getMinutes()>=5));
+  if(!isFriAfter) return;
+  const last = localStorage.getItem(SAVE_TS_KEY);
+  let missedToday = true;
+  if(last){
+    const d = new Date(last);
+    missedToday = !(d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate());
+  }
+  if(missedToday){
+    showBanner(
+      '⚠️ Freitag-Sicherung noch ausstehend – bitte jetzt speichern!&nbsp;&nbsp;<button class="btn btn-sm" style="background:#fff;color:#92400e" onclick="manualSave();document.getElementById(\'autoBanner\').remove()">💾 Jetzt speichern</button>',
+      'orange'
+    );
+  }
+}
+
 function importData(input){
   const file=input.files[0];if(!file)return;
   const r=new FileReader();
@@ -1299,7 +1388,7 @@ function importData(input){
       const d=JSON.parse(e.target.result);
       if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?'))return;
       S.participants=d.participants||[];S.plans=d.plans||{};
-      saveS();toast('Daten importiert','ok');
+      saveS();dirty=false;toast('Daten importiert','ok');
       showView('plan');
     }catch{toast('Fehler beim Import','err');}
   };
@@ -1316,6 +1405,14 @@ function init(){
   curDay=ds(now);
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   renderWBAlerts();
+  updateSaveStatus();
+  checkFridayMissed();
+  setInterval(checkAutoSave, 30000); // alle 30 Sek. prüfen
+  window.addEventListener('beforeunload', e => {
+    if(!dirty) return;
+    e.preventDefault();
+    e.returnValue = ''; // löst den Browser-Dialog aus
+  });
   showView('plan');
 }
 
