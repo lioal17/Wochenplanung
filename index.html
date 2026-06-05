@@ -560,16 +560,16 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
-            ⚡ Auto-Einfüllen
+          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+            📄 PDF
           </button>
           <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
             📋 Vorwoche kopieren
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-            📄 PDF
+          <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
+            ⚡ Auto-Einfüllen
           </button>
-          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="cleanupWeek()" title="Alle Einträge dieser Woche löschen">
+          <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="cleanupWeek()" title="Alle Einträge dieser Woche löschen">
             🗑 Clean Up
           </button>
         </div>
@@ -1154,16 +1154,16 @@ function renderDayPlan(){
       </div>`;
     }
 
-    // Bemerkung
-    const bem=plan.bemerkung||'';
-    const isSlw=bem==='S.LW';
+    // Bemerkung (slw = separate flag, bemerkung = free text)
+    const bem=plan.bemerkung==='S.LW'?'':(plan.bemerkung||'');
+    const isSlw=plan.slw===true||plan.bemerkung==='S.LW';
     const bemCell=`<div class="bem-wrap">
+      <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
+        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
       <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
         <option value=""${!isSlw?' selected':''}>–</option>
-        <option value="S.LW"${isSlw?' selected':''}>S.LW – Schnupperwoche LW</option>
+        <option value="S.LW"${isSlw?' selected':''}>Schnupperwoche LW</option>
       </select>
-      ${!isSlw?`<input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
-        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">` : ''}
     </div>`;
 
     rows+=`<tr class="${rowCls}">
@@ -1467,9 +1467,14 @@ function onBemChange(sel, pid, day){
   const val=sel.value;
   const {y,w}=curWeek;
   if(val==='S.LW'){
-    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{bemerkung:'S.LW'}));
+    weekDays(y,w).forEach(d=>{
+      const pl=getPlan(ds(d),pid);
+      // migrate old format: bemerkung='S.LW' → slw=true, bemerkung=''
+      const fix=pl.bemerkung==='S.LW'?{slw:true,bemerkung:''}:{slw:true};
+      setPlan(ds(d),pid,fix);
+    });
   } else {
-    weekDays(y,w).forEach(d=>{ if(getPlan(ds(d),pid).bemerkung==='S.LW') setPlan(ds(d),pid,{bemerkung:''}); });
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{slw:false}));
   }
   renderDayPlan();
 }
@@ -1593,7 +1598,7 @@ function renderMonthly(){
       if(plan.abwesenheit){
         cls='c-abs';txt=plan.abwesenheit;abs++;
         if(!plan.ecaseEntered){ecOff++;totalOpen++;}
-      } else if(plan.bemerkung==='S.LW'){cls='c-slw';txt='S.LW';}
+      } else if(plan.slw===true||plan.bemerkung==='S.LW'){cls='c-slw';txt='S.LW';}
       else if(blk.fullBlocked){cls='c-sch';txt=blk.vmL||'S';}
       else if(blk.vmB){cls='c-sch';txt=blk.vmL;}
       else{cls='c-work';txt='✓';at++;}
@@ -1904,12 +1909,15 @@ function genWeekPDF(){
     const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL):(plan.vm||'');
     const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
+    const slwFlag=plan.slw===true||plan.bemerkung==='S.LW';
+    const bemFree=plan.bemerkung==='S.LW'?'':(plan.bemerkung||'');
+    const bemPdf=slwFlag?(bemFree?`Schnupperwoche LW | ${bemFree}`:'Schnupperwoche LW'):bemFree;
     return[
       `${p.vorname} ${p.nachname}`,
       JC_LBL[p.jobCoach]||'',
       JC_LBL[bwJC]||'',
       vmVal, nmVal, abs,
-      plan.bemerkung||''
+      bemPdf
     ];
   });
 
@@ -1964,12 +1972,7 @@ function doExport(reason){
   dirty=false;
   localStorage.setItem(SAVEKEY,now.toISOString());
   updateSaveInfo();
-  if(reason==='auto'){
-    toast('💾 Automatische Freitag-Sicherung gespeichert','t-ok');
-    showBanner('✅ Automatische Sicherung abgeschlossen – Freitag 13:05 Uhr','bn-green',9000);
-  } else {
-    toast('💾 Datei gespeichert','t-ok');
-  }
+  toast('💾 Datei gespeichert','t-ok');
 }
 
 function updateSaveInfo(){
@@ -1989,27 +1992,6 @@ function showBanner(msg,cls,ms=0){
   if(ms) setTimeout(()=>document.getElementById('autoBanner')?.remove(),ms);
 }
 
-function checkAutoSave(){
-  const now=new Date();
-  if(now.getDay()!==5||now.getHours()!==13||now.getMinutes()!==5) return;
-  const last=localStorage.getItem(SAVEKEY);
-  if(last){
-    const d=new Date(last);
-    if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&
-       d.getDate()===now.getDate()&&d.getHours()===13&&d.getMinutes()===5) return;
-  }
-  doExport('auto');
-}
-
-function checkFridayMissed(){
-  const now=new Date();
-  const fri=now.getDay()===5&&(now.getHours()>13||(now.getHours()===13&&now.getMinutes()>=5));
-  if(!fri) return;
-  const last=localStorage.getItem(SAVEKEY);
-  let missed=true;
-  if(last){const d=new Date(last);missed=!(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate());}
-  if(missed) showBanner(`⚠️ Freitag-Sicherung noch ausstehend! &nbsp;<button class="btn btn-sm" style="background:#fff;color:#92400e" onclick="manualSave();document.getElementById('autoBanner').remove()">💾 Jetzt speichern</button>`,'bn-amber');
-}
 
 function doImport(input){
   const file=input.files[0]; if(!file) return;
@@ -2307,8 +2289,6 @@ function init(){
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
   renderWBAlerts();
-  checkFridayMissed();
-  setInterval(checkAutoSave,30000);
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
     e.preventDefault();e.returnValue='';
