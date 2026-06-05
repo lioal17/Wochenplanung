@@ -180,6 +180,9 @@ input,select,textarea{font-family:inherit}
 
 /* Name cell */
 .cell-name{font-weight:600;font-size:13px;white-space:nowrap}
+.cell-name-green{color:var(--green);font-weight:700}
+.bw-yvi{background:#be185d}
+.blocked-prk{background:#dcfce7;color:#15803d;font-weight:700;font-size:12px;text-align:center;border-radius:4px;padding:6px 4px;display:block;letter-spacing:.3px}
 .st-chip{
   display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;
   margin-left:4px;font-weight:700;vertical-align:middle;letter-spacing:.3px;
@@ -556,8 +559,11 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
             ⚡ Auto-Einfüllen
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen">
+          <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
             📋 Vorwoche kopieren
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+            📄 PDF
           </button>
         </div>
       </div>
@@ -737,6 +743,25 @@ input,select,textarea{font-family:inherit}
       </select>
     </div>
     <div class="fg">
+      <label>Bewerben-Zuteilung <small style="text-transform:none;letter-spacing:0">(welcher JC)</small></label>
+      <select class="fi" id="f_bwjc">
+        <option value="">– gleich wie JC –</option>
+        <option value="lio">Lio (Lucas)</option>
+        <option value="tom">Tom (Thomas)</option>
+        <option value="yvi">Yvi (Yvonne)</option>
+      </select>
+    </div>
+    <div class="fg" id="f_sw_g">
+      <label>Stammwerkstatt <small style="text-transform:none;letter-spacing:0">(Hintergrund)</small></label>
+      <select class="fi" id="f_sw">
+        <option value="">– keine –</option>
+        <option>Schreinerei</option><option>Bewerben</option><option>Metall</option>
+        <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
+        <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
+        <option>Textil</option><option>Reinigung</option>
+      </select>
+    </div>
+    <div class="fg">
       <label>Einsatz von</label>
       <input class="fi" type="date" id="f_von">
     </div>
@@ -761,7 +786,7 @@ input,select,textarea{font-family:inherit}
   <div id="pmExtra">
 
     <div class="fsec">
-      <div class="fsec-title">Schultage – automatische Slot-Sperrung</div>
+      <div class="fsec-title">Schultage</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg" style="flex:1;min-width:140px">
           <label>Typ</label>
@@ -964,6 +989,8 @@ function setPlan(date,pid,patch){
 function getBlocks(p, date){
   if(p.status==='schnupper')
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
+  if(p.status==='praktikum')
+    return {vmB:true,nmB:true,fullB:true,vmL:'PRK',nmL:'PRK'};
   const dow=date.getDay();
   let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
   for(const s of (p.schultage||[])){
@@ -1071,9 +1098,14 @@ function renderDayPlan(){
     // JC
     const jcBadge=p.jobCoach?`<span class="jc ${JC_CSS[p.jobCoach]||''}">${JC_LBL[p.jobCoach]||''}</span>`:'–';
 
-    // BW
-    const bwDot=p.jobCoach==='tom'?`<span class="bw-dot bw-tom" title="Bewerben Tom"></span>`:
-                p.jobCoach==='lio'?`<span class="bw-dot bw-lio" title="Bewerben Lio"></span>`:'';
+    // BW – use explicit bewerbenJC or fall back to jobCoach
+    const bwJC=p.bewerbenJC||p.jobCoach||'';
+    const bwDot=bwJC==='tom'?`<span class="bw-dot bw-tom" title="Bewerben Tom"></span>`:
+                bwJC==='lio'?`<span class="bw-dot bw-lio" title="Bewerben Lio"></span>`:
+                bwJC==='yvi'?`<span class="bw-dot bw-yvi" title="Bewerben Yvi"></span>`:'';
+
+    // Name – green for Lehrstelle / Praktikum
+    const nameGreen=p.status==='lehrstelle'||p.status==='praktikum';
 
     // VM cell
     const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',absent);
@@ -1121,7 +1153,7 @@ function renderDayPlan(){
       onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">`;
 
     rows+=`<tr class="${rowCls}">
-      <td><span class="cell-name">${p.vorname} ${p.nachname}</span>${chip}</td>
+      <td><span class="cell-name${nameGreen?' cell-name-green':''}">${p.vorname} ${p.nachname}</span>${chip}</td>
       <td>${jcBadge}</td>
       <td style="text-align:center;font-size:11px;font-weight:600">${p.iiz==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
       <td style="text-align:center">${bwDot}</td>
@@ -1154,7 +1186,7 @@ function renderDayPlan(){
           <th style="width:42px">IIZ</th>
           <th style="width:32px">BW</th>
           <th style="min-width:160px">VM <small style="font-weight:400;opacity:.7">08:15–12:00</small></th>
-          <th style="min-width:160px">NM <small style="font-weight:400;opacity:.7">Nachmittag</small></th>
+          <th style="min-width:160px">NM <small style="font-weight:400;opacity:.7">13:15–17:00</small></th>
           <th style="min-width:155px">Abwesenheit</th>
           <th style="width:58px;text-align:center">eCase</th>
           <th style="min-width:120px">Bemerkung</th>
@@ -1167,6 +1199,7 @@ function renderDayPlan(){
 }
 
 function buildBlockedCell(label, type){
+  if(label==='PRK') return `<span class="blocked-prk">Praktikum</span>`;
   const cls=type==='sport'?'b-sport':'b-school';
   return `<div class="blocked ${cls}">${label||'–'}</div>`;
 }
@@ -1262,9 +1295,21 @@ function copyPrev(){
     if(!DB.plans[pd2]) return;
     if(!DB.plans[cd]) DB.plans[cd]={};
     Object.entries(DB.plans[pd2]).forEach(([pid,data])=>{
+      const p=DB.participants.find(x=>x.id===pid);
+      // Praktikum-Teilnehmer werden nie kopiert (fixiert)
+      if(p&&p.status==='praktikum') return;
       const ex=DB.plans[cd][pid];
       if(ex&&(ex.vm||ex.nm)) return;
-      DB.plans[cd][pid]={...data,abwesenheit:'',abwesenheitText:'',ecaseEntered:false,bemerkung:''};
+      const newEntry={...data,abwesenheit:'',abwesenheitText:'',ecaseEntered:false,bemerkung:''};
+      // Gesperrte Slots (Schultage, Sport) aus Vorwoche und aktueller Woche löschen
+      if(p){
+        const blkPrv=getBlocks(p,prv[i]);
+        const blkCur=getBlocks(p,cur[i]);
+        if(blkPrv.vmB||blkCur.vmB) newEntry.vm='';
+        if(blkPrv.nmB||blkCur.nmB) newEntry.nm='';
+      }
+      if(!newEntry.vm&&!newEntry.nm) return;
+      DB.plans[cd][pid]=newEntry;
       n++;
     });
   });
@@ -1336,6 +1381,8 @@ function openPM(id=null){
   g('f_nn').value=p?.nachname||'';
   g('f_st').value=p?.status||'aktiv';
   g('f_jc').value=p?.jobCoach||'lio';
+  g('f_bwjc').value=p?.bewerbenJC||'';
+  g('f_sw').value=p?.stammwerkstatt||'';
   g('f_von').value=p?.einsatzVon||'';
   g('f_bis').value=p?.einsatzBis||'';
   g('f_iiz').value=p?.iiz||'nein';
@@ -1351,6 +1398,7 @@ function onSt(){
   const s=document.getElementById('f_st').value;
   document.getElementById('pmExtra').style.display=s==='schnupper'?'none':'block';
   document.getElementById('f_aktiv_g').style.display=s==='aktiv'?'flex':'none';
+  document.getElementById('f_sw_g').style.display=(s==='aktiv'||s==='schnupper')?'flex':'none';
 }
 
 // Schultage
@@ -1399,6 +1447,8 @@ function savePM(){
     vorname:vn,nachname:nn,
     status:document.getElementById('f_st').value,
     jobCoach:document.getElementById('f_jc').value,
+    bewerbenJC:document.getElementById('f_bwjc').value,
+    stammwerkstatt:document.getElementById('f_sw').value,
     einsatzVon:document.getElementById('f_von').value,
     einsatzBis:document.getElementById('f_bis').value,
     iiz:document.getElementById('f_iiz').value,
@@ -1714,6 +1764,77 @@ function genPDF(){
 
   doc.save(`Monatsrapport_${p.vorname}_${p.nachname}_${MON[month]}_${y}.pdf`);
   toast('📄 PDF wird heruntergeladen…','t-ok');
+}
+
+// ────────────────────────────────────────────
+// WOCHENPLAN PDF
+// ────────────────────────────────────────────
+function genWeekPDF(){
+  if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
+  const{jsPDF}=jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,mg=10;
+  const{y,w}=curWeek;
+  const days=weekDays(y,w);
+
+  // Title
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(30,55,100);
+  doc.text(`Wochenplan KW ${pad(w)} · ${y}`,mg,13);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(120);
+  const d0=days[0],d4=days[4];
+  doc.text(`${pad(d0.getDate())}.${pad(d0.getMonth()+1)} – ${pad(d4.getDate())}.${pad(d4.getMonth()+1)}.${y}   ·   Lernwerkstatt BASISJOB`,W-mg,13,{align:'right'});
+
+  // Collect active participants for this week
+  const seen=new Set();
+  const allActive=[];
+  days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
+    if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
+  }));
+  allActive.sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+
+  // Table header: Name, JC, then Mo-Fr VM+NM
+  const headRow=['Name','JC'];
+  days.forEach(d=>headRow.push(`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.\nVM`,`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.\nNM`));
+
+  const bodyRows=allActive.map(p=>{
+    const row=[`${p.vorname} ${p.nachname}`,JC_LBL[p.jobCoach]||''];
+    days.forEach(d=>{
+      const dstr=ds(d);
+      if(!isActiveOnDay(p,d)){row.push('–','–');return;}
+      const plan=getPlan(dstr,p.id);
+      const blk=getBlocks(p,d);
+      if(plan.abwesenheit){row.push(plan.abwesenheit,plan.abwesenheit);return;}
+      row.push(blk.vmB?blk.vmL:(plan.vm||''), blk.nmB?blk.nmL:(plan.nm||''));
+    });
+    return row;
+  });
+
+  const colStyles={0:{cellWidth:34},1:{cellWidth:11}};
+  days.forEach((_,i)=>{colStyles[2+i*2]={cellWidth:22};colStyles[3+i*2]={cellWidth:22};});
+
+  doc.autoTable({
+    head:[headRow],body:bodyRows,
+    startY:17,margin:{left:mg,right:mg},
+    styles:{fontSize:7,cellPadding:2,overflow:'linebreak'},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:7,halign:'center'},
+    columnStyles:colStyles,
+    didParseCell:(data)=>{
+      if(data.section==='body'&&data.column.index>=2){
+        const cell=data.cell.raw;
+        if(cell==='PRK'){data.cell.styles.textColor=[21,128,61];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','M','SP'].includes(cell)){data.cell.styles.textColor=[120,120,120];}
+      }
+      if(data.section==='body'&&data.column.index===0){
+        const p=allActive[data.row.index];
+        if(p&&(p.status==='lehrstelle'||p.status==='praktikum'))
+          data.cell.styles.textColor=[21,128,61];
+      }
+    },
+    alternateRowStyles:{fillColor:[248,250,253]},
+  });
+
+  doc.save(`Wochenplan_KW${pad(w)}_${y}.pdf`);
+  toast('📄 Wochenplan PDF wird heruntergeladen…','t-ok');
 }
 
 // ────────────────────────────────────────────
