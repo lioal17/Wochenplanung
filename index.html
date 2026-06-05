@@ -449,6 +449,22 @@ input,select,textarea{font-family:inherit}
 .banner .bn-x:hover{opacity:1}
 @keyframes slide-dn{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
 
+/* ═══════════════════════════════════════════
+   DOKUMENT-IMPORT
+═══════════════════════════════════════════ */
+.drop-zone{
+  border:2px dashed var(--g4);border-radius:var(--r);padding:44px 24px;
+  text-align:center;cursor:pointer;transition:all .2s;background:var(--g1);
+}
+.drop-zone:hover,.drop-zone.dz-over{border-color:var(--navy-light);background:var(--blue-bg)}
+.imp-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.imp-tbl th{background:var(--g9);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap}
+.imp-tbl td{padding:6px 9px;border-bottom:1px solid var(--g2);vertical-align:middle}
+.imp-tbl tbody tr:hover td{background:var(--g1)}
+.imp-tbl tr.imp-exists td{background:#f0fdf8}
+.imp-inp{border:1px solid var(--g3);border-radius:4px;padding:3px 7px;font-size:12px;font-family:inherit;width:100%;min-width:80px}
+.imp-inp:focus{outline:2px solid var(--navy-light);border-color:transparent}
+
 .toast-dock{position:fixed;bottom:24px;right:24px;z-index:600;display:flex;flex-direction:column;gap:8px}
 .toast{
   background:var(--g9);color:#fff;padding:11px 16px;border-radius:8px;
@@ -504,6 +520,7 @@ input,select,textarea{font-family:inherit}
   <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="monthly" onclick="show('monthly')" >📊 Monatsübersicht</button>
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
+  <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
 </nav>
 
 <div class="main">
@@ -594,6 +611,65 @@ input,select,textarea{font-family:inherit}
         <button class="btn btn-success" onclick="genPDF()">📄 PDF generieren</button>
       </div>
       <div id="rptArea"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════╗
+       ║  VIEW: DOKUMENT-IMPORT                   ║
+       ╚══════════════════════════════════════════╝ -->
+  <div class="view" id="view-import">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Dokument-Import</span>
+      </div>
+      <p style="color:var(--g6);font-size:13px;margin-bottom:16px">
+        Lade eine «Teilnehmende Lernwerkstatt»-Liste als PDF, Excel oder Word hoch.
+        Das Tool erkennt Teilnehmernamen, zuständige Berater/-in und Schultage automatisch
+        und befüllt nur Felder, die eindeutig zugeordnet werden können.
+      </p>
+      <div class="drop-zone" id="dz" onclick="document.getElementById('docFile').click()">
+        <input type="file" id="docFile" accept=".pdf,.xlsx,.xlsm,.xls,.docx" style="display:none" onchange="handleDocUpload(this)">
+        <div style="font-size:40px;margin-bottom:10px">📄</div>
+        <div style="font-size:15px;font-weight:700;color:var(--g8)">Datei hier ablegen oder klicken</div>
+        <div style="font-size:12px;color:var(--g5);margin-top:6px">PDF · Excel (.xlsx / .xlsm) · Word (.docx)</div>
+      </div>
+
+      <div id="impProgress" style="display:none;text-align:center;padding:32px">
+        <div style="font-size:32px;margin-bottom:10px">⏳</div>
+        <div id="impProgressMsg" style="font-size:14px;color:var(--g6)">Datei wird gelesen…</div>
+      </div>
+
+      <div id="impResults" style="display:none;margin-top:24px">
+        <div class="card-head" style="flex-wrap:wrap;gap:12px">
+          <div>
+            <span class="card-title" id="impTitle">Erkannte Teilnehmende</span>
+            <div style="font-size:12px;color:var(--g6);margin-top:3px">
+              Vor-/Nachname prüfen und bei Bedarf anpassen. Grüne Zeilen sind bereits im System vorhanden.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="impToggleAll(false)">Alle abwählen</button>
+            <button class="btn btn-secondary btn-sm" onclick="impToggleAll(true)">Alle wählen</button>
+            <button class="btn btn-primary" onclick="doImportDoc()">✓ Ausgewählte importieren</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="imp-tbl">
+            <thead>
+              <tr>
+                <th style="width:30px"><input type="checkbox" id="impSelAll" checked onchange="impToggleAll(this.checked)"></th>
+                <th>Nachname</th>
+                <th>Vorname</th>
+                <th>JC / Berater</th>
+                <th>Schultage erkannt</th>
+                <th>Sport erkannt</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="impTBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -743,6 +819,9 @@ input,select,textarea{font-family:inherit}
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -1714,6 +1793,228 @@ document.getElementById('pmOverlay').addEventListener('click',e=>{
 });
 
 // ────────────────────────────────────────────
+// DOKUMENT-IMPORT
+// ────────────────────────────────────────────
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc=
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+let _impData=[];
+
+const IMP_JC={
+  yvi:['brüggl','bruggl','yvonne'],
+  lio:['ioannou','lucas'],
+  tom:['schildknecht','thomas schildknecht']
+};
+const IMP_KTYP={DMA:'S',DAZ:'DAZ','FöA':'FöA',DK:'DK',IKPC:'IKPC',M:'M'};
+const IMP_DAY={Mo:1,Di:2,Mi:3,Do:4,Fr:5};
+
+function impJC(str){
+  const l=str.toLowerCase();
+  for(const[k,ps]of Object.entries(IMP_JC)){if(ps.some(p=>l.includes(p)))return k;}
+  return null;
+}
+
+function parseDocText(text){
+  const KLASSE_RE=/\b(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-\d{2}-\d{2}-\d{2}-\d{2}\b/g;
+  const BERATER_RE=/(Br[üu]ggl[ae]r\s+Yvonne|Ioannou\s+Lucas|Schildknecht\s+Thomas)/i;
+  const map={};
+  const lines=text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l.length>3);
+
+  for(const line of lines){
+    KLASSE_RE.lastIndex=0;
+    const km=KLASSE_RE.exec(line);
+    if(!km) continue;
+    const bm=BERATER_RE.exec(line);
+    if(!bm) continue;
+    const rawName=line.substring(0,km.index).trim();
+    if(!rawName||rawName.length<3||!/^[A-ZÄÖÜ]/.test(rawName)) continue;
+    const jc=impJC(bm[1]);
+    if(!jc) continue;
+
+    // Parse klasse code
+    const cm=km[0].match(/^(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-/);
+    const ktyp=cm?cm[1]:null;
+    const kwd=cm?IMP_DAY[cm[2]]||0:0;
+
+    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[]};
+    if(ktyp&&kwd){
+      if(ktyp==='Spo'){
+        if(!map[rawName].spt.includes(kwd)) map[rawName].spt.push(kwd);
+      } else {
+        const typ=IMP_KTYP[ktyp]||ktyp;
+        if(!map[rawName].sch.find(s=>s.typ===typ&&s.wochentag===kwd))
+          map[rawName].sch.push({typ,wochentag:kwd});
+      }
+    }
+  }
+  return Object.values(map);
+}
+
+function impSplitName(raw){
+  const parts=raw.trim().split(/\s+/);
+  if(parts.length===1) return{nn:parts[0],vn:''};
+  // Last word = Vorname (Swiss admin format: Nachname zuerst)
+  // Bei zusammengesetzten Vornamen (z.B. "Ehrbar Julian Pascal") bitte manuell anpassen
+  return{nn:parts.slice(0,-1).join(' '),vn:parts[parts.length-1]};
+}
+
+function renderImpTable(){
+  const tbody=document.getElementById('impTBody');
+  document.getElementById('impTitle').textContent=`${_impData.length} Teilnehmende erkannt`;
+  const existSet=new Set(DB.participants.map(p=>
+    (p.nachname+' '+p.vorname).toLowerCase().trim()
+  ));
+
+  tbody.innerHTML=_impData.map((p,i)=>{
+    const{nn,vn}=impSplitName(p.rawName);
+    const exists=existSet.has((nn+' '+vn).toLowerCase().trim())||
+      DB.participants.some(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+    const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${s.typ}`).join(', ')||'–';
+    const sptStr=p.spt.map(d=>WD[d]).join(', ')||'–';
+    return`<tr class="${exists?'imp-exists':''}">
+      <td><input type="checkbox" class="imp-cb" data-i="${i}" ${exists?'':'checked'}></td>
+      <td><input class="imp-inp" id="imp-nn-${i}" value="${esc(nn)}" placeholder="Nachname"></td>
+      <td><input class="imp-inp" id="imp-vn-${i}" value="${esc(vn)}" placeholder="Vorname"></td>
+      <td><span class="jc ${JC_CSS[p.jc]||''}">${JC_LBL[p.jc]||p.jc}</span></td>
+      <td style="font-size:11px;color:var(--g6)">${schStr}</td>
+      <td style="font-size:11px;color:var(--g6)">${sptStr}</td>
+      <td>${exists?'<span class="st-chip chip-prak">✓ vorhanden</span>':''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function impToggleAll(checked){
+  document.querySelectorAll('.imp-cb').forEach(cb=>cb.checked=checked);
+  const sa=document.getElementById('impSelAll');
+  if(sa) sa.checked=checked;
+}
+
+async function handleDocUpload(input){
+  const file=input.files[0]; if(!file) return;
+  const prog=document.getElementById('impProgress');
+  const res=document.getElementById('impResults');
+  const msg=document.getElementById('impProgressMsg');
+  prog.style.display='block'; res.style.display='none';
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    let text='';
+    if(ext==='pdf'){
+      msg.textContent='PDF wird gelesen…';
+      text=await _impParsePDF(file);
+    }else if(['xlsx','xlsm','xls'].includes(ext)){
+      msg.textContent='Excel wird analysiert…';
+      text=await _impParseExcel(file);
+    }else if(ext==='docx'){
+      msg.textContent='Word-Datei wird gelesen…';
+      text=await _impParseWord(file);
+    }else{
+      toast('Nicht unterstützter Dateityp. Bitte PDF, Excel (.xlsx) oder Word (.docx) verwenden.','t-err');
+      prog.style.display='none'; return;
+    }
+    msg.textContent='Teilnehmende werden erkannt…';
+    _impData=parseDocText(text);
+    if(_impData.length===0){
+      toast('Keine Teilnehmenden erkannt – ist es eine «Teilnehmende Lernwerkstatt»-Liste?','t-err');
+      prog.style.display='none'; return;
+    }
+    renderImpTable();
+    prog.style.display='none'; res.style.display='block';
+  }catch(err){
+    toast('Fehler beim Lesen der Datei: '+err.message,'t-err');
+    prog.style.display='none';
+  }
+  input.value='';
+}
+
+async function _impParsePDF(file){
+  if(typeof pdfjsLib==='undefined') throw new Error('PDF.js nicht geladen – bitte Seite neu laden');
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i);
+    const tc=await pg.getTextContent();
+    let lastY=null;
+    for(const it of tc.items){
+      if(lastY!==null&&Math.abs(it.transform[5]-lastY)>3) out+='\n';
+      out+=it.str+(it.str&&!it.str.endsWith(' ')?' ':'');
+      lastY=it.transform[5];
+    }
+    out+='\n';
+  }
+  return out;
+}
+
+async function _impParseExcel(file){
+  if(typeof XLSX==='undefined') throw new Error('SheetJS nicht geladen – bitte Seite neu laden');
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf);
+  return wb.SheetNames.map(n=>
+    XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''})
+      .map(r=>r.join(' ')).join('\n')
+  ).join('\n');
+}
+
+async function _impParseWord(file){
+  if(typeof mammoth==='undefined') throw new Error('mammoth.js nicht geladen – bitte Seite neu laden');
+  const buf=await file.arrayBuffer();
+  const r=await mammoth.extractRawText({arrayBuffer:buf});
+  return r.value;
+}
+
+function doImportDoc(){
+  const cbs=document.querySelectorAll('.imp-cb');
+  let added=0,updated=0;
+
+  cbs.forEach((cb,i)=>{
+    if(!cb.checked) return;
+    const p=_impData[i];
+    const nn=(document.getElementById(`imp-nn-${i}`)?.value||'').trim();
+    const vn=(document.getElementById(`imp-vn-${i}`)?.value||'').trim();
+    if(!nn) return;
+
+    const existing=DB.participants.find(e=>
+      e.nachname.toLowerCase()===nn.toLowerCase()&&
+      (e.vorname||'').toLowerCase()===(vn||'').toLowerCase()
+    )||DB.participants.find(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+
+    if(existing){
+      if(!existing.jobCoach&&p.jc) existing.jobCoach=p.jc;
+      if((!existing.schultage||!existing.schultage.length)&&p.sch.length) existing.schultage=p.sch;
+      if((!existing.sporttermine||!existing.sporttermine.length)&&p.spt.length) existing.sporttermine=p.spt;
+      updated++;
+    }else{
+      DB.participants.push({
+        id:uid(),
+        vorname:vn||'',
+        nachname:nn,
+        status:'aktiv',
+        jobCoach:p.jc||'',
+        iiz:'nein',
+        einsatzVon:'',einsatzBis:'',
+        aktiviertAm:new Date().toISOString().split('T')[0],
+        schultage:p.sch,
+        sporttermine:p.spt,
+        fixpraeferenzen:[],
+        wb8:false,wb10:false,
+        bemerkung:'',
+      });
+      added++;
+    }
+  });
+
+  if(added+updated>0){
+    saveDB(); dirty=true; renderWBAlerts(); renderImpTable();
+    toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}','t-ok');
+    setTimeout(()=>show('person'),700);
+  }else{
+    toast('Keine Teilnehmenden ausgewählt.','t-err');
+  }
+}
+
+// ────────────────────────────────────────────
 // INIT
 // ────────────────────────────────────────────
 function init(){
@@ -1730,6 +2031,19 @@ function init(){
     if(!dirty) return;
     e.preventDefault();e.returnValue='';
   });
+  // Drop-Zone Drag & Drop
+  const dz=document.getElementById('dz');
+  if(dz){
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dz-over');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dz-over'));
+    dz.addEventListener('drop',e=>{
+      e.preventDefault(); dz.classList.remove('dz-over');
+      const file=e.dataTransfer.files[0]; if(!file) return;
+      const inp=document.getElementById('docFile');
+      const dt=new DataTransfer(); dt.items.add(file); inp.files=dt.files;
+      handleDocUpload(inp);
+    });
+  }
   show('plan');
 }
 
