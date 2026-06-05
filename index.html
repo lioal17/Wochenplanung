@@ -557,14 +557,14 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
-            ⚡ Auto-Einfüllen
+          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+            📄 PDF
           </button>
           <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
             📋 Vorwoche kopieren
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-            📄 PDF
+          <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
+            ⚡ Auto-Einfüllen
           </button>
           <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
             🗑 Woche leeren
@@ -732,8 +732,7 @@ input,select,textarea{font-family:inherit}
     <div class="fg">
       <label>Status *</label>
       <select class="fi" id="f_st" onchange="onSt()">
-        <option value="schnupper">Schnupper</option>
-        <option value="aktiv" selected>Aktiv</option>
+        <option value="aktiv" selected>Lernwerkstatt</option>
         <option value="praktikum">Praktikum</option>
         <option value="lehrstelle">Lehrstelle</option>
       </select>
@@ -755,7 +754,7 @@ input,select,textarea{font-family:inherit}
         <option value="yvi">Yvi (Yvonne)</option>
       </select>
     </div>
-    <div class="fg" id="f_sw_g">
+    <div class="fg" id="f_sw_g" style="display:none">
       <label>Stammwerkstatt <small style="text-transform:none;letter-spacing:0">(Hintergrund)</small></label>
       <select class="fi" id="f_sw">
         <option value="">– keine –</option>
@@ -863,19 +862,24 @@ input,select,textarea{font-family:inherit}
       <div id="fpList"></div>
     </div>
 
-    <div class="fsec">
-      <div class="fsec-title">Schnupperwoche</div>
-      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-        <div class="fg">
-          <label>Woche wählen</label>
-          <input class="fi" type="week" id="sw_kw" style="width:190px">
-        </div>
-        <button class="btn btn-secondary btn-sm" style="height:37px" onclick="clearSchnupperwoche()">✕ Löschen</button>
-      </div>
-      <div id="swInfo" style="font-size:12px;color:var(--g6);margin-top:7px"></div>
-    </div>
-
   </div><!-- /pmExtra -->
+
+  <div class="fsec">
+    <div class="fsec-title">Bemerkung</div>
+    <textarea class="fi" id="f_pbm" rows="2" placeholder="Freitext…" style="resize:vertical;width:100%;box-sizing:border-box"></textarea>
+  </div>
+
+  <div class="fsec">
+    <div class="fsec-title">Schnupperwoche LW</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fg">
+        <label>Woche wählen</label>
+        <input class="fi" type="week" id="sw_kw" style="width:190px">
+      </div>
+      <button class="btn btn-secondary btn-sm" style="height:37px" onclick="clearSchnupperwoche()">✕ Löschen</button>
+    </div>
+    <div id="swInfo" style="font-size:12px;color:var(--g6);margin-top:7px"></div>
+  </div>
 
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closePM()">Abbrechen</button>
@@ -1133,7 +1137,7 @@ function renderDayPlan(){
     const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',absent);
 
     // NM cell
-    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL,'sport') : buildWsCell(pid,'nm',plan.nm||'',absent);
+    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='SP'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',absent);
 
     // Count werkstatten for summary
     if(!absent){
@@ -1367,7 +1371,7 @@ function renderPersons(){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
   }
-  const stLbl={schnupper:'Schnupper',aktiv:'Aktiv',praktikum:'Praktikum',lehrstelle:'Lehrstelle'};
+  const stLbl={aktiv:'Lernwerkstatt',praktikum:'Praktikum',lehrstelle:'Lehrstelle'};
   el.innerHTML=sorted.map(p=>{
     const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
@@ -1429,6 +1433,7 @@ function openPM(id=null){
   g('f_iiz').value=p?.iiz||'nein';
   g('f_aktiv').value=p?.aktiviertAm||'';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tFP=[...(p.fixpraeferenzen||[])]; }
+  g('f_pbm').value=p?.bemerkung||'';
   g('sw_kw').value=p?.schnupperwoche||'';
   updateSwInfo(p?.schnupperwoche||'');
   onSt(); renderTags(); renderFPs();
@@ -1514,6 +1519,7 @@ function savePM(){
     einsatzBis:document.getElementById('f_bis').value,
     iiz:document.getElementById('f_iiz').value,
     aktiviertAm:document.getElementById('f_aktiv').value,
+    bemerkung:document.getElementById('f_pbm').value,
     schultage:[...tSch],sporttermine:[...tSpt],fixpraeferenzen:[...tFP],
     schnupperwoche:document.getElementById('sw_kw').value||null,
   };
