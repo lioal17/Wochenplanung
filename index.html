@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernwerkstatt – Einteilungsplan</title>
+<style>
+:root {
+  --primary: #1a3a5c;
+  --primary-light: #2563a8;
+  --accent: #f59e0b;
+  --green: #16a34a;
+  --green-light: #dcfce7;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --blue-light: #dbeafe;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--gray-100);color:var(--gray-800);font-size:14px;min-height:100vh}
+
+/* HEADER */
+.app-header{background:var(--primary);color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;box-shadow:var(--shadow-md)}
+.app-header h1{font-size:17px;font-weight:600;letter-spacing:.2px}
+.app-header .sub{font-size:11px;opacity:.65;margin-top:1px}
+.header-actions{display:flex;gap:8px}
+
+/* NAV */
+.nav-tabs{display:flex;background:#fff;border-bottom:1px solid var(--gray-200);padding:0 20px;position:sticky;top:56px;z-index:199}
+.nav-tab{padding:10px 18px;cursor:pointer;border:none;background:none;font-size:13px;color:var(--gray-600);border-bottom:3px solid transparent;font-weight:500;transition:all .15s;white-space:nowrap}
+.nav-tab:hover{color:var(--primary);background:var(--gray-50)}
+.nav-tab.active{color:var(--primary);border-bottom-color:var(--primary);background:#fff}
+.nav-tab .badge{display:inline-flex;align-items:center;justify-content:center;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:0 5px;min-width:16px;height:16px;margin-left:5px}
+
+/* LAYOUT */
+.main{padding:20px 24px;max-width:1440px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.card-title{font-size:15px;font-weight:600;color:var(--gray-800)}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-light)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50);border-color:var(--gray-400)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:#d97706;color:#fff}.btn-warning:hover{background:#b45309}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:3px 7px;font-size:11px}
+.btn-icon{width:34px;height:34px;border-radius:50%;border:1px solid var(--gray-300);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;color:var(--gray-700);flex-shrink:0}
+.btn-icon:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* WEEK NAV */
+.week-nav{display:flex;align-items:center;gap:10px}
+.week-nav-info{font-size:16px;font-weight:600;color:var(--primary);min-width:220px;text-align:center}
+.day-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.day-tab{padding:7px 14px;border-radius:6px;cursor:pointer;border:1px solid var(--gray-200);background:#fff;font-size:12px;font-weight:500;color:var(--gray-600);transition:all .15s}
+.day-tab:hover{border-color:var(--primary-light);color:var(--primary)}
+.day-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.day-tab.today{border-color:var(--accent);font-weight:700}
+
+/* PLAN TABLE */
+.plan-wrap{overflow-x:auto}
+.plan-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.plan-table th{background:var(--gray-800);color:#fff;padding:9px 8px;text-align:left;font-weight:500;font-size:11px;letter-spacing:.4px;white-space:nowrap;position:sticky;top:109px;z-index:10}
+.plan-table td{padding:6px 7px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+.plan-table tr:hover td{background:var(--gray-50)}
+.plan-table tr.praktikum td{background:#f0fdf4}
+.plan-table tr.praktikum:hover td{background:#dcfce7}
+.plan-table tr.lehrstelle td{background:#f0fdf4}
+.plan-table tr.lehrstelle:hover td{background:#dcfce7}
+.plan-table tr.schnupper td{background:#fafafa}
+
+/* Name cell */
+.p-name{font-weight:600;font-size:13px}
+.status-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:700;vertical-align:middle}
+.sb-praktikum{background:#16a34a;color:#fff}
+.sb-lehrstelle{background:#0d9488;color:#fff}
+.sb-schnupper{background:#9ca3af;color:#fff}
+
+/* JC badge */
+.jc-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.jc-lio{background:#fee2e2;color:#dc2626}
+.jc-tom{background:#dbeafe;color:#1d4ed8}
+.jc-yvi{background:#fce7f3;color:#9d174d}
+
+/* BW dot */
+.bw-dot{width:12px;height:12px;border-radius:50%;display:inline-block;vertical-align:middle}
+.bw-tom{background:#2563eb}.bw-lio{background:#dc2626}
+
+/* Selects / inputs in table */
+.ws-select{border:1px solid var(--gray-200);border-radius:4px;padding:4px 6px;font-size:12px;background:#fff;color:var(--gray-700);width:100%;min-width:130px}
+.ws-select:focus{outline:none;border-color:var(--primary-light)}
+.ws-select:disabled{background:var(--gray-100);color:var(--gray-400);cursor:not-allowed}
+.abs-select{border:1px solid var(--gray-200);border-radius:4px;padding:4px 5px;font-size:12px;background:#fff;width:78px}
+.abs-input{border:1px solid var(--gray-200);border-radius:4px;padding:4px 5px;font-size:12px;width:100%;margin-top:3px}
+.bem-input{border:1px solid var(--gray-200);border-radius:4px;padding:4px 6px;font-size:12px;width:100%}
+.ecase-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--primary)}
+.cell-blocked{background:repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 3px,#e2e8f0 3px,#e2e8f0 6px);color:var(--gray-400);font-size:10px;font-weight:700;text-align:center;border-radius:3px;padding:5px 4px;letter-spacing:.5px}
+
+/* Participants list */
+.p-list{display:flex;flex-direction:column;gap:8px}
+.p-card{background:#fff;border:1px solid var(--gray-200);border-radius:8px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:box-shadow .15s}
+.p-card:hover{box-shadow:var(--shadow-md)}
+.p-card.st-aktiv{border-left:4px solid var(--primary-light)}
+.p-card.st-praktikum{border-left:4px solid var(--green)}
+.p-card.st-lehrstelle{border-left:4px solid #0d9488}
+.p-card.st-schnupper{border-left:4px solid var(--gray-400)}
+.p-card-info{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.p-card-name{font-size:14px;font-weight:600}
+.p-card-meta{font-size:11px;color:var(--gray-500);display:flex;gap:10px;flex-wrap:wrap}
+.p-card-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+/* WB alerts */
+.wb-alerts{margin-bottom:12px}
+.wb-alert{background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wb-alert.urgent{background:#fff1f2;border-color:#f87171}
+.wb-alert-body{flex:1}
+.wb-alert-title{font-weight:600;font-size:13px}
+.wb-alert-sub{font-size:11px;color:var(--gray-600);margin-top:2px}
+.wb-alert-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* Monthly grid */
+.month-wrap{overflow-x:auto}
+.month-table{border-collapse:collapse;font-size:11px;width:100%}
+.month-table th,.month-table td{border:1px solid var(--gray-200);padding:5px 6px;text-align:center;white-space:nowrap}
+.month-table th{background:var(--gray-800);color:#fff;font-size:10px;font-weight:500}
+.month-table th.weekend-h{background:var(--gray-600)}
+.month-table td.weekend{background:var(--gray-100);color:var(--gray-400)}
+.month-table td.cell-worked{background:#f0fdf4;color:#16a34a;font-weight:600}
+.month-table td.cell-absent{background:#fef2f2;color:#dc2626;font-weight:700}
+.month-table td.cell-school{background:#eff6ff;color:#2563eb;font-weight:600}
+.month-table td.cell-sport{background:#fdf4ff;color:#9333ea;font-weight:600}
+.month-table td.cell-inactive{background:var(--gray-50);color:var(--gray-300)}
+.month-table .td-name{text-align:left;font-weight:500;white-space:nowrap;position:sticky;left:0;background:#fff;z-index:1;padding:5px 10px;min-width:150px}
+.month-table tr:hover td{filter:brightness(.97)}
+.month-table tr:hover .td-name{background:#f8fafc}
+
+/* Rapport */
+.rapport-legend{background:#fde047;border-radius:6px;padding:10px 14px;font-size:11px;margin-bottom:12px;line-height:1.8}
+.rapport-preview-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+.rapport-preview-table th{background:var(--gray-800);color:#fff;padding:7px 10px;text-align:left;font-size:11px}
+.rapport-preview-table td{padding:5px 10px;border-bottom:1px solid var(--gray-100)}
+.rapport-preview-table tr.rpt-weekend td{background:var(--gray-50);color:var(--gray-400)}
+.rapport-preview-table tr.rpt-absent td{background:#fff7ed}
+.rapport-preview-table .rpt-code{font-weight:700;color:#dc2626}
+
+/* Summary bar */
+.summary-bar{display:flex;gap:16px;padding:12px 16px;background:var(--gray-50);border-radius:6px;margin-bottom:12px;flex-wrap:wrap}
+.sum-item{display:flex;flex-direction:column;align-items:center;gap:1px}
+.sum-val{font-size:22px;font-weight:700;color:var(--primary);line-height:1}
+.sum-label{font-size:10px;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;box-shadow:var(--shadow-lg);width:100%;max-width:700px;padding:28px;margin:auto}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:600}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray-500);line-height:1}
+.modal-close:hover{color:var(--gray-900)}
+.modal-ftr{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--gray-200)}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px}
+.form-input,.form-select{border:1px solid var(--gray-300);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--gray-800);background:#fff;width:100%}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(37,99,168,.1)}
+.form-section{margin:14px 0;padding:14px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200)}
+.form-section-title{font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.tag-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.tag-school{background:var(--blue-light);color:var(--blue)}
+.tag-sport{background:#fdf4ff;color:#9333ea}
+.tag-fix{background:#f0fdf4;color:#16a34a}
+.tag-remove{cursor:pointer;opacity:.6;font-size:13px;line-height:1}
+.tag-remove:hover{opacity:1}
+.fix-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray-200);padding:6px 10px;border-radius:6px;font-size:12px;margin-top:4px}
+.fix-item span{color:var(--gray-500)}
+.fix-item button{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;line-height:1}
+.fix-item button:hover{color:var(--red)}
+
+/* Open eCase bar */
+.ecase-bar{position:sticky;bottom:0;background:#fffbeb;border-top:2px solid #fbbf24;padding:8px 16px;font-size:12px;display:flex;align-items:center;gap:8px;z-index:50;margin:0 -20px -20px}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--gray-800);color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow-lg);animation:toast-in .2s ease;max-width:300px}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.warn{background:#d97706}
+@keyframes toast-in{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}}
+
+/* eCase warning banner */
+.warn-banner{background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:10px 14px;font-size:12px;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+
+/* Helpers */
+.flex{display:flex}.flex-center{align-items:center}.gap-2{gap:8px}.gap-3{gap:12px}
+.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+.text-muted{color:var(--gray-500)}.text-sm{font-size:12px}
+.text-green{color:var(--green)}.text-red{color:var(--red)}.text-accent{color:#d97706}
+</style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div>
+    <h1>Lernwerkstatt – Einteilungsplan</h1>
+    <div class="sub">BASISJOB · Motivationssemester</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary btn-sm" onclick="exportData()">💾 Export</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">📂 Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" data-view="plan" onclick="showView('plan')">📅 Wochenplan</button>
+  <button class="nav-tab" data-view="participants" onclick="showView('participants')">👥 Teilnehmer</button>
+  <button class="nav-tab" data-view="monthly" onclick="showView('monthly')">📊 Monatsübersicht</button>
+  <button class="nav-tab" data-view="rapport" onclick="showView('rapport')">📄 Monatsrapport</button>
+</nav>
+
+<div class="main">
+
+  <!-- WB ALERTS -->
+  <div id="wbAlerts"></div>
+
+  <!-- ====== WOCHENPLAN ====== -->
+  <div class="view active" id="view-plan">
+    <div class="card">
+      <div class="card-header">
+        <div class="week-nav">
+          <button class="btn-icon" onclick="changeWeek(-1)">&#8249;</button>
+          <div class="week-nav-info" id="weekInfo">–</div>
+          <button class="btn-icon" onclick="changeWeek(1)">&#8250;</button>
+          <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary btn-sm" onclick="autofillDay()" title="Fixpräferenzen & Sport automatisch einfüllen">⚡ Auto-Einfüllen</button>
+          <button class="btn btn-secondary btn-sm" onclick="copyPrevWeek()" title="Werkstatt-Einträge von Vorwoche kopieren">📋 Vorwoche</button>
+        </div>
+      </div>
+      <div class="day-tabs" id="dayTabs"></div>
+      <div id="planContent"></div>
+    </div>
+  </div>
+
+  <!-- ====== TEILNEHMER ====== -->
+  <div class="view" id="view-participants">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Teilnehmer verwalten</span>
+        <button class="btn btn-primary" onclick="openPModal()">+ Teilnehmer</button>
+      </div>
+      <div class="p-list" id="pList"></div>
+    </div>
+  </div>
+
+  <!-- ====== MONATSÜBERSICHT ====== -->
+  <div class="view" id="view-monthly">
+    <div class="card">
+      <div class="card-header">
+        <div class="week-nav">
+          <button class="btn-icon" onclick="changeMonth(-1)">&#8249;</button>
+          <div class="week-nav-info" id="monthInfo">–</div>
+          <button class="btn-icon" onclick="changeMonth(1)">&#8250;</button>
+        </div>
+        <div id="monthEcaseHint"></div>
+      </div>
+      <div id="monthlyContent"></div>
+    </div>
+  </div>
+
+  <!-- ====== MONATSRAPPORT ====== -->
+  <div class="view" id="view-rapport">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Monatsrapport generieren</span>
+      </div>
+      <div class="flex gap-3 mb-4" style="flex-wrap:wrap;align-items:flex-end;">
+        <div class="fg">
+          <label>Teilnehmer</label>
+          <select class="form-select" id="rptPart" onchange="buildRapport()" style="width:210px"></select>
+        </div>
+        <div class="fg">
+          <label>Monat</label>
+          <input type="month" class="form-input" id="rptMonth" onchange="buildRapport()" style="width:155px">
+        </div>
+        <button class="btn btn-success" onclick="genPDF()">📄 PDF generieren</button>
+      </div>
+      <div id="rapportContent"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ====== PARTICIPANT MODAL ====== -->
+<div class="overlay" id="pModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="pModalTitle">Teilnehmer</div>
+      <button class="modal-close" onclick="closeModal('pModal')">&times;</button>
+    </div>
+    <div class="form-grid">
+      <div class="fg">
+        <label>Vorname *</label>
+        <input type="text" class="form-input" id="f_vn" placeholder="Vorname">
+      </div>
+      <div class="fg">
+        <label>Nachname *</label>
+        <input type="text" class="form-input" id="f_nn" placeholder="Nachname">
+      </div>
+      <div class="fg">
+        <label>Status *</label>
+        <select class="form-select" id="f_status" onchange="onStatusChange()">
+          <option value="schnupper">Schnupper</option>
+          <option value="aktiv" selected>Aktiv</option>
+          <option value="praktikum">Praktikum</option>
+          <option value="lehrstelle">Lehrstelle</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Job Coach</label>
+        <select class="form-select" id="f_jc">
+          <option value="lio">Lio (Lucas)</option>
+          <option value="tom">Tom (Thomas)</option>
+          <option value="yvi">Yvi (Yvonne)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Einsatz von</label>
+        <input type="date" class="form-input" id="f_von">
+      </div>
+      <div class="fg">
+        <label>Einsatz bis</label>
+        <input type="date" class="form-input" id="f_bis">
+      </div>
+      <div class="fg">
+        <label>IIZ</label>
+        <select class="form-select" id="f_iiz">
+          <option value="nein">Nein</option>
+          <option value="ja">Ja</option>
+        </select>
+      </div>
+      <div class="fg" id="f_aktiv_grp">
+        <label>Aktiviert am (für Wirkungsbericht-Timer)</label>
+        <input type="date" class="form-input" id="f_aktiv">
+      </div>
+    </div>
+
+    <div id="stammdaten">
+
+      <div class="form-section">
+        <div class="form-section-title">Schultage</div>
+        <div class="flex gap-2" style="flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="flex:1;min-width:140px;">
+            <label>Typ</label>
+            <select class="form-select" id="s_typ">
+              <option value="DAZ">DAZ – halber Tag VM</option>
+              <option value="S">S – Schule (ganzer Tag)</option>
+              <option value="FöA">FöA – halber Tag</option>
+              <option value="DK">DK – Deutschkurs halber Tag</option>
+              <option value="IKPC">IKPC – halber Tag</option>
+              <option value="M">M – Mathe halber Tag</option>
+            </select>
+          </div>
+          <div class="fg" style="flex:1;min-width:110px;">
+            <label>Wochentag</label>
+            <select class="form-select" id="s_tag">
+              <option value="1">Montag</option><option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="addSchultag()" style="height:37px">+ Hinzufügen</button>
+        </div>
+        <div class="tag-list" id="schultagList"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Sporttermine (max. 2× pro Woche – immer NM)</div>
+        <div class="flex gap-2" style="align-items:flex-end;">
+          <div class="fg">
+            <label>Wochentag</label>
+            <select class="form-select" id="sp_tag" style="width:140px">
+              <option value="1">Montag</option><option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="addSporttag()" style="height:37px">+ Hinzufügen</button>
+        </div>
+        <div class="tag-list" id="sporttagList"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Fixpräferenzen (wiederkehrende Werkstatt-Zuweisung)</div>
+        <div class="flex gap-2" style="flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="flex:1;min-width:140px;">
+            <label>Werkstatt</label>
+            <select class="form-select" id="fp_ws">
+              <option value="">– Werkstatt wählen –</option>
+              <option>Schreinerei</option><option>Bewerben</option><option>Metall</option>
+              <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
+              <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
+              <option>Textil</option><option>Reinigung</option>
+            </select>
+          </div>
+          <div class="fg" style="flex:1;min-width:110px;">
+            <label>Wochentag</label>
+            <select class="form-select" id="fp_tag">
+              <option value="0">Täglich (Mo–Fr)</option>
+              <option value="1">Montag</option><option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+            </select>
+          </div>
+          <div class="fg" style="flex:0;min-width:80px;">
+            <label>Ganztag</label>
+            <input type="checkbox" id="fp_ganz" style="width:20px;height:20px;margin-top:8px">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="addFixPref()" style="height:37px">+ Hinzufügen</button>
+        </div>
+        <div id="fixPrefList" style="margin-top:8px"></div>
+      </div>
+
+    </div>
+
+    <div class="modal-ftr">
+      <button class="btn btn-secondary" onclick="closeModal('pModal')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveParticipant()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const WD   = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const WDL  = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const MON  = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const WS_LIST = ['Schreinerei','Bewerben','Metall','Metallverpacken','Crea','Lernstücke','Loli','Neophyten','Feldeinsatz','Textil','Reinigung'];
+const ABSENZ = [
+  {c:'',l:'–'},
+  {c:'FE',l:'FE – Ferien'},
+  {c:'KR',l:'KR – Krank'},
+  {c:'ZS',l:'ZS – Zu spät'},
+  {c:'SL',l:'SL – Schnupperlehre'},
+  {c:'PA',l:'PA – Praktikum'},
+  {c:'BA',l:'BA – Bezahlte Absenz'},
+  {c:'UA',l:'UA – Unentschuldigte Absenz'},
+  {c:'UN',l:'UN – Unfall'},
+  {c:'ZV',l:'ZV – Zwischenverdienst'},
+  {c:'KO',l:'KO – Kompensation'},
+  {c:'TZ',l:'TZ – Teilzeit'},
+  {c:'MI',l:'MI – Militär/Zivilschutz'},
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let S = { participants:[], plans:{} };
+let curWeek  = null; // {y,w}
+let curDay   = null; // "YYYY-MM-DD"
+let curMonth = null; // {y,m}
+
+function loadS(){
+  try{ const d=localStorage.getItem('lw_v2'); if(d){ const p=JSON.parse(d); S.participants=p.participants||[]; S.plans=p.plans||{}; } }catch(e){}
+}
+function saveS(){ localStorage.setItem('lw_v2',JSON.stringify(S)); }
+
+// ─────────────────────────────────────────────
+// DATE HELPERS
+// ─────────────────────────────────────────────
+const pad = n => String(n).padStart(2,'0');
+const ds  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function pd(s){ if(!s)return null; const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fd(s){ if(!s)return ''; const d=pd(s); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
+function isWE(d){ const w=d.getDay(); return w===0||w===6; }
+
+function isoWeek(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
+  const ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return { w:Math.ceil((((d-ys)/86400000)+1)/7), y:d.getUTCFullYear() };
+}
+function weekStart(y,w){
+  const j4=new Date(Date.UTC(y,0,4)); const j4d=j4.getUTCDay()||7;
+  const s=new Date(j4); s.setUTCDate(j4.getUTCDate()-(j4d-1)+(w-1)*7);
+  return new Date(s.getUTCFullYear(),s.getUTCMonth(),s.getUTCDate());
+}
+function weekDays(y,w){
+  const s=weekStart(y,w); const days=[];
+  for(let i=0;i<5;i++){ const d=new Date(s); d.setDate(s.getDate()+i); days.push(d); }
+  return days;
+}
+function monthDays(y,m){
+  const days=[]; const d=new Date(y,m,1);
+  while(d.getMonth()===m){ days.push(new Date(d)); d.setDate(d.getDate()+1); }
+  return days;
+}
+function diffWeeks(d1,d2){ return Math.floor((d2-d1)/(7*24*3600*1000)); }
+function maxWeek(y){ return isoWeek(new Date(y,11,28)).w; }
+
+// ─────────────────────────────────────────────
+// PLAN HELPERS
+// ─────────────────────────────────────────────
+function getPlan(date,pid){ return (S.plans[date]||{})[pid]||{}; }
+function setPlan(date,pid,data){
+  if(!S.plans[date]) S.plans[date]={};
+  S.plans[date][pid]={ ...getPlan(date,pid), ...data };
+  saveS();
+}
+
+// returns {vmBlocked, nmBlocked, fullBlocked, vmLabel, nmLabel}
+function autoBlocks(p, date){
+  if(p.status==='schnupper') return {vmBlocked:false,nmBlocked:false,fullBlocked:false,vmLabel:'',nmLabel:''};
+  const dow=date.getDay();
+  let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
+  for(const s of (p.schultage||[])){
+    if(+s.wochentag!==dow) continue;
+    if(s.typ==='S'){ vmB=true;nmB=true;fullB=true;vmL='S';nmL='S'; }
+    else{ vmB=true; if(!vmL)vmL=s.typ; }
+  }
+  for(const sp of (p.sporttermine||[])){
+    if(+sp===dow){ nmB=true; if(!nmL)nmL='SP'; }
+  }
+  return {vmBlocked:vmB,nmBlocked:nmB,fullBlocked:fullB,vmLabel:vmL,nmLabel:nmL};
+}
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelector(`.nav-tab[data-view="${name}"]`)?.classList.add('active');
+  if(name==='plan')        renderPlan();
+  if(name==='participants') renderParticipants();
+  if(name==='monthly')     renderMonthly();
+  if(name==='rapport')     renderRapport();
+}
+
+// ─────────────────────────────────────────────
+// WOCHENPLAN
+// ─────────────────────────────────────────────
+function renderPlan(){
+  const {y,w}=curWeek;
+  const days=weekDays(y,w);
+  const today=ds(new Date());
+
+  // week info
+  const s0=days[0], s4=days[4];
+  document.getElementById('weekInfo').textContent=
+    `KW${pad(w)} · ${pad(s0.getDate())}.${pad(s0.getMonth()+1)} – ${pad(s4.getDate())}.${pad(s4.getMonth()+1)}.${s4.getFullYear()}`;
+
+  // ensure curDay in this week
+  if(!curDay||!days.find(d=>ds(d)===curDay)){
+    const td=days.find(d=>ds(d)===today);
+    curDay=td?today:ds(days[0]);
+  }
+
+  // day tabs
+  const tabEl=document.getElementById('dayTabs');
+  tabEl.innerHTML='';
+  days.forEach(d=>{
+    const dstr=ds(d);
+    const btn=document.createElement('button');
+    btn.className='day-tab'+(dstr===curDay?' active':'')+(dstr===today?' today':'');
+    btn.textContent=`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.`;
+    btn.onclick=()=>{ curDay=dstr; renderPlan(); };
+    tabEl.appendChild(btn);
+  });
+
+  renderDayPlan();
+}
+
+function renderDayPlan(){
+  const date=pd(curDay);
+  const dow=date.getDay();
+
+  const active=S.participants
+    .filter(p=>{
+      if(p.einsatzVon && pd(p.einsatzVon)>date) return false;
+      if(p.einsatzBis && pd(p.einsatzBis)<date) return false;
+      return true;
+    })
+    .sort((a,b)=>a.vorname.localeCompare(b.vorname));
+
+  const content=document.getElementById('planContent');
+
+  if(!active.length){
+    content.innerHTML='<div style="padding:48px;text-align:center;color:var(--gray-400)">Keine aktiven Teilnehmer für diesen Tag.<br><br><button class="btn btn-primary" onclick="showView(\'participants\')">Teilnehmer hinzufügen</button></div>';
+    return;
+  }
+
+  let html=`<div class="plan-wrap"><table class="plan-table">
+    <thead><tr>
+      <th style="min-width:160px">Name</th>
+      <th style="width:58px">JC</th>
+      <th style="width:42px">IIZ</th>
+      <th style="width:32px">BW</th>
+      <th style="min-width:155px">VM <small style="font-weight:400;opacity:.7">08:15–12:00</small></th>
+      <th style="min-width:155px">NM <small style="font-weight:400;opacity:.7">Nachmittag</small></th>
+      <th style="min-width:150px">Abwesenheit</th>
+      <th style="width:55px;text-align:center">eCase</th>
+      <th style="min-width:130px">Bemerkung</th>
+    </tr></thead><tbody>`;
+
+  active.forEach(p=>{
+    const plan=getPlan(curDay,p.id);
+    const blk=autoBlocks(p,date);
+    const pid=p.id;
+    const rowCls=p.status==='praktikum'?'praktikum':p.status==='lehrstelle'?'lehrstelle':p.status==='schnupper'?'schnupper':'';
+
+    // status badge
+    const sbMap={praktikum:'sb-praktikum Prak.',lehrstelle:'sb-lehrstelle Lehr.',schnupper:'sb-schnupper Schn.'};
+    const sbParts=sbMap[p.status]?.split(' ')||[];
+    const sb=sbParts.length?`<span class="status-badge ${sbParts[0]}">${sbParts[1]}</span>`:'';
+
+    // JC
+    const jcCls={lio:'jc-lio',tom:'jc-tom',yvi:'jc-yvi'};
+    const jcLbl={lio:'Lio',tom:'Tom',yvi:'Yvi'};
+    const jcBadge=p.jobCoach?`<span class="jc-badge ${jcCls[p.jobCoach]||''}">${jcLbl[p.jobCoach]||''}</span>`:'';
+
+    // BW dot
+    const bwDot=p.jobCoach==='tom'?`<span class="bw-dot bw-tom" title="Tom"></span>`:p.jobCoach==='lio'?`<span class="bw-dot bw-lio" title="Lio"></span>`:'';
+
+    // VM cell
+    let vmCell='';
+    if(blk.vmBlocked){
+      vmCell=`<div class="cell-blocked">${blk.vmLabel||'Sch.'}</div>`;
+    } else {
+      const v=plan.vm||'';
+      const isCustom=v&&!WS_LIST.includes(v)&&v!=='';
+      vmCell=`<select class="ws-select" id="vm_${pid}" onchange="onWsChange(this,'${pid}','${curDay}','vm')">
+        <option value="">–</option>
+        ${WS_LIST.map(w=>`<option${v===w?' selected':''}>${w}</option>`).join('')}
+        <option value="__custom"${isCustom?' selected':''}>Anderes...</option>
+      </select>
+      ${isCustom?`<input class="ws-select" style="margin-top:3px" value="${esc(v)}" onchange="setPlan('${curDay}','${pid}',{vm:this.value});saveS()" placeholder="Werkstatt eingeben...">`:''}`;
+    }
+
+    // NM cell
+    let nmCell='';
+    if(blk.nmBlocked){
+      nmCell=`<div class="cell-blocked">${blk.nmLabel||'Sch./SP'}</div>`;
+    } else {
+      const v=plan.nm||'';
+      const isCustom=v&&!WS_LIST.includes(v)&&v!=='Sport';
+      nmCell=`<select class="ws-select" id="nm_${pid}" onchange="onWsChange(this,'${pid}','${curDay}','nm')">
+        <option value="">–</option>
+        ${WS_LIST.map(w=>`<option${v===w?' selected':''}>${w}</option>`).join('')}
+        <option value="Sport"${v==='Sport'?' selected':''}>Sport</option>
+        <option value="__custom"${isCustom?' selected':''}>Anderes...</option>
+      </select>
+      ${isCustom?`<input class="ws-select" style="margin-top:3px" value="${esc(v)}" onchange="setPlan('${curDay}','${pid}',{nm:this.value});saveS()" placeholder="Werkstatt eingeben...">`:''}`;
+    }
+
+    // Absence
+    const ac=plan.abwesenheit||'';
+    const at=plan.abwesenheitText||'';
+    const absCell=`<select class="abs-select" onchange="qSave('${pid}','${curDay}','abwesenheit',this.value);refreshEcaseBar()">
+      ${ABSENZ.map(a=>`<option value="${a.c}"${ac===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
+    </select>
+    <input class="abs-input" type="text" placeholder="Freitext" value="${esc(at)}" onchange="qSave('${pid}','${curDay}','abwesenheitText',this.value)">`;
+
+    // eCase
+    const needEC=ac!=='';
+    const done=plan.ecaseEntered||false;
+    const ecCell=needEC
+      ?`<input type="checkbox" class="ecase-cb" ${done?'checked':''} title="${done?'In eCase erfasst':'Noch offen!'}" onchange="qSave('${pid}','${curDay}','ecaseEntered',this.checked);refreshEcaseBar()">`
+      :`<span style="color:var(--gray-300);font-size:11px">–</span>`;
+
+    // Bemerkung
+    const bem=plan.bemerkung||'';
+    const bemCell=`<input class="bem-input" type="text" value="${esc(bem)}" placeholder="Bemerkung..." onchange="qSave('${pid}','${curDay}','bemerkung',this.value)">`;
+
+    html+=`<tr class="${rowCls}">
+      <td><span class="p-name">${p.vorname} ${p.nachname}</span>${sb}</td>
+      <td>${jcBadge}</td>
+      <td style="text-align:center;font-size:11px">${p.iiz==='ja'?'<span class="text-green" style="font-weight:700">Ja</span>':'Nein'}</td>
+      <td style="text-align:center">${bwDot}</td>
+      <td>${vmCell}</td>
+      <td>${nmCell}</td>
+      <td>${absCell}</td>
+      <td style="text-align:center">${ecCell}</td>
+      <td>${bemCell}</td>
+    </tr>`;
+  });
+
+  html+='</tbody></table></div>';
+  content.innerHTML=html;
+  refreshEcaseBar();
+}
+
+function onWsChange(sel,pid,day,field){
+  if(sel.value==='__custom'){
+    const inp=document.createElement('input');
+    inp.className='ws-select';inp.style.marginTop='3px';inp.placeholder='Werkstatt eingeben...';
+    inp.onchange=()=>{ setPlan(day,pid,{[field]:inp.value}); saveS(); };
+    sel.parentNode.appendChild(inp);
+    inp.focus();
+  } else {
+    setPlan(day,pid,{[field]:sel.value}); saveS();
+    // remove any stale custom input
+    const next=sel.nextElementSibling;
+    if(next&&next.tagName==='INPUT') next.remove();
+  }
+}
+
+function qSave(pid,day,field,val){
+  setPlan(day,pid,{[field]:val});
+}
+
+function refreshEcaseBar(){
+  const existing=document.querySelector('.ecase-bar');
+  if(existing)existing.remove();
+  const date=pd(curDay);
+  const active=S.participants.filter(p=>{
+    if(p.einsatzVon&&pd(p.einsatzVon)>date)return false;
+    if(p.einsatzBis&&pd(p.einsatzBis)<date)return false;
+    return true;
+  });
+  let open=0;
+  active.forEach(p=>{ const pl=getPlan(curDay,p.id); if(pl.abwesenheit&&!pl.ecaseEntered)open++; });
+  if(open>0){
+    const bar=document.createElement('div');
+    bar.className='ecase-bar';
+    bar.innerHTML=`⚠️ <strong>${open} eCase-Eintrag${open>1?'e':''} noch offen</strong> – bitte in eCase eintragen und Haken setzen.`;
+    document.querySelector('#view-plan .card').appendChild(bar);
+  }
+}
+
+function changeWeek(d){
+  let {y,w}=curWeek; w+=d;
+  if(w<1){y--;w=maxWeek(y);}
+  if(w>maxWeek(y)){y++;w=1;}
+  curWeek={y,w}; curDay=null; renderPlan();
+}
+function goToday(){ curWeek=isoWeek(new Date()); curDay=ds(new Date()); renderPlan(); }
+
+function autofillDay(){
+  const {y,w}=curWeek; const days=weekDays(y,w);
+  let n=0;
+  days.forEach(date=>{
+    const dstr=ds(date); const dow=date.getDay();
+    S.participants.forEach(p=>{
+      if(p.status==='schnupper')return;
+      if(p.einsatzVon&&pd(p.einsatzVon)>date)return;
+      if(p.einsatzBis&&pd(p.einsatzBis)<date)return;
+      const blk=autoBlocks(p,date);
+      const ex=getPlan(dstr,p.id);
+
+      // Fix prefs
+      for(const fp of (p.fixpraeferenzen||[])){
+        const fd2=+fp.wochentag;
+        if(fd2!==0&&fd2!==dow)continue;
+        if(!ex.vm&&!blk.vmBlocked){ setPlan(dstr,p.id,{vm:fp.werkstatt}); n++; }
+        if(fp.ganztag&&!ex.nm&&!blk.nmBlocked){ setPlan(dstr,p.id,{nm:fp.werkstatt}); n++; }
+      }
+      // Sport
+      for(const sp of (p.sporttermine||[])){
+        if(+sp===dow&&!ex.nm&&!blk.nmBlocked){ setPlan(dstr,p.id,{nm:'Sport'}); n++; }
+      }
+    });
+  });
+  toast(`✓ ${n} Felder automatisch gefüllt`,'ok');
+  renderPlan();
+}
+
+function copyPrevWeek(){
+  let {y,w}=curWeek; let pw=w-1,py=y;
+  if(pw<1){py--;pw=maxWeek(py);}
+  const cur=weekDays(y,w), prev=weekDays(py,pw);
+  let n=0;
+  cur.forEach((d,i)=>{
+    const cd=ds(d), pd2=ds(prev[i]);
+    if(!S.plans[pd2])return;
+    if(!S.plans[cd])S.plans[cd]={};
+    Object.entries(S.plans[pd2]).forEach(([pid,data])=>{
+      const ex=S.plans[cd][pid];
+      if(ex&&(ex.vm||ex.nm))return;
+      S.plans[cd][pid]={...data,abwesenheit:'',abwesenheitText:'',ecaseEntered:false,bemerkung:''};
+      n++;
+    });
+  });
+  saveS(); toast(`Vorwoche kopiert (${n} Einträge)`,'ok'); renderPlan();
+}
+
+// ─────────────────────────────────────────────
+// PARTICIPANTS
+// ─────────────────────────────────────────────
+let editId=null, tmpSch=[], tmpSp=[], tmpFP=[];
+
+function renderParticipants(){
+  const el=document.getElementById('pList');
+  const sorted=[...S.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname));
+  if(!sorted.length){
+    el.innerHTML='<div style="padding:48px;text-align:center;color:var(--gray-400)">Noch keine Teilnehmer. Klicke auf «+ Teilnehmer» um zu beginnen.</div>';
+    return;
+  }
+  const stLbl={schnupper:'Schnupper',aktiv:'Aktiv',praktikum:'Praktikum',lehrstelle:'Lehrstelle'};
+  const jcLbl={lio:'Lio',tom:'Tom',yvi:'Yvi'};
+  el.innerHTML=sorted.map(p=>{
+    const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ');
+    const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ');
+    const wbBadge=wbStatus(p);
+    return `<div class="p-card st-${p.status}">
+      <div class="p-card-info">
+        <div class="p-card-name">${p.vorname} ${p.nachname} ${wbBadge}</div>
+        <div class="p-card-meta">
+          <span>${stLbl[p.status]||p.status}</span>
+          ${p.jobCoach?`<span>JC: ${jcLbl[p.jobCoach]||''}</span>`:''}
+          ${p.iiz==='ja'?'<span>IIZ: Ja</span>':''}
+          ${p.einsatzVon?`<span>Von: ${fd(p.einsatzVon)}</span>`:''}
+          ${p.einsatzBis?`<span>Bis: ${fd(p.einsatzBis)}</span>`:''}
+          ${sch?`<span>Schule: ${sch}</span>`:''}
+          ${spt?`<span>Sport: ${spt}</span>`:''}
+          ${p.status==='aktiv'&&p.aktiviertAm?`<span>Aktiv seit: ${fd(p.aktiviertAm)}</span>`:''}
+        </div>
+      </div>
+      <div class="p-card-actions">
+        ${wbButtons(p)}
+        <button class="btn btn-secondary btn-sm" onclick="openPModal('${p.id}')">✏️ Bearbeiten</button>
+        <button class="btn btn-danger btn-sm" onclick="delParticipant('${p.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function wbStatus(p){
+  if(p.status!=='aktiv'||!p.aktiviertAm)return '';
+  const w=diffWeeks(new Date(p.aktiviertAm),new Date());
+  if(w>=10&&!p.wb10)return '<span style="color:#dc2626;font-weight:700;font-size:11px"> ⚠️ WB 10W fällig</span>';
+  if(w>=8&&!p.wb8) return '<span style="color:#d97706;font-weight:700;font-size:11px"> ⚠️ WB 8W fällig</span>';
+  return '';
+}
+
+function wbButtons(p){
+  if(p.status!=='aktiv'||!p.aktiviertAm)return '';
+  const w=diffWeeks(new Date(p.aktiviertAm),new Date());
+  let btns='';
+  if(w>=8&&!p.wb8)  btns+=`<button class="btn btn-warning btn-sm" onclick="sendWB('${p.id}','8')">📧 WB 8W</button>`;
+  if(w>=10&&!p.wb10)btns+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${p.id}','10')">📧 WB 10W</button>`;
+  return btns;
+}
+
+function sendWB(pid,weeks){
+  const p=S.participants.find(x=>x.id===pid); if(!p)return;
+  const mails={lio:'lio@basisjob.ch',tom:'tom@basisjob.ch',yvi:'yvi@basisjob.ch'};
+  const to=mails[p.jobCoach]||'';
+  const sub=encodeURIComponent(`Wirkungsbericht ${weeks} Wochen – ${p.vorname} ${p.nachname}`);
+  const body=encodeURIComponent(`Guten Tag\n\nBitte ${weeks==='8'?'Einschätzung vornehmen':'Wirkungsbericht erstellen'} für ${p.vorname} ${p.nachname}.\n\nEinsatz von: ${fd(p.einsatzVon)||'–'}\nAktiviert am: ${fd(p.aktiviertAm)||'–'}\n\nFreundliche Grüsse`);
+  window.open(`mailto:${to}?subject=${sub}&body=${body}`,'_blank');
+  if(confirm(`Wirkungsbericht ${weeks}W als erledigt markieren?`)){
+    const idx=S.participants.findIndex(x=>x.id===pid);
+    if(weeks==='8')S.participants[idx].wb8=true; else S.participants[idx].wb10=true;
+    saveS(); renderParticipants(); renderWBAlerts();
+  }
+}
+
+function openPModal(id=null){
+  editId=id; tmpSch=[]; tmpSp=[]; tmpFP=[];
+  document.getElementById('pModalTitle').textContent=id?'Teilnehmer bearbeiten':'Teilnehmer hinzufügen';
+  if(id){
+    const p=S.participants.find(x=>x.id===id);
+    if(p){
+      document.getElementById('f_vn').value=p.vorname||'';
+      document.getElementById('f_nn').value=p.nachname||'';
+      document.getElementById('f_status').value=p.status||'aktiv';
+      document.getElementById('f_jc').value=p.jobCoach||'lio';
+      document.getElementById('f_von').value=p.einsatzVon||'';
+      document.getElementById('f_bis').value=p.einsatzBis||'';
+      document.getElementById('f_iiz').value=p.iiz||'nein';
+      document.getElementById('f_aktiv').value=p.aktiviertAm||'';
+      tmpSch=[...(p.schultage||[])];
+      tmpSp=[...(p.sporttermine||[])];
+      tmpFP=[...(p.fixpraeferenzen||[])];
+    }
+  } else {
+    ['f_vn','f_nn','f_von','f_bis','f_aktiv'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f_status').value='aktiv';
+    document.getElementById('f_jc').value='lio';
+    document.getElementById('f_iiz').value='nein';
+  }
+  onStatusChange(); renderTmpSch(); renderTmpSp(); renderTmpFP();
+  document.getElementById('pModal').classList.add('open');
+}
+
+function onStatusChange(){
+  const s=document.getElementById('f_status').value;
+  document.getElementById('stammdaten').style.display=s==='schnupper'?'none':'block';
+  document.getElementById('f_aktiv_grp').style.display=s==='aktiv'?'flex':'none';
+}
+
+function addSchultag(){
+  tmpSch.push({typ:document.getElementById('s_typ').value,wochentag:document.getElementById('s_tag').value});
+  renderTmpSch();
+}
+function renderTmpSch(){
+  document.getElementById('schultagList').innerHTML=tmpSch.map((s,i)=>
+    `<span class="tag tag-school">${s.typ} ${WD[+s.wochentag]}<span class="tag-remove" onclick="tmpSch.splice(${i},1);renderTmpSch()">×</span></span>`
+  ).join('');
+}
+
+function addSporttag(){
+  const t=document.getElementById('sp_tag').value;
+  if(tmpSp.length>=2){toast('Max. 2 Sporttermine','err');return;}
+  if(tmpSp.includes(t)){toast('Bereits eingetragen');return;}
+  tmpSp.push(t); renderTmpSp();
+}
+function renderTmpSp(){
+  document.getElementById('sporttagList').innerHTML=tmpSp.map((t,i)=>
+    `<span class="tag tag-sport">SP ${WD[+t]}<span class="tag-remove" onclick="tmpSp.splice(${i},1);renderTmpSp()">×</span></span>`
+  ).join('');
+}
+
+function addFixPref(){
+  const ws=document.getElementById('fp_ws').value;
+  if(!ws){toast('Werkstatt auswählen','err');return;}
+  tmpFP.push({werkstatt:ws,wochentag:document.getElementById('fp_tag').value,ganztag:document.getElementById('fp_ganz').checked});
+  renderTmpFP();
+}
+const fpdLbl={'0':'täglich','1':'Mo','2':'Di','3':'Mi','4':'Do','5':'Fr'};
+function renderTmpFP(){
+  document.getElementById('fixPrefList').innerHTML=tmpFP.map((fp,i)=>
+    `<div class="fix-item"><strong>${fp.werkstatt}</strong><span>${fpdLbl[fp.wochentag]||''}</span>${fp.ganztag?'<span style="background:#e0f2fe;padding:1px 6px;border-radius:3px;color:#0369a1;font-size:10px">Ganztag</span>':''}<button onclick="tmpFP.splice(${i},1);renderTmpFP()">×</button></div>`
+  ).join('');
+}
+
+function saveParticipant(){
+  const vn=document.getElementById('f_vn').value.trim();
+  const nn=document.getElementById('f_nn').value.trim();
+  if(!vn||!nn){toast('Vor- und Nachname erforderlich','err');return;}
+  const data={
+    vorname:vn,nachname:nn,
+    status:document.getElementById('f_status').value,
+    jobCoach:document.getElementById('f_jc').value,
+    einsatzVon:document.getElementById('f_von').value,
+    einsatzBis:document.getElementById('f_bis').value,
+    iiz:document.getElementById('f_iiz').value,
+    aktiviertAm:document.getElementById('f_aktiv').value,
+    schultage:tmpSch,sporttermine:tmpSp,fixpraeferenzen:tmpFP,
+  };
+  if(editId){
+    const idx=S.participants.findIndex(p=>p.id===editId);
+    S.participants[idx]={...S.participants[idx],...data};
+  } else {
+    S.participants.push({id:uid(),...data});
+  }
+  saveS(); closeModal('pModal'); renderParticipants(); renderWBAlerts();
+  toast('Teilnehmer gespeichert','ok');
+}
+
+function delParticipant(id){
+  const p=S.participants.find(x=>x.id===id); if(!p)return;
+  if(!confirm(`${p.vorname} ${p.nachname} wirklich löschen?`))return;
+  S.participants=S.participants.filter(x=>x.id!==id);
+  Object.keys(S.plans).forEach(d=>{ if(S.plans[d])delete S.plans[d][id]; });
+  saveS(); renderParticipants(); toast('Teilnehmer gelöscht');
+}
+
+// ─────────────────────────────────────────────
+// WIRKUNGSBERICHT ALERTS
+// ─────────────────────────────────────────────
+function renderWBAlerts(){
+  const el=document.getElementById('wbAlerts');
+  const alerts=[];
+  S.participants.forEach(p=>{
+    if(p.status!=='aktiv'||!p.aktiviertAm)return;
+    const w=diffWeeks(new Date(p.aktiviertAm),new Date());
+    if(w>=10&&!p.wb10)alerts.push({p,weeks:'10',urgent:true});
+    else if(w>=8&&!p.wb8)alerts.push({p,weeks:'8',urgent:false});
+  });
+  // update nav badge
+  const tab=document.querySelector('.nav-tab[data-view="participants"]');
+  let badge=tab?.querySelector('.badge');
+  if(alerts.length){
+    if(!badge){badge=document.createElement('span');badge.className='badge';tab?.appendChild(badge);}
+    badge.textContent=alerts.length;
+  } else { badge?.remove(); }
+
+  if(!alerts.length){el.innerHTML='';return;}
+  el.innerHTML=alerts.map(a=>`
+    <div class="wb-alert${a.urgent?' urgent':''}">
+      <div class="wb-alert-body">
+        <div class="wb-alert-title">${a.urgent?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${a.p.vorname} ${a.p.nachname}</div>
+        <div class="wb-alert-sub">Aktiviert am ${fd(a.p.aktiviertAm)} · ${a.weeks}W ${a.weeks==='8'?'→ Einschätzung Arbeitsagoge':'→ Wirkungsbericht Berater'}</div>
+      </div>
+      <div class="wb-alert-actions">
+        <button class="btn btn-secondary btn-sm" onclick="sendWB('${a.p.id}','${a.weeks}')">📧 E-Mail</button>
+        <button class="btn btn-success btn-sm" onclick="markWBDone('${a.p.id}','${a.weeks}')">✓ Erledigt</button>
+      </div>
+    </div>`).join('');
+}
+
+function markWBDone(pid,weeks){
+  const idx=S.participants.findIndex(x=>x.id===pid);
+  if(weeks==='8')S.participants[idx].wb8=true; else S.participants[idx].wb10=true;
+  saveS(); renderWBAlerts(); renderParticipants(); toast('Als erledigt markiert','ok');
+}
+
+// ─────────────────────────────────────────────
+// MONATSÜBERSICHT
+// ─────────────────────────────────────────────
+function renderMonthly(){
+  const {y,m}=curMonth;
+  document.getElementById('monthInfo').textContent=`${MON[m]} ${y}`;
+  const days=monthDays(y,m);
+  const parts=[...S.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname));
+  if(!parts.length){document.getElementById('monthlyContent').innerHTML='<div style="padding:48px;text-align:center;color:var(--gray-400)">Keine Teilnehmer erfasst.</div>';return;}
+
+  let html='<div class="month-wrap"><table class="month-table"><thead><tr><th>Teilnehmer</th>';
+  days.forEach(d=>{
+    const we=isWE(d);
+    html+=`<th class="${we?'weekend-h':''}" title="${WDL[d.getDay()]}">${pad(d.getDate())}<br><span style="font-weight:400">${WD[d.getDay()]}</span></th>`;
+  });
+  html+='<th>AT</th><th>Abs.</th><th>eCase</th></tr></thead><tbody>';
+
+  let totalOpen=0;
+  parts.forEach(p=>{
+    let at=0,abs=0,ecOpen=0;
+    html+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>`;
+    days.forEach(d=>{
+      const dstr=ds(d);
+      if(isWE(d)){html+='<td class="weekend"></td>';return;}
+      const active=(!p.einsatzVon||pd(p.einsatzVon)<=d)&&(!p.einsatzBis||pd(p.einsatzBis)>=d);
+      if(!active){html+='<td class="cell-inactive"></td>';return;}
+      const plan=getPlan(dstr,p.id);
+      const blk=autoBlocks(p,d);
+      let cls='',content='',title2='';
+      if(plan.abwesenheit){
+        cls='cell-absent';content=plan.abwesenheit;
+        title2=ABSENZ.find(a=>a.c===plan.abwesenheit)?.l||plan.abwesenheit;
+        abs++;if(!plan.ecaseEntered){ecOpen++;totalOpen++;}
+      } else if(blk.fullBlocked){
+        cls='cell-school';content=blk.vmLabel||'S';
+      } else if(blk.vmBlocked||blk.nmBlocked){
+        cls='cell-school';content=blk.vmLabel||blk.nmLabel;
+      } else if(plan.vm||plan.nm){
+        cls='cell-worked';content='✓';at++;
+      } else {
+        content='';at++;
+      }
+      if(blk.nmBlocked&&blk.nmLabel==='SP'&&!plan.abwesenheit&&!blk.fullBlocked){
+        cls='cell-sport';content='SP';
+      }
+      html+=`<td class="${cls}" title="${title2}">${content}</td>`;
+    });
+    html+=`<td style="font-weight:700;color:var(--primary)">${at}</td>
+      <td style="font-weight:700;color:${abs?'var(--red)':'var(--gray-400)'}">${abs||'–'}</td>
+      <td style="font-weight:700;color:${ecOpen?'var(--accent)':'var(--green)'}">${ecOpen?ecOpen:'✓'}</td></tr>`;
+  });
+  html+='</tbody></table></div>';
+
+  document.getElementById('monthEcaseHint').innerHTML=totalOpen>0
+    ?`<div class="warn-banner">⚠️ <strong>${totalOpen} offene eCase-Einträge</strong> in ${MON[m]}</div>`:'';
+  document.getElementById('monthlyContent').innerHTML=html;
+}
+
+function changeMonth(d){
+  let {y,m}=curMonth; m+=d;
+  if(m<0){m=11;y--;} if(m>11){m=0;y++;}
+  curMonth={y,m}; renderMonthly();
+}
+
+// ─────────────────────────────────────────────
+// MONATSRAPPORT
+// ─────────────────────────────────────────────
+function renderRapport(){
+  const sel=document.getElementById('rptPart');
+  const sorted=[...S.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname));
+  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
+  const now=new Date();
+  document.getElementById('rptMonth').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  buildRapport();
+}
+
+function buildRapport(){
+  const pid=document.getElementById('rptPart').value;
+  const mv=document.getElementById('rptMonth').value;
+  if(!pid||!mv){document.getElementById('rapportContent').innerHTML='';return;}
+  const [y,m]=mv.split('-').map(Number); const month=m-1;
+  const p=S.participants.find(x=>x.id===pid); if(!p)return;
+  const days=monthDays(y,month);
+
+  const rows=days.map(d=>{
+    const dstr=ds(d);
+    if(isWE(d))return{tag:d.getDate(),dow:WD[d.getDay()],weekend:true};
+    const active=(!p.einsatzVon||pd(p.einsatzVon)<=d)&&(!p.einsatzBis||pd(p.einsatzBis)>=d);
+    const plan=getPlan(dstr,p.id);
+    const blk=autoBlocks(p,d);
+    let az='',as2='',ac='',bem='';
+    if(!active){return{tag:d.getDate(),dow:WD[d.getDay()],inactive:true};}
+    if(plan.abwesenheit){
+      as2='8';ac=plan.abwesenheit;bem=plan.abwesenheitText||plan.bemerkung||'';
+    } else if(blk.fullBlocked){
+      bem='Schule';
+    } else {
+      az='8';bem=plan.bemerkung||'';
+      if(blk.vmBlocked)bem=(bem?bem+' / ':'')+blk.vmLabel;
+    }
+    return{tag:d.getDate(),dow:WD[d.getDay()],az,as:as2,ac,bem,weekend:false,inactive:false,
+      ecDone:plan.ecaseEntered||false, dstr};
+  });
+
+  const arbeitsT=rows.filter(r=>!r.weekend&&!r.inactive&&r.az).length;
+  const absT    =rows.filter(r=>!r.weekend&&!r.inactive&&r.ac).length;
+  const openEC  =rows.filter(r=>!r.weekend&&!r.inactive&&r.ac&&!r.ecDone).length;
+
+  let html='';
+  if(openEC>0) html+=`<div class="warn-banner">⚠️ <strong>${openEC} eCase-Einträge noch offen</strong>. Bitte erst in eCase erfassen, bevor der Rapport generiert wird.</div>`;
+
+  html+=`<div class="summary-bar">
+    <div class="sum-item"><div class="sum-val">${arbeitsT}</div><div class="sum-label">Arbeitstage</div></div>
+    <div class="sum-item"><div class="sum-val" style="color:var(--red)">${absT}</div><div class="sum-label">Absenztage</div></div>
+    <div class="sum-item"><div class="sum-val">${arbeitsT*8}</div><div class="sum-label">Arbeitsstunden</div></div>
+    <div class="sum-item"><div class="sum-val" style="color:${openEC?'var(--accent)':'var(--green)'}">${openEC||'✓'}</div><div class="sum-label">eCase</div></div>
+  </div>`;
+
+  html+=`<div class="rapport-legend"><strong>Absenzencode:</strong> FE=Ferien · KR=Krankheit · BA=Bezahlte Absenz · ZV=Zwischenverdienst · KO=Kompensation · UN=Unfall · UA=Unbezahlte Absenz · TZ=Teilzeit · MI=Militär/Zivilschutz</div>`;
+
+  html+=`<table class="rapport-preview-table"><thead><tr>
+    <th style="width:60px">Tag</th>
+    <th style="width:120px">Arbeitszeit Std.</th>
+    <th style="width:100px">Absenz Std.</th>
+    <th style="width:100px">Absenz Code</th>
+    <th>Bemerkungen</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(r=>{
+    if(r.weekend)html+=`<tr class="rpt-weekend"><td style="text-align:center">${r.tag}.</td><td></td><td></td><td></td><td></td></tr>`;
+    else if(r.inactive)html+=`<tr><td style="text-align:center;color:var(--gray-400)">${r.tag}.</td><td colspan="4" style="color:var(--gray-300);font-size:11px">nicht aktiv</td></tr>`;
+    else html+=`<tr class="${r.ac?'rpt-absent':''}">
+      <td style="text-align:center;font-weight:600">${r.tag}.</td>
+      <td style="text-align:center">${r.az}</td>
+      <td style="text-align:center;font-weight:${r.as?'700':'400'}">${r.as||''}</td>
+      <td style="text-align:center" class="${r.ac?'rpt-code':''}">${r.ac||''}</td>
+      <td>${esc(r.bem||'')}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('rapportContent').innerHTML=html;
+}
+
+function genPDF(){
+  const pid=document.getElementById('rptPart').value;
+  const mv=document.getElementById('rptMonth').value;
+  if(!pid||!mv)return;
+  const [y,m]=mv.split('-').map(Number); const month=m-1;
+  const p=S.participants.find(x=>x.id===pid); if(!p)return;
+  const days=monthDays(y,month);
+
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pgW=210, mg=15;
+  let yp=mg;
+
+  // Yellow legend header
+  doc.setFillColor(253,224,71);
+  doc.rect(mg,yp,pgW-2*mg,22,'F');
+  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  doc.text('Absenzencode',mg+2,yp+5.5);
+  doc.setFont('helvetica','normal');
+  const legends=[
+    [mg+28,'FE = Ferien'],[mg+28,'KR = Krankheit'],[mg+28,'BA = bezahlte Absenz'],
+    [mg+75,'ZV = Zwischenverdienst'],[mg+75,'KO = Kompensation'],[mg+75,'UN = Unfall'],
+    [mg+135,'UA = unbezahlte Absenz'],[mg+135,'TZ = Teilzeit'],[mg+135,'MI = Militär oder Zivilschutz'],
+  ];
+  legends.forEach(([x,t],i)=>doc.text(t,x,yp+5.5+(i%3)*5.5));
+  yp+=27;
+
+  // Month + participant header
+  doc.setFont('helvetica','bold');doc.setFontSize(10);
+  doc.text(`Monat ${MON[month]} ${y}`,mg,yp);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  doc.text(`${p.vorname} ${p.nachname}`,pgW/2,yp,{align:'center'});
+  yp+=8;
+
+  // Table data
+  const tableRows=days.map(d=>{
+    const dstr=ds(d);
+    if(isWE(d))return[`${pad(d.getDate())}.`,'','','','',true,false];
+    const active=(!p.einsatzVon||pd(p.einsatzVon)<=d)&&(!p.einsatzBis||pd(p.einsatzBis)>=d);
+    if(!active)return[`${pad(d.getDate())}.`,'','','','',false,true];
+    const plan=getPlan(dstr,p.id);
+    const blk=autoBlocks(p,d);
+    let az='',as2='',ac='',bem='';
+    if(plan.abwesenheit){as2='8';ac=plan.abwesenheit;bem=plan.abwesenheitText||plan.bemerkung||'';}
+    else if(blk.fullBlocked){bem='Schule';}
+    else{az='8';bem=plan.bemerkung||'';if(blk.vmBlocked)bem=(bem?bem+' / ':'')+blk.vmLabel;}
+    return[`${pad(d.getDate())}.`,az,as2,ac,bem,false,false];
+  });
+
+  doc.autoTable({
+    startY:yp,
+    head:[['Tag','Arbeitszeit Std.','Absenz Std.','Absenz Code','Bemerkungen']],
+    body:tableRows.map(r=>r.slice(0,5)),
+    columnStyles:{
+      0:{cellWidth:14,halign:'center',fontStyle:'bold'},
+      1:{cellWidth:32,halign:'center'},
+      2:{cellWidth:28,halign:'center'},
+      3:{cellWidth:28,halign:'center'},
+      4:{cellWidth:78},
+    },
+    headStyles:{fillColor:[26,58,92],textColor:255,fontStyle:'bold',fontSize:8.5},
+    bodyStyles:{fontSize:8.5},
+    didParseCell:(data)=>{
+      if(data.section!=='body')return;
+      const r=tableRows[data.row.index];
+      if(r[5]){data.cell.styles.fillColor=[235,235,235];data.cell.styles.textColor=[160,160,160];}
+      else if(r[6]){data.cell.styles.fillColor=[248,248,248];data.cell.styles.textColor=[200,200,200];}
+      else if(r[3]&&data.column.index===3){data.cell.styles.fontStyle='bold';data.cell.styles.textColor=[180,20,20];}
+      else if(r[3]){data.cell.styles.fillColor=[255,247,235];}
+    },
+    margin:{left:mg,right:mg},
+    styles:{lineColor:[220,220,220],lineWidth:.25},
+  });
+
+  // Signatures
+  const fy=doc.lastAutoTable.finalY+14;
+  if(fy<265){
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0);
+    doc.text('Unterschrift Einsatzbetrieb',mg,fy);
+    doc.text('Unterschrift Teilnehmer*in',pgW/2+5,fy);
+    doc.setFont('helvetica','normal');
+    doc.text('......................................................',mg,fy+12);
+    doc.text('......................................................................',pgW/2+5,fy+12);
+  }
+
+  // BASISJOB branding
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(60,60,60);
+  doc.text('BASISJOB',pgW-mg,282,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(150,150,150);
+  doc.text('Seite 1 / 1',mg,287);
+
+  doc.save(`Monatsrapport_${p.vorname}_${p.nachname}_${MON[month]}_${y}.pdf`);
+  toast('PDF wird heruntergeladen…','ok');
+}
+
+// ─────────────────────────────────────────────
+// MODAL / UTIL
+// ─────────────────────────────────────────────
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('click',e=>{if(e.target.classList.contains('overlay'))closeModal(e.target.id);});
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function toast(msg,type=''){
+  const w=document.getElementById('toastWrap');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;t.textContent=msg;w.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+// ─────────────────────────────────────────────
+// EXPORT / IMPORT
+// ─────────────────────────────────────────────
+function exportData(){
+  const blob=new Blob([JSON.stringify({participants:S.participants,plans:S.plans},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`lernwerkstatt_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  URL.revokeObjectURL(a.href);toast('Daten exportiert','ok');
+}
+function importData(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?'))return;
+      S.participants=d.participants||[];S.plans=d.plans||{};
+      saveS();toast('Daten importiert','ok');
+      showView('plan');
+    }catch{toast('Fehler beim Import','err');}
+  };
+  r.readAsText(file);input.value='';
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+function init(){
+  loadS();
+  const now=new Date();
+  curWeek=isoWeek(now);
+  curDay=ds(now);
+  curMonth={y:now.getFullYear(),m:now.getMonth()};
+  renderWBAlerts();
+  showView('plan');
+}
+
+init();
+</script>
+</body>
+</html>
