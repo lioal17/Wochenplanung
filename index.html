@@ -2056,7 +2056,7 @@ function doImportDoc(){
 
   if(added+updated>0){
     saveDB(); dirty=true; renderWBAlerts(); renderImpTable();
-    toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}','t-ok');
+    toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}`, 't-ok');
     setTimeout(()=>show('person'),700);
   }else{
     toast('Keine Teilnehmenden ausgewählt.','t-err');
