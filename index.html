@@ -501,7 +501,8 @@ let curMonth = null; // {y,m}
 function loadS(){
   try{ const d=localStorage.getItem('lw_v2'); if(d){ const p=JSON.parse(d); S.participants=p.participants||[]; S.plans=p.plans||{}; } }catch(e){}
 }
-function saveS(){ localStorage.setItem('lw_v2',JSON.stringify(S)); }
+let dirty = false;
+function saveS(){ localStorage.setItem('lw_v2',JSON.stringify(S)); dirty = true; }
 
 // ─────────────────────────────────────────────
 // DATE HELPERS
@@ -1311,6 +1312,7 @@ function doExport(reason){
   a.click();
   URL.revokeObjectURL(a.href);
 
+  dirty = false;
   localStorage.setItem(SAVE_TS_KEY, now.toISOString());
   updateSaveStatus();
 
@@ -1386,7 +1388,7 @@ function importData(input){
       const d=JSON.parse(e.target.result);
       if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?'))return;
       S.participants=d.participants||[];S.plans=d.plans||{};
-      saveS();toast('Daten importiert','ok');
+      saveS();dirty=false;toast('Daten importiert','ok');
       showView('plan');
     }catch{toast('Fehler beim Import','err');}
   };
@@ -1406,6 +1408,11 @@ function init(){
   updateSaveStatus();
   checkFridayMissed();
   setInterval(checkAutoSave, 30000); // alle 30 Sek. prüfen
+  window.addEventListener('beforeunload', e => {
+    if(!dirty) return;
+    e.preventDefault();
+    e.returnValue = ''; // löst den Browser-Dialog aus
+  });
   showView('plan');
 }
 
