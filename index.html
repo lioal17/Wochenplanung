@@ -256,6 +256,13 @@ input,select,textarea{font-family:inherit}
 .bem-wrap{display:flex;flex-direction:column;gap:4px}
 .bem-sel{font-family:inherit;font-size:12px;border:1px solid var(--g3);border-radius:5px;padding:4px 6px;background:#fff;color:var(--g9);cursor:pointer;width:100%}
 .bem-sel:focus{outline:none;border-color:var(--navy-light)}
+.legend-box{margin-top:18px;padding:14px 16px;background:var(--g1,#f6f8fb);border:1px solid var(--g2,#e6eaf0);border-radius:8px}
+.legend-box .lg-grp{margin-bottom:8px}
+.legend-box .lg-grp:last-child{margin-bottom:0}
+.legend-box .lg-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g6,#6b7280);margin-bottom:5px}
+.legend-box .lg-row{display:flex;flex-wrap:wrap;gap:4px 14px}
+.legend-box .lg-i{font-size:11.5px;color:var(--g8,#374151);white-space:nowrap}
+.legend-box .lg-i b{color:var(--navy,#1e3a5f);font-weight:700;margin-right:3px}
 
 /* Summary row */
 .plan-summary{
@@ -524,7 +531,7 @@ input,select,textarea{font-family:inherit}
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten jetzt als JSON-Datei sichern">
       💾 Speichern
     </button>
-    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()" title="JSON-Datei laden">
+    <button class="btn btn-secondary btn-sm" onclick="openImportMenu()" title="Daten-Sicherung laden oder wiederherstellen">
       📂 Import
     </button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
@@ -572,13 +579,11 @@ input,select,textarea{font-family:inherit}
           <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
             🗑 Woche leeren
           </button>
-          <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="cleanupWeek()" title="Alle Einträge dieser Woche löschen">
-            🗑 Clean Up
-          </button>
         </div>
       </div>
       <div class="day-bar" id="dayBar"></div>
       <div id="planArea"></div>
+      <div id="legendBox" class="legend-box"></div>
     </div>
   </div>
 
@@ -612,7 +617,7 @@ input,select,textarea{font-family:inherit}
         <span class="leg"><span class="leg-dot" style="background:#f0fdf8;border:1px solid var(--green)"></span>Gearbeitet</span>
         <span class="leg"><span class="leg-dot" style="background:var(--red-bg);border:1px solid var(--red)"></span>Absenz</span>
         <span class="leg"><span class="leg-dot" style="background:var(--blue-bg);border:1px solid var(--blue)"></span>Schule</span>
-        <span class="leg"><span class="leg-dot" style="background:var(--amber-bg);border:1px solid var(--amber)"></span>S.LW</span>
+        <span class="leg"><span class="leg-dot" style="background:var(--amber-bg);border:1px solid var(--amber)"></span>SL = Schnupperlehre (extern)</span>
         <span class="leg"><span class="leg-dot" style="background:var(--g2)"></span>Wochenende / inaktiv</span>
       </div>
       <div id="moArea"></div>
@@ -875,21 +880,42 @@ input,select,textarea{font-family:inherit}
     <textarea class="fi" id="f_pbm" rows="2" placeholder="Freitext…" style="resize:vertical;width:100%;box-sizing:border-box"></textarea>
   </div>
 
-  <div class="fsec">
-    <div class="fsec-title">Schnupperwoche LW</div>
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-      <div class="fg">
-        <label>Woche wählen</label>
-        <input class="fi" type="week" id="sw_kw" style="width:190px">
-      </div>
-      <button class="btn btn-secondary btn-sm" style="height:37px" onclick="clearSchnupperwoche()">✕ Löschen</button>
-    </div>
-    <div id="swInfo" style="font-size:12px;color:var(--g6);margin-top:7px"></div>
-  </div>
-
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closePM()">Abbrechen</button>
     <button class="btn btn-primary" onclick="savePM()">Speichern</button>
+  </div>
+</div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗
+     ║  IMPORT / WIEDERHERSTELLUNG MODAL        ║
+     ╚══════════════════════════════════════════╝ -->
+<div class="overlay" id="impOverlay">
+<div class="modal" style="max-width:480px">
+  <div class="modal-head">
+    <div class="modal-title">Daten laden / wiederherstellen</div>
+    <button class="modal-x" onclick="closeImportMenu()">&times;</button>
+  </div>
+
+  <div style="font-size:13px;color:var(--g6);margin-bottom:18px;line-height:1.5">
+    Hier geht es nur um die <strong>Daten-Sicherung</strong> (Teilnehmer&nbsp;+&nbsp;Einteilungen).
+    Für den Import von PDF/Word/Excel/PNG nutze den Tab «📥 Dokument-Import».
+  </div>
+
+  <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;margin-bottom:12px;padding:14px"
+          onclick="closeImportMenu();document.getElementById('importFile').click()">
+    📂 &nbsp;Sicherungsdatei laden (JSON)
+    <span style="display:block;font-size:11px;font-weight:400;color:var(--g6);margin-top:3px">Eine zuvor mit «💾 Speichern» heruntergeladene Datei einlesen.</span>
+  </button>
+
+  <button class="btn btn-secondary" id="restoreBtn" style="width:100%;justify-content:flex-start;padding:14px"
+          onclick="restoreBackup()">
+    ↩️ &nbsp;Letzte interne Sicherung wiederherstellen
+    <span id="restoreInfo" style="display:block;font-size:11px;font-weight:400;color:var(--g6);margin-top:3px"></span>
+  </button>
+
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="closeImportMenu()">Schliessen</button>
   </div>
 </div>
 </div>
@@ -928,6 +954,17 @@ const ABS = [
   {c:'TZ',   l:'TZ – Teilzeit'},
   {c:'MI',   l:'MI – Militär/Zivilschutz'},
 ];
+// Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
+const SOFT_ABS = ['ZS','TZ'];
+
+// Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
+const LEGEND_BLOCK = [
+  ['S','Schule (Ganztag)'],['DAZ','Deutsch a. Zweitspr. (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
+  ['DK','Deutschkurs (½ Tag)'],['IKPC','IKPC (½ Tag)'],['M','Mathe (½ Tag)'],
+  ['SP','Sport'],['PRK','Praktikum'],['SL','Schnupperlehre (extern)'],
+];
+// Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
+function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
 
 const JC_CSS = {lio:'jc-lio',tom:'jc-tom',yvi:'jc-yvi'};
 const JC_LBL = {lio:'Lio',tom:'Tom',yvi:'Yvi'};
@@ -936,7 +973,7 @@ const FP_WD  = {'0':'täglich','1':'Mo','2':'Di','3':'Mi','4':'Do','5':'Fr'};
 // ────────────────────────────────────────────
 // STATE
 // ────────────────────────────────────────────
-let DB = { participants:[], plans:{} };
+let DB = { participants:[], plans:{}, rptNotes:{} };
 let dirty = false;
 
 let curWeek  = null; // {y, w}
@@ -950,19 +987,47 @@ let tSch=[], tSpt=[], tFP=[];
 // ────────────────────────────────────────────
 // PERSISTENCE
 // ────────────────────────────────────────────
-const DBKEY   = 'lw_db_v3';
-const SAVEKEY = 'lw_lastsave';
+const DBKEY    = 'lw_db_v3';
+const SAVEKEY  = 'lw_lastsave';
+const BACKUPKEY= 'lw_db_backup';
 
 function loadDB(){
   try{
     const raw=localStorage.getItem(DBKEY);
-    if(raw){ const d=JSON.parse(raw); DB.participants=d.participants||[]; DB.plans=d.plans||{}; }
+    if(raw){ const d=JSON.parse(raw); DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{}; }
   }catch(e){ console.warn('Load error',e); }
+  migrateSchnupper();
+}
+
+// Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW'.
+// Jetzt eigenes Feld plan.sw – Freitext-Bemerkung bleibt davon unberührt.
+function migrateSchnupper(){
+  // «Schnupperwoche Lernwerkstatt» (S.LW) wurde entfernt. Alt-Marker (bemerkung oder sw === 'S.LW')
+  // werden aufgelöst; nur die externe Schnupperwoche (S.EX) bleibt bestehen.
+  let changed=false;
+  Object.values(DB.plans||{}).forEach(day=>{
+    Object.values(day||{}).forEach(pl=>{
+      if(pl && pl.bemerkung==='S.LW'){ pl.bemerkung=''; changed=true; }
+      if(pl && pl.sw==='S.LW'){ pl.sw=''; changed=true; }
+    });
+  });
+  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
 }
 
 function saveDB(){
   localStorage.setItem(DBKEY,JSON.stringify(DB));
   dirty=true;
+}
+
+// Interne Sicherung (Wiederherstellungspunkt) – speichert den aktuellen Datenstand 1:1
+function snapshotBackup(){
+  try{
+    localStorage.setItem(BACKUPKEY,JSON.stringify({ts:new Date().toISOString(),data:DB}));
+  }catch(e){ console.warn('Backup-Snapshot fehlgeschlagen',e); }
+}
+function getBackup(){
+  try{ const raw=localStorage.getItem(BACKUPKEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }
 }
 
 // ────────────────────────────────────────────
@@ -1017,6 +1082,9 @@ function getBlocks(p, date){
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
   if(p.status==='praktikum')
     return {vmB:true,nmB:true,fullB:true,vmL:'PRK',nmL:'PRK'};
+  // Schnupperwoche (extern, S.EX) → ganze Woche blockiert wie Schule, Code SL (Schnupperlehre).
+  if(getPlan(ds(date),p.id).sw==='S.EX')
+    return {vmB:true,nmB:true,fullB:true,vmL:'SL',nmL:'SL'};
   const dow=date.getDay();
   let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
   for(const s of (p.schultage||[])){
@@ -1084,6 +1152,15 @@ function renderPlan(){
   });
 
   renderDayPlan();
+  renderLegend();
+}
+
+function renderLegend(){
+  const el=document.getElementById('legendBox'); if(!el) return;
+  const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
+  el.innerHTML=
+    `<div class="lg-grp"><div class="lg-h">Einteilung &amp; Sperren</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${row(legendAbs())}</div></div>`;
 }
 
 function renderDayPlan(){
@@ -1106,7 +1183,10 @@ function renderDayPlan(){
   active.forEach(p=>{
     const plan  = getPlan(curDay,p.id);
     const blk   = getBlocks(p,date);
-    const absent = !!(plan.abwesenheit);
+    const absCode = plan.abwesenheit||'';
+    // ZS (Zu spät) und TZ (Teilzeit): TN ist trotzdem (teilweise) da → Einteilung bleibt möglich
+    const softAbs = SOFT_ABS.includes(absCode);
+    const absent  = !!absCode && !softAbs;
     const pid    = p.id;
 
     // Row class
@@ -1147,7 +1227,6 @@ function renderDayPlan(){
     }
 
     // Absence
-    const absCode=plan.abwesenheit||'';
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
@@ -1158,7 +1237,7 @@ function renderDayPlan(){
     </div>`;
 
     // eCase
-    const needEC=absCode!=='';
+    const needEC=absCode!==''&&absCode!=='ZS'; // ZS wird nicht erfasst → kein eCase nötig
     const ecDone=plan.ecaseEntered||false;
     let ecCell;
     if(!needEC){
@@ -1173,16 +1252,16 @@ function renderDayPlan(){
       </div>`;
     }
 
-    // Bemerkung
+    // Bemerkung – Freitext (oben) + Schnupperwoche-Dropdown (unten), unabhängig voneinander
     const bem=plan.bemerkung||'';
-    const isSlw=bem==='S.LW';
+    const sw=plan.sw||'';
     const bemCell=`<div class="bem-wrap">
+      <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
+        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
       <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
-        <option value=""${!isSlw?' selected':''}>–</option>
-        <option value="S.LW"${isSlw?' selected':''}>S.LW – Schnupperwoche LW</option>
+        <option value=""${!sw?' selected':''}>–</option>
+        <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperwoche</option>
       </select>
-      ${!isSlw?`<input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
-        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">` : ''}
     </div>`;
 
     rows+=`<tr class="${rowCls}">
@@ -1441,8 +1520,6 @@ function openPM(id=null){
   g('f_aktiv').value=p?.aktiviertAm||'';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tFP=[...(p.fixpraeferenzen||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
-  g('sw_kw').value=p?.schnupperwoche||'';
-  updateSwInfo(p?.schnupperwoche||'');
   onSt(); renderTags(); renderFPs();
   document.getElementById('pmOverlay').classList.add('open');
 }
@@ -1453,7 +1530,8 @@ function onSt(){
   const s=document.getElementById('f_st').value;
   document.getElementById('pmExtra').style.display=s==='schnupper'?'none':'block';
   document.getElementById('f_aktiv_g').style.display=s==='aktiv'?'flex':'none';
-  document.getElementById('f_sw_g').style.display=(s==='aktiv'||s==='schnupper')?'flex':'none';
+  // Stammwerkstatt bleibt immer ausgeblendet (Hintergrund-Info, für TN nicht relevant)
+  document.getElementById('f_sw_g').style.display='none';
 }
 
 // Schultage
@@ -1496,13 +1574,9 @@ function renderFPs(){
 
 
 function onBemChange(sel, pid, day){
-  const val=sel.value;
+  const val=sel.value; // '' | 'S.EX' – gilt jeweils für die ganze Woche
   const {y,w}=curWeek;
-  if(val==='S.LW'){
-    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{bemerkung:'S.LW'}));
-  } else {
-    weekDays(y,w).forEach(d=>{ if(getPlan(ds(d),pid).bemerkung==='S.LW') setPlan(ds(d),pid,{bemerkung:''}); });
-  }
+  weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{sw:val}));
   renderDayPlan();
 }
 
@@ -1623,10 +1697,12 @@ function renderMonthly(){
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       let cls='',txt='';
-      if(plan.abwesenheit){
-        cls='c-abs';txt=plan.abwesenheit;abs++;
+      // ZS (Zu spät) zählt NICHT als Absenz – TN hat den ganzen Tag gearbeitet → ✓
+      const effAbs = plan.abwesenheit==='ZS' ? '' : (plan.abwesenheit||'');
+      if(effAbs){
+        cls='c-abs';txt=effAbs;abs++;
         if(!plan.ecaseEntered){ecOff++;totalOpen++;}
-      } else if(plan.bemerkung==='S.LW'){cls='c-slw';txt='S.LW';}
+      } else if(plan.sw==='S.EX'){cls='c-slw';txt='SL';}
       else if(blk.fullBlocked){cls='c-sch';txt=blk.vmL||'S';}
       else if(blk.vmB){cls='c-sch';txt=blk.vmL;}
       else{cls='c-work';txt='✓';at++;}
@@ -1659,6 +1735,11 @@ function chMonth(d){
 // ────────────────────────────────────────────
 // MONATSRAPPORT
 // ────────────────────────────────────────────
+// Freitext-Bemerkung pro Teilnehmer + Monat
+function rptNoteKey(pid,y,month){ return `${pid}_${y}-${pad(month+1)}`; }
+function getRptNote(pid,y,month){ return (DB.rptNotes||{})[rptNoteKey(pid,y,month)]||''; }
+function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNotes[rptNoteKey(pid,y,month)]=txt; saveDB(); }
+
 function renderRapport(){
   const sel=document.getElementById('rptP');
   const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
@@ -1668,6 +1749,7 @@ function renderRapport(){
   buildRpt();
 }
 
+const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC','M'];
 function getRptRows(p,year,month){
   return monthDays(year,month).map(d=>{
     const dstr=ds(d);
@@ -1677,14 +1759,29 @@ function getRptRows(p,year,month){
     if(!active) return{tag:d.getDate(),dow:WD[d.getDay()],inactive:true};
     const plan=getPlan(dstr,p.id);
     const blk=getBlocks(p,d);
+    const note=plan.bemerkung||'';
     let az='',as='',ac='',bem='';
-    if(plan.abwesenheit){
-      as='8';ac=plan.abwesenheit;bem=plan.abwesenheitText||plan.bemerkung||'';
-    } else if(blk.fullBlocked){
-      bem='Schule';
+    // ZS (Zu spät) wird NICHT als Absenz erfasst – TN hat 8h gearbeitet
+    const rawAbs=plan.abwesenheit||'';
+    const isZS=rawAbs==='ZS';
+    const effAbs=isZS?'':rawAbs;
+    if(effAbs){
+      as='8';ac=effAbs;bem=plan.abwesenheitText||note||'';
+    } else if(blk.vmL==='SL'||blk.nmL==='SL'){
+      // Schnupperlehre (extern) – blockiert, keine LW-Stunden
+      ac='SL';bem='Schnupperlehre'+(note?' · '+note:'');
     } else {
-      az='8';bem=plan.bemerkung||'';
-      if(blk.vmB) bem=(bem?bem+' / ':'')+blk.vmL;
+      const isSchool=SCHOOL_TYPES.includes(blk.vmL)||SCHOOL_TYPES.includes(blk.nmL);
+      // "vor Ort" = im LW eingeteilt (Werkstatt in nicht gesperrtem Slot); ZS gilt als anwesend
+      const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
+      if(isSchool){
+        bem='Schule'+(note?' · '+note:'');
+        if(present) az='8';        // z.B. halber Schultag + nachmittags im LW → Tag zählt
+      } else if(present){
+        az='8';bem=note;            // Stunden nur wenn tatsächlich vor Ort
+      } else {
+        bem=note;                   // nichts eingeteilt → keine Stunden (nicht vor Ort)
+      }
     }
     return{tag:d.getDate(),dow:WD[d.getDay()],az,as,ac,bem,
       ecDone:plan.ecaseEntered||false,dstr,we:false,inactive:false};
@@ -1741,6 +1838,14 @@ function buildRpt(){
     </tr>`;
   });
   html+='</tbody></table>';
+
+  html+=`<div class="fg" style="margin-top:18px">
+    <label>Bemerkungen (Freitext) – erscheint auf dem PDF</label>
+    <textarea class="fi" id="rptBem" rows="3" placeholder="Freitext…"
+      style="width:100%;box-sizing:border-box;resize:vertical"
+      onchange="setRptNote('${pid}',${y},${month},this.value)">${esc(getRptNote(pid,y,month))}</textarea>
+  </div>`;
+
   area.innerHTML=html;
 }
 
@@ -1813,7 +1918,20 @@ function genPDF(){
     margin:{left:mg,right:mg},
   });
 
-  const fy=doc.lastAutoTable.finalY;
+  let fy=doc.lastAutoTable.finalY;
+
+  // Freitext-Bemerkung (falls vorhanden)
+  const rptNote=getRptNote(pid,y,month);
+  if(rptNote.trim()){
+    let ny=fy+8;
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0);
+    doc.text('Bemerkungen:',mg,ny);
+    doc.setFont('helvetica','normal');
+    const lines=doc.splitTextToSize(rptNote,W-2*mg);
+    doc.text(lines,mg,ny+5);
+    fy=ny+5+lines.length*4.2;
+  }
+
   if(fy<260){
     const sy=fy+16;
     doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(0);
@@ -1857,6 +1975,19 @@ function genWeekPDF(){
   function greenIfStatus(p,data){
     if(p&&(p.status==='lehrstelle'||p.status==='praktikum'))
       data.cell.styles.textColor=[21,128,61];
+  }
+  // Kürzel-Legende unten auf der Seite ausgeben, gibt das neue y zurück
+  function pdfLegend(doc,startY){
+    const blockStr='Einteilung & Sperren:   '+LEGEND_BLOCK.map(([c,m])=>`${c} = ${m}`).join('    ·   ');
+    const absStr  ='Absenzcode:   '+legendAbs().map(([c,m])=>`${c} = ${m}`).join('    ·   ');
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90);
+    let yy=startY;
+    [blockStr,absStr].forEach(s=>{
+      const lines=doc.splitTextToSize(s,W-2*mg);
+      doc.text(lines,mg,yy);
+      yy+=lines.length*3.5+2;
+    });
+    return yy;
   }
 
   // ── Alle TN der Woche ────────────────────
@@ -1912,10 +2043,13 @@ function genWeekPDF(){
         const v=data.cell.raw;
         if(v==='PRK'){data.cell.styles.textColor=[21,128,61];data.cell.styles.fontStyle='bold';}
         else if(v==='S.LW'){data.cell.styles.textColor=[146,64,14];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','SP'].includes(v)) data.cell.styles.textColor=[150,150,150];
+        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)) data.cell.styles.textColor=[150,150,150];
       }
     },
   });
+
+  // Kürzel-Legende unter der Wochenübersicht
+  pdfLegend(doc, doc.lastAutoTable.finalY + 7);
 
   // ══════════════════════════════════════════
   // SEITE 2 – Tagesübersicht (curDay)
@@ -1937,12 +2071,14 @@ function genWeekPDF(){
     const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL):(plan.vm||'');
     const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
+    const swLbl=plan.sw==='S.EX'?'Schnupperwoche':'';
+    const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
     return[
       `${p.vorname} ${p.nachname}`,
       JC_LBL[p.jobCoach]||'',
       JC_LBL[bwJC]||'',
       vmVal, nmVal, abs,
-      plan.bemerkung||''
+      bemPdf
     ];
   });
 
@@ -1974,9 +2110,13 @@ function genWeekPDF(){
       if((data.column.index===3||data.column.index===4)){
         if(data.cell.raw==='Praktikum') data.cell.styles.textColor=[21,128,61];
         else if(data.cell.raw==='S.LW'){data.cell.styles.textColor=[146,64,14];data.cell.styles.fontStyle='bold';}
+        else if(data.cell.raw==='SL') data.cell.styles.textColor=[150,150,150];
       }
     },
   });
+
+  // Kürzel-Legende unter der Tagesübersicht
+  pdfLegend(doc, doc.lastAutoTable.finalY + 7);
 
   // Footer Seite 2
   const pageCount=doc.getNumberOfPages();
@@ -2000,10 +2140,13 @@ function doExport(reason){
   const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`Lernwerkstatt_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  // Dateiname mit Datum + Zeit: "Lernwerkstatt Fr 06.06.2026 · 23.50.json"
+  // (Doppelpunkt ist in Windows-Dateinamen unzulässig → Punkt zwischen Std. und Min.)
+  a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
   a.click();URL.revokeObjectURL(a.href);
   dirty=false;
   localStorage.setItem(SAVEKEY,now.toISOString());
+  snapshotBackup(); // Wiederherstellungspunkt = zuletzt gesicherter Stand
   updateSaveInfo();
   if(reason==='auto'){
     toast('💾 Automatische Freitag-Sicherung gespeichert','t-ok');
@@ -2042,16 +2185,6 @@ function checkAutoSave(){
   doExport('auto');
 }
 
-function checkFridayMissed(){
-  const now=new Date();
-  const fri=now.getDay()===5&&(now.getHours()>13||(now.getHours()===13&&now.getMinutes()>=5));
-  if(!fri) return;
-  const last=localStorage.getItem(SAVEKEY);
-  let missed=true;
-  if(last){const d=new Date(last);missed=!(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate());}
-  if(missed) showBanner(`⚠️ Freitag-Sicherung noch ausstehend! &nbsp;<button class="btn btn-sm" style="background:#fff;color:#92400e" onclick="manualSave();document.getElementById('autoBanner').remove()">💾 Jetzt speichern</button>`,'bn-amber');
-}
-
 function doImport(input){
   const file=input.files[0]; if(!file) return;
   const r=new FileReader();
@@ -2059,7 +2192,8 @@ function doImport(input){
     try{
       const d=JSON.parse(e.target.result);
       if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
-      DB.participants=d.participants||[];DB.plans=d.plans||{};
+      snapshotBackup(); // aktuellen Stand sichern, damit ein falscher Import rückgängig gemacht werden kann
+      DB.participants=d.participants||[];DB.plans=d.plans||{};DB.rptNotes=d.rptNotes||{};
       saveDB();dirty=false;
       updateSaveInfo();toast('📂 Daten erfolgreich importiert','t-ok');
       // Re-render current view
@@ -2068,6 +2202,42 @@ function doImport(input){
     }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
   };
   r.readAsText(file);input.value='';
+}
+
+// ────────────────────────────────────────────
+// IMPORT- / WIEDERHERSTELLUNGS-MENÜ
+// ────────────────────────────────────────────
+function openImportMenu(){
+  const bk=getBackup();
+  const btn=document.getElementById('restoreBtn');
+  const info=document.getElementById('restoreInfo');
+  if(bk&&bk.ts){
+    const d=new Date(bk.ts);
+    info.textContent=`Stand: ${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`;
+    btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer';
+  }else{
+    info.textContent='Noch keine interne Sicherung vorhanden – sie entsteht bei «💾 Speichern».';
+    btn.disabled=true; btn.style.opacity='.5'; btn.style.cursor='not-allowed';
+  }
+  document.getElementById('impOverlay').classList.add('open');
+}
+function closeImportMenu(){ document.getElementById('impOverlay').classList.remove('open'); }
+
+function restoreBackup(){
+  const bk=getBackup();
+  if(!bk||!bk.data){ toast('Keine interne Sicherung vorhanden','t-err'); return; }
+  const d=new Date(bk.ts);
+  const stamp=`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`;
+  if(!confirm(`Die letzte interne Sicherung (${stamp}) wird 1:1 wiederhergestellt.\n\nDer aktuelle Datenstand wird dabei ersetzt. Fortfahren?`)) return;
+  snapshotBackup(); // aktuellen Stand sichern → Wiederherstellung selbst kann rückgängig gemacht werden
+  DB.participants=bk.data.participants||[];
+  DB.plans=bk.data.plans||{};
+  DB.rptNotes=bk.data.rptNotes||{};
+  saveDB(); dirty=false;
+  updateSaveInfo(); closeImportMenu();
+  const active=document.querySelector('.nav-btn.active');
+  if(active) show(active.dataset.v);
+  toast('↩️ Vorherige Version wiederhergestellt','t-ok');
 }
 
 // ────────────────────────────────────────────
@@ -2348,7 +2518,6 @@ function init(){
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
   renderWBAlerts();
-  checkFridayMissed();
   setInterval(checkAutoSave,30000);
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
