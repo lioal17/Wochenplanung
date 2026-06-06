@@ -959,8 +959,8 @@ const SOFT_ABS = ['ZS','TZ'];
 
 // Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
-  ['S','Schule (Ganztag)'],['DAZ','Deutsch a. Zweitspr. (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
-  ['DK','Deutschkurs (½ Tag)'],['IKPC','IKPC (½ Tag)'],['M','Mathe (½ Tag)'],
+  ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
+  ['DK','Deutschkurs (½ Tag)'],['IKPC','IKPC (½ Tag)'],['M','Mathematik (½ Tag)'],
   ['SP','Sport'],['PRK','Praktikum'],['SL','Schnupperlehre (extern)'],
 ];
 // Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
@@ -1002,13 +1002,11 @@ function loadDB(){
 // Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW'.
 // Jetzt eigenes Feld plan.sw – Freitext-Bemerkung bleibt davon unberührt.
 function migrateSchnupper(){
-  // «Schnupperwoche Lernwerkstatt» (S.LW) wurde entfernt. Alt-Marker (bemerkung oder sw === 'S.LW')
-  // werden aufgelöst; nur die externe Schnupperwoche (S.EX) bleibt bestehen.
+  // Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW' → eigenes Feld plan.sw.
   let changed=false;
   Object.values(DB.plans||{}).forEach(day=>{
     Object.values(day||{}).forEach(pl=>{
-      if(pl && pl.bemerkung==='S.LW'){ pl.bemerkung=''; changed=true; }
-      if(pl && pl.sw==='S.LW'){ pl.sw=''; changed=true; }
+      if(pl && pl.bemerkung==='S.LW'){ pl.sw='S.LW'; pl.bemerkung=''; changed=true; }
     });
   });
   if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
@@ -1159,7 +1157,7 @@ function renderLegend(){
   const el=document.getElementById('legendBox'); if(!el) return;
   const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
   el.innerHTML=
-    `<div class="lg-grp"><div class="lg-h">Einteilung &amp; Sperren</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
     `<div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${row(legendAbs())}</div></div>`;
 }
 
@@ -1260,6 +1258,7 @@ function renderDayPlan(){
         onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
       <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
         <option value=""${!sw?' selected':''}>–</option>
+        <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
         <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperwoche</option>
       </select>
     </div>`;
@@ -1702,7 +1701,8 @@ function renderMonthly(){
       if(effAbs){
         cls='c-abs';txt=effAbs;abs++;
         if(!plan.ecaseEntered){ecOff++;totalOpen++;}
-      } else if(plan.sw==='S.EX'){cls='c-slw';txt='SL';}
+      } else if(plan.sw==='S.LW'){cls='c-work';txt='✓';at++;} // Schnupperwoche LW zählt als gearbeitet
+      else if(plan.sw==='S.EX'){cls='c-slw';txt='SL';}
       else if(blk.fullBlocked){cls='c-sch';txt=blk.vmL||'S';}
       else if(blk.vmB){cls='c-sch';txt=blk.vmL;}
       else{cls='c-work';txt='✓';at++;}
@@ -1770,6 +1770,9 @@ function getRptRows(p,year,month){
     } else if(blk.vmL==='SL'||blk.nmL==='SL'){
       // Schnupperlehre (extern) – blockiert, keine LW-Stunden
       ac='SL';bem='Schnupperlehre'+(note?' · '+note:'');
+    } else if(plan.sw==='S.LW'){
+      // Schnupperwoche Lernwerkstatt – zählt als normaler 8h-Arbeitstag, keine Bemerkung nötig
+      az='8';bem=note;
     } else {
       const isSchool=SCHOOL_TYPES.includes(blk.vmL)||SCHOOL_TYPES.includes(blk.nmL);
       // "vor Ort" = im LW eingeteilt (Werkstatt in nicht gesperrtem Slot); ZS gilt als anwesend
@@ -1913,6 +1916,8 @@ function genPDF(){
     startY:yp,
     head:[['Tag','Arbeitszeit Std.','Absenz Std.','Absenz Code','Bemerkungen']],
     body:body.map(r=>r.slice(0,5)),
+    // Kompakt, damit der ganze Monat (bis 31 Tage) + Unterschriften auf EINE Seite passt
+    styles:{fontSize:8,cellPadding:{top:1.1,right:2,bottom:1.1,left:2},lineColor:[220,220,220],lineWidth:.2,overflow:'linebreak'},
     columnStyles:{
       0:{cellWidth:15,halign:'center',fontStyle:'bold'},
       1:{cellWidth:33,halign:'center'},
@@ -1920,8 +1925,8 @@ function genPDF(){
       3:{cellWidth:27,halign:'center'},
       4:{cellWidth:78},
     },
-    headStyles:{fillColor:[30,58,95],textColor:255,fontStyle:'bold',fontSize:9},
-    bodyStyles:{fontSize:9,lineColor:[220,220,220],lineWidth:.25},
+    headStyles:{fillColor:[30,58,95],textColor:255,fontStyle:'bold',fontSize:8.5},
+    bodyStyles:{fontSize:8},
     didParseCell:(d)=>{
       if(d.section!=='body') return;
       const r=body[d.row.index];
@@ -1976,14 +1981,16 @@ function genWeekPDF(){
     doc.text(sub,W-mg,13,{align:'right'});
   }
   function greenIfStatus(p,data){
-    if(p&&(p.status==='lehrstelle'||p.status==='praktikum'))
-      data.cell.styles.textColor=[21,128,61];
+    if(p&&(p.status==='lehrstelle'||p.status==='praktikum')){
+      data.cell.styles.textColor=[13,75,38];   // kräftiges Dunkelgrün
+      data.cell.styles.fontStyle='bold';
+    }
   }
   // Kürzel-Legende unten auf der Seite ausgeben, gibt das neue y zurück
   function pdfLegend(doc,startY){
-    const blockStr='Einteilung & Sperren:   '+LEGEND_BLOCK.map(([c,m])=>`${c} = ${m}`).join('    ·   ');
+    const blockStr='Einteilung (Einteilungscode):   '+LEGEND_BLOCK.map(([c,m])=>`${c} = ${m}`).join('    ·   ');
     const absStr  ='Absenzcode:   '+legendAbs().map(([c,m])=>`${c} = ${m}`).join('    ·   ');
-    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(60);
     let yy=startY;
     [blockStr,absStr].forEach(s=>{
       const lines=doc.splitTextToSize(s,W-2*mg);
@@ -1993,12 +2000,16 @@ function genWeekPDF(){
     return yy;
   }
 
+  // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
+  const offsiteWeek=p=>(p.status==='praktikum'||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
+  const offsiteDay=(p,dStr)=>(p.status==='praktikum'||getPlan(dStr,p.id).sw==='S.EX')?1:0;
+
   // ── Alle TN der Woche ────────────────────
   const seen=new Set(); const allActive=[];
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de'));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -2044,9 +2055,8 @@ function genWeekPDF(){
       }
       if(data.column.index>=3){
         const v=data.cell.raw;
-        if(v==='PRK'){data.cell.styles.textColor=[21,128,61];data.cell.styles.fontStyle='bold';}
-        else if(v==='S.LW'){data.cell.styles.textColor=[146,64,14];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)) data.cell.styles.textColor=[150,150,150];
+        if(v==='PRK'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
@@ -2064,7 +2074,7 @@ function genWeekPDF(){
 
   const dayActive=DB.participants
     .filter(p=>isActiveOnDay(p,dayDate))
-    .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -2111,9 +2121,9 @@ function genWeekPDF(){
         return;
       }
       if((data.column.index===3||data.column.index===4)){
-        if(data.cell.raw==='Praktikum') data.cell.styles.textColor=[21,128,61];
-        else if(data.cell.raw==='S.LW'){data.cell.styles.textColor=[146,64,14];data.cell.styles.fontStyle='bold';}
-        else if(data.cell.raw==='SL') data.cell.styles.textColor=[150,150,150];
+        const v=data.cell.raw;
+        if(v==='Praktikum'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
