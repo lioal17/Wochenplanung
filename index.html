@@ -281,13 +281,17 @@ input,select,textarea{font-family:inherit}
   padding:0 5px;font-size:10px;min-width:16px;text-align:center;
 }
 
-/* eCase footer bar */
-.ec-bar{
-  margin:8px -20px -20px;padding:10px 20px;
-  background:var(--amber-bg);border-top:2px solid var(--amber);
-  font-size:12px;font-weight:600;color:#92400e;
-  display:flex;align-items:center;gap:8px;border-radius:0 0 var(--r) var(--r);
+/* eCase badge + dropdown */
+.ec-badge-wrap{position:relative}
+.ec-badge-btn{cursor:pointer;user-select:none;margin:0;white-space:nowrap}
+.ec-drop{
+  position:absolute;right:0;top:calc(100% + 4px);z-index:200;
+  background:#fff;border:1px solid var(--amber);border-radius:8px;
+  box-shadow:0 6px 20px rgba(0,0,0,.13);overflow:hidden;min-width:380px;
 }
+.ec-drop tbody tr{border-bottom:1px solid var(--g2)}
+.ec-drop tbody tr:last-child{border-bottom:none}
+.ec-drop tbody tr:hover{background:var(--g1)}
 
 /* ═══════════════════════════════════════════
    PARTICIPANT CARDS
@@ -578,16 +582,19 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chWeek(1)">&#8250;</button>
           <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-            📄 PDF
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
-            📋 Vorwoche kopieren
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
-            🗑 Woche leeren
-          </button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+              📄 PDF
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
+              📋 Vorwoche kopieren
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
+              🗑 Woche leeren
+            </button>
+          </div>
+          <div id="planEcBadge"></div>
         </div>
       </div>
       <div class="day-bar" id="dayBar"></div>
@@ -1301,12 +1308,38 @@ function renderDayPlan(){
     `<div class="sum-chip"><span>${ws}</span><span class="cnt">${n}</span></div>`
   ).join('');
 
-  // eCase bar
+  // eCase badge (compact, in header)
   let openEC=0;
-  active.forEach(p=>{ const pl=getPlan(curDay,p.id); if(pl.abwesenheit&&!pl.ecaseEntered)openEC++; });
-  const ecBar=openEC>0
-    ?`<div class="ec-bar">⚠️ ${openEC} eCase-Eintrag${openEC>1?'e':''} noch offen – in eCase nachtragen und Haken setzen.</div>`
-    :'';
+  const ecEntries=[];
+  active.forEach(p=>{
+    const pl=getPlan(curDay,p.id);
+    if(pl.abwesenheit&&!pl.ecaseEntered){
+      openEC++;
+      ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
+    }
+  });
+  const badge=document.getElementById('planEcBadge');
+  if(badge){
+    if(openEC>0){
+      const rows=ecEntries.map(e=>`<tr>
+        <td style="padding:3px 8px">${e.name}</td>
+        <td style="padding:3px 8px;color:var(--red);font-weight:700">${e.abs}</td>
+        <td style="padding:3px 8px">
+          <input type="checkbox" title="In eCase eingetragen"
+            onchange="setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
+        </td></tr>`).join('');
+      badge.innerHTML=`<div class="ec-badge-wrap">
+        <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          ⚠️ ${openEC} eCase-Eintrag${openEC>1?'e':''} offen ▾
+        </button>
+        <div class="ec-drop" style="display:none">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">${rows}</table>
+        </div>
+      </div>`;
+    } else {
+      badge.innerHTML='';
+    }
+  }
 
   area.innerHTML=`
     <div class="tbl-wrap">
@@ -1326,7 +1359,7 @@ function renderDayPlan(){
       </table>
     </div>
     ${sumChips?`<div class="plan-summary">${sumChips}</div>`:''}
-    ${ecBar}`;
+  `;
 }
 
 function buildBlockedCell(label, type){
@@ -1708,6 +1741,7 @@ function renderMonthly(){
   }
 
   let totalOpen=0;
+  const moEcList=[];   // collect open eCase entries for dropdown
   let thead=`<tr><th class="th-name">Teilnehmer</th>`;
   days.forEach(d=>{
     thead+=`<th class="${isWE(d)?'wknd':''}">${pad(d.getDate())}<br><span style="font-weight:400">${WD[d.getDay()]}</span></th>`;
@@ -1728,7 +1762,11 @@ function renderMonthly(){
 
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered) totalOpen++;
+        if(!plan.ecaseEntered){
+          totalOpen++;
+          moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+            dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});
+        }
         tds+=`<td>${moSlot(effAbs,'abs')}${moSlot(effAbs,'abs')}</td>`;
         return;
       }
@@ -1757,7 +1795,7 @@ function renderMonthly(){
   });
 
   const lgRow=arr=>arr.map(([c,l])=>`<span class="lg-i"><b>${c}</b>${l}</span>`).join('');
-  const legend=`<div class="mo-legend-full">
+  const legend=`<div class="legend-box mo-legend-full">
     <div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
     <div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${lgRow(legendAbs())}</div></div>
   </div>`;
@@ -1767,8 +1805,38 @@ function renderMonthly(){
       <thead>${thead}</thead><tbody>${tbody}</tbody>
     </table></div>${legend}`;
 
-  document.getElementById('moHint').innerHTML=totalOpen>0
-    ?`<div class="warn-bar">⚠️ ${totalOpen} offene eCase-Einträge in ${MON[m]}</div>`:'';
+  if(totalOpen>0){
+    const ecRows=moEcList.map(e=>`<tr>
+      <td style="padding:4px 10px;font-weight:600">${e.name}</td>
+      <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
+      <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
+      <td style="padding:4px 10px;text-align:center">
+        <input type="checkbox" title="In eCase eingetragen"
+          onchange="setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
+      </td></tr>`).join('');
+    document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
+      <button class="warn-bar ec-badge-btn" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        ⚠️ ${totalOpen} offene eCase-Einträge in ${MON[m]} ▾
+      </button>
+      <div class="ec-drop" style="display:none">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead><tr style="background:var(--g1)">
+            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Teilnehmer</th>
+            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Datum</th>
+            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
+            <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
+          </tr></thead>
+          <tbody>${ecRows}</tbody>
+        </table>
+      </div></div>`;
+  } else {
+    document.getElementById('moHint').innerHTML='';
+  }
+}
+
+function setEcFromMo(pid,dstr,done){
+  setPlan(dstr,pid,{ecaseEntered:done});
+  renderMonthly();
 }
 
 function chMonth(d){
