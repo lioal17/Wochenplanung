@@ -367,6 +367,7 @@ input,select,textarea{font-family:inherit}
 .moc-slw{background:var(--amber-bg);color:var(--amber);font-weight:700}
 .moc-empty{background:#fff;color:var(--g4)}
 .mo-vm-sep{height:1px;background:var(--g2)}
+.mo-slot-lbl{font-size:6.5px;font-weight:700;opacity:.55;margin-right:2px;letter-spacing:.2px}
 .mo-legend-full{margin-top:12px;padding:8px 4px 4px;border-top:1px solid var(--g2)}
 
 .mo-legend{
@@ -1723,10 +1724,9 @@ function markWBDone(pid,weeks){
 // ────────────────────────────────────────────
 // MONATSÜBERSICHT
 // ────────────────────────────────────────────
-function moSlot(code,type){
-  // Returns an HTML div for one half-day slot in the monthly view
+function moSlot(code,type,slot){
   const cls={work:'moc-work',abs:'moc-abs',sch:'moc-sch',prk:'moc-prk',slw:'moc-slw',off:'moc-empty'}[type]||'moc-empty';
-  return `<div class="${cls}">${code}</div>`;
+  return `<div class="${cls}"><span class="mo-slot-lbl">${slot}</span>${code}</div>`;
 }
 
 function renderMonthly(){
@@ -1746,11 +1746,11 @@ function renderMonthly(){
   days.forEach(d=>{
     thead+=`<th class="${isWE(d)?'wknd':''}">${pad(d.getDate())}<br><span style="font-weight:400">${WD[d.getDay()]}</span></th>`;
   });
-  thead+=`<th class="th-stat" title="Arbeitstage">AT</th><th class="th-stat" title="Absenztage">Abs</th></tr>`;
+  thead+=`<th class="th-stat" title="Arbeitstage">AT</th><th class="th-stat" title="Absenztage">Abs</th><th class="th-stat" title="Unentschuldigte Absenz" style="color:var(--red)">UA</th><th class="th-stat" title="Zu spät" style="color:var(--amber)">ZS</th></tr>`;
 
   let tbody='';
   persons.forEach(p=>{
-    let at=0,abs=0;
+    let at=0,abs=0,ua=0,zs=0;
     let tds='';
     days.forEach(d=>{
       const dstr=ds(d);
@@ -1758,7 +1758,10 @@ function renderMonthly(){
       if(!isActiveOnDay(p,d)){tds+='<td class="c-off"></td>';return;}
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
-      const effAbs=plan.abwesenheit==='ZS'?'':(plan.abwesenheit||'');
+      const rawAbs=plan.abwesenheit||'';
+      if(rawAbs==='UA') ua++;
+      if(rawAbs==='ZS') zs++;
+      const effAbs=rawAbs==='ZS'?'':rawAbs;
 
       if(effAbs){
         abs++;
@@ -1767,11 +1770,11 @@ function renderMonthly(){
           moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
             dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});
         }
-        tds+=`<td>${moSlot(effAbs,'abs')}${moSlot(effAbs,'abs')}</td>`;
+        tds+=`<td>${moSlot(effAbs,'abs','VM')}<div class="mo-vm-sep"></div>${moSlot(effAbs,'abs','NM')}</td>`;
         return;
       }
-      if(plan.sw==='S.LW'){at++;tds+=`<td>${moSlot('S.LW','work')}${moSlot('S.LW','work')}</td>`;return;}
-      if(plan.sw==='S.EX'){tds+=`<td>${moSlot('SL','slw')}${moSlot('SL','slw')}</td>`;return;}
+      if(plan.sw==='S.LW'){at++;tds+=`<td>${moSlot('S.LW','work','VM')}<div class="mo-vm-sep"></div>${moSlot('S.LW','work','NM')}</td>`;return;}
+      if(plan.sw==='S.EX'){tds+=`<td>${moSlot('SL','slw','VM')}<div class="mo-vm-sep"></div>${moSlot('SL','slw','NM')}</td>`;return;}
 
       // VM slot
       let vmCode='',vmType='off';
@@ -1783,7 +1786,7 @@ function renderMonthly(){
       else { nmCode=wsAbbr(plan.nm||''); nmType=nmCode?'work':'off'; }
       // Count as 1 Arbeitstag if any slot is worked (not blocked, not off)
       if(vmType==='work'||nmType==='work') at++;
-      tds+=`<td>${moSlot(vmCode,vmType)}<div class="mo-vm-sep"></div>${moSlot(nmCode,nmType)}</td>`;
+      tds+=`<td>${moSlot(vmCode,vmType,'VM')}<div class="mo-vm-sep"></div>${moSlot(nmCode,nmType,'NM')}</td>`;
     });
 
     tbody+=`<tr>
@@ -1791,6 +1794,8 @@ function renderMonthly(){
       ${tds}
       <td class="c-stat">${at}</td>
       <td class="c-stat" style="color:${abs?'var(--red)':'var(--g5)'}">${abs||'–'}</td>
+      <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
+      <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
   });
 
