@@ -1848,7 +1848,6 @@ function buildRpt(){
   const p=DB.participants.find(x=>x.id===pid); if(!p)return;
 
   const rows=getRptRows(p,y,month);
-  const atDays =rows.filter(r=>!r.we&&!r.inactive&&r.az).length;
   const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&r.ac!=='UA').length;
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac==='UA').length;
   const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone).length;
@@ -1873,7 +1872,7 @@ function buildRpt(){
     <strong>Absenzencode:</strong>&nbsp;&nbsp;
     FE = Ferien &nbsp;·&nbsp; KR = Krankheit &nbsp;·&nbsp; BA = bezahlte Absenz &nbsp;·&nbsp;
     ZV = Zwischenverdienst &nbsp;·&nbsp; KO = Kompensation &nbsp;·&nbsp; UN = Unfall &nbsp;·&nbsp;
-    UA = unbezahlte Absenz &nbsp;·&nbsp; TZ = Teilzeit &nbsp;·&nbsp; MI = Militär oder Zivilschutz
+    UA = Unbezahlte Absenz &nbsp;·&nbsp; TZ = Teilzeit &nbsp;·&nbsp; MI = Militär oder Zivilschutz
   </div>`;
 
   html+=`<table class="rpt-tbl"><thead><tr>
@@ -1925,7 +1924,7 @@ function genPDF(){
   doc.text('Absenzencode',mg+2,yp+6);
   doc.setFont('helvetica','normal');
   const leg=[
-    [mg+30,'FE = Ferien',          mg+78,'ZV = Zwischenverdienst', mg+138,'UA = unbezahlte Absenz'],
+    [mg+30,'FE = Ferien',          mg+78,'ZV = Zwischenverdienst', mg+138,'UA = Unbezahlte Absenz'],
     [mg+30,'KR = Krankheit',       mg+78,'KO = Kompensation',      mg+138,'TZ = Teilzeit'],
     [mg+30,'BA = bezahlte Absenz', mg+78,'UN = Unfall',            mg+138,'MI = Militär oder Zivilschutz'],
   ];
