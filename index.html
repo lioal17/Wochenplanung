@@ -2037,10 +2037,11 @@ function genWeekPDF(){
 
   doc.autoTable({
     head:[head1],body:body1,startY:17,margin:{left:mg,right:mg},
-    styles:{fontSize:6.5,cellPadding:1.5,overflow:'linebreak'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:6.5,halign:'center'},
+    theme:'grid',
+    styles:{fontSize:6.5,cellPadding:1.5,overflow:'linebreak',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:6.5,halign:'center',lineColor:[30,55,100],lineWidth:0.3},
     columnStyles:cs1,
-    alternateRowStyles:{fillColor:[248,250,253]},
+    alternateRowStyles:{fillColor:[205,228,246]},
     didParseCell:(data)=>{
       if(data.section!=='body') return;
       const p=allActive[data.row.index];
@@ -2105,10 +2106,11 @@ function genWeekPDF(){
 
   doc.autoTable({
     head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:12},
-    styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize'},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2},
+    theme:'grid',
+    styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[30,55,100],lineWidth:0.3},
     columnStyles:cs2,
-    alternateRowStyles:{fillColor:[248,250,253]},
+    alternateRowStyles:{fillColor:[205,228,246]},
     didParseCell:(data)=>{
       if(data.section!=='body') return;
       const p=dayActive[data.row.index];
