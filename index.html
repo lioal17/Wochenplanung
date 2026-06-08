@@ -1848,7 +1848,6 @@ function buildRpt(){
   const p=DB.participants.find(x=>x.id===pid); if(!p)return;
 
   const rows=getRptRows(p,y,month);
-  const atDays =rows.filter(r=>!r.we&&!r.inactive&&r.az).length;
   const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&r.ac!=='UA').length;
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac==='UA').length;
   const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone).length;
