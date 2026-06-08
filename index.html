@@ -356,9 +356,9 @@ input,select,textarea{font-family:inherit}
   overflow:hidden;text-overflow:ellipsis;
 }
 .mo-tbl tr:hover td.td-name{background:var(--g1)}
-.mo-tbl td.c-wknd{background:var(--g2)}
 .mo-tbl td.c-off{background:var(--g1)}
 .mo-tbl td.c-stat{background:var(--g1);font-weight:700;color:var(--navy);padding:4px 2px}
+.mo-tbl .mo-sep,.mo-tbl th.mo-sep{border-left:3px solid var(--navy) !important}
 /* Sub-cell divs inside each day cell */
 .mo-vm,.mo-nm{display:block;padding:2px 1px;line-height:1.35;min-height:13px}
 .mo-vm{border-bottom:1px dotted var(--g2)}
@@ -1767,15 +1767,16 @@ function renderMonthly(){
   let totalOpen=0;
   const moEcList=[];
 
-  // 3-row header: date | weekday | VM / NM
+  // Only weekdays (Sa/So entfernt), Montag = Wochentrennlinie
+  const wd=days.filter(d=>!isWE(d));
   let r1=`<tr><th rowspan="3" class="th-name">Teilnehmer</th>`;
   let r2=`<tr>`;
   let r3=`<tr>`;
-  days.forEach(d=>{
-    const wk=isWE(d)?'wknd':'';
-    r1+=`<th colspan="2" class="${wk}">${pad(d.getDate())}</th>`;
-    r2+=`<th colspan="2" class="${wk}" style="font-weight:400;font-size:8px">${WD[d.getDay()]}</th>`;
-    r3+=`<th class="${wk} mo-slot-h">VM</th><th class="${wk} mo-slot-h">NM</th>`;
+  wd.forEach(d=>{
+    const sep=d.getDay()===1?' mo-sep':'';
+    r1+=`<th colspan="2" class="${sep}">${pad(d.getDate())}</th>`;
+    r2+=`<th colspan="2" class="${sep}" style="font-weight:400;font-size:9px">${WD[d.getDay()]}</th>`;
+    r3+=`<th class="${sep} mo-slot-h">VM</th><th class="${sep} mo-slot-h">NM</th>`;
   });
   const statH=`<th rowspan="3" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
     `<th rowspan="3" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
@@ -1785,10 +1786,10 @@ function renderMonthly(){
   persons.forEach(p=>{
     let at=0,abs=0,ua=0,zs=0;
     let tds='';
-    days.forEach(d=>{
-      if(isWE(d)){tds+=`<td class="c-wknd"></td><td class="c-wknd"></td>`;return;}
+    wd.forEach(d=>{
+      const sep=d.getDay()===1?' mo-sep':'';
       const dstr=ds(d);
-      if(!isActiveOnDay(p,d)){tds+=`<td class="c-off"></td><td class="c-off"></td>`;return;}
+      if(!isActiveOnDay(p,d)){tds+=`<td class="c-off${sep}"></td><td class="c-off"></td>`;return;}
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
@@ -1802,17 +1803,17 @@ function renderMonthly(){
         abs++;
         if(!plan.ecaseEntered&&effAbs!=='ZS'){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
-        tds+=`<td colspan="2" class="moc-abs">${effAbs}</td>`;return;
+        tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
-      if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work">S.LW</td>`;return;}
-      if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw">SL</td>`;return;}
+      if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
+      if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
       // Individual VM + NM cells (with partial UA-VM / UA-NM)
       const vmCls=(isUAvm||isKRvm)?'moc-abs':blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
       const vmTxt=isUAvm?'UA':isKRvm?'KR':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
       const nmCls=(isUAnm||isKRnm)?'moc-abs':blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
       const nmTxt=isUAnm?'UA':isKRnm?'KR':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
-      tds+=`<td class="${vmCls}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
+      tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
     tbody+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>${tds}
       <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
@@ -2286,16 +2287,18 @@ function genWeekPDF(){
     ];
   });
 
-  // Dynamische Schriftgrösse: passt Tabelle auf genau 1 Seite an
+  // Dynamische Schriftgrösse: Tabelle + Legende immer exakt auf 1 Seite
   const n2=dayActive.length;
-  const fs2 = n2>30?6 : n2>22?7 : 8;
-  const cp2 = n2>30?1.5 : n2>22?2 : 3;
-  // Spaltenbreiten: Name breiter + overflow ellipsize damit keine Zeilenumbrüche
+  const legendH=22; // geschätzte Legendenhöhe in mm
+  const availH=210-17-10-legendH; // verfügbare Höhe für Tabelle (mm)
+  const rowH=availH/(n2+1);       // +1 für Header-Zeile
+  const cp2=Math.min(2.5, Math.max(1, rowH*0.25));
+  const fs2=Math.min(9, Math.max(5, Math.floor((rowH-cp2*2)/0.355)));
   const cs2={0:{cellWidth:50,overflow:'ellipsize'},1:{cellWidth:12},2:{cellWidth:14},
              3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
 
   doc.autoTable({
-    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:12},
+    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:legendH+10},
     theme:'grid',
     styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
     headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[30,55,100],lineWidth:0.3},
@@ -2320,8 +2323,8 @@ function genWeekPDF(){
     },
   });
 
-  // Kürzel-Legende unter der Tagesübersicht
-  pdfLegend(doc, doc.lastAutoTable.finalY + 7);
+  // Kürzel-Legende: immer am fixen Ort am Seitenende (nicht nach Tabelle)
+  pdfLegend(doc, 210-legendH-3);
 
   // Footer Seite 2
   const pageCount=doc.getNumberOfPages();
