@@ -1857,10 +1857,8 @@ function buildRpt(){
   if(openEC>0) html+=`<div class="warn-bar">⚠️ ${openEC} eCase-Einträge noch offen – bitte erst in eCase erfassen, bevor der Rapport generiert wird.</div>`;
 
   html+=`<div class="rpt-stats">
-    <div class="rpt-stat"><div class="val">${atDays}</div><div class="lbl">Arbeitstage</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--blue)">${baDays}</div><div class="lbl">Bezahlte Absenz</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--red)">${uaDays}</div><div class="lbl">Unbezahlte Absenz</div></div>
-    <div class="rpt-stat"><div class="val">${atDays*8}</div><div class="lbl">Arbeitsstunden</div></div>
     <div class="rpt-stat"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
   </div>`;
 
