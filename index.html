@@ -949,12 +949,12 @@ const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','Se
 
 const WS = [
   'Schreinerei','Bewerben','Metall','Metallverpacken','Crea',
-  'Lernstücke','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
+  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
 ];
 const WS_ABBR={
-  'Schreinerei':'Schr','Bewerben':'Bew','Metall':'Met','Metallverpacken':'MeVp',
-  'Crea':'Crea','Lernstücke':'LStk','Loli':'Loli','Neophyten':'Neo',
-  'Feldeinsatz':'Feld','Textil':'Text','Reinigung':'Rein','Sport':'SP',
+  'Schreinerei':'SE','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
+  'Crea':'Crea','Lernstück':'LS','Lernstücke':'LS','Loli':'Loli','Neophyten':'NEO',
+  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'SP',
 };
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
@@ -966,7 +966,9 @@ const ABS = [
   {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
   {c:'BA',   l:'BA – Bezahlte Absenz'},
-  {c:'UA',   l:'UA – Unentschuldigte Absenz'},
+  {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
+  {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
+  {c:'UA-NM', l:'UA NM – Unentschuldigt Nachmittag'},
   {c:'UN',   l:'UN – Unfall'},
   {c:'ZV',   l:'ZV – Zwischenverdienst'},
   {c:'KO',   l:'KO – Kompensation'},
@@ -974,7 +976,8 @@ const ABS = [
   {c:'MI',   l:'MI – Militär/Zivilschutz'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
-const SOFT_ABS = ['ZS','TZ'];
+// UA-VM/UA-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
+const SOFT_ABS = ['ZS','TZ','UA-VM','UA-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
@@ -988,6 +991,11 @@ const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
   ['DK','Deutschkurs (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
   ['SP','Sport'],['PRK','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
+];
+// Werkstatt-Kürzel für Legende
+const WS_LEGEND = [
+  ['SE','Schreinerei'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
+  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],
 ];
 // Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
@@ -1186,6 +1194,7 @@ function renderLegend(){
   const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
   el.innerHTML=
     `<div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
     `<div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${row(legendAbs())}</div></div>`;
 }
 
@@ -1211,8 +1220,11 @@ function renderDayPlan(){
     const blk   = getBlocks(p,date);
     const absCode = plan.abwesenheit||'';
     // ZS (Zu spät) und TZ (Teilzeit): TN ist trotzdem (teilweise) da → Einteilung bleibt möglich
+    // UA-VM / UA-NM: nur halbtags absent, jeweiliger Slot gesperrt, anderer bleibt planbar
     const softAbs = SOFT_ABS.includes(absCode);
     const absent  = !!absCode && !softAbs;
+    const vmAbsent = absent || absCode==='UA-VM';
+    const nmAbsent = absent || absCode==='UA-NM';
     const pid    = p.id;
 
     // Row class
@@ -1241,14 +1253,14 @@ function renderDayPlan(){
     const nameGreen=p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr';
 
     // VM cell
-    const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',absent);
+    const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',vmAbsent);
 
     // NM cell
-    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='SP'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',absent);
+    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='SP'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',nmAbsent);
 
     // Count werkstatten for summary
-    if(!absent){
-      if(!blk.vmB && plan.vm) wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
+    if(!vmAbsent && !blk.vmB && plan.vm) wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
+    if(!nmAbsent){
       if(blk.nmL==='SP'||plan.nm==='Sport') wsCounts['Sport']=(wsCounts['Sport']||0)+1;
       else if(!blk.nmB && plan.nm) wsCounts[plan.nm]=(wsCounts[plan.nm]||0)+1;
     }
@@ -1315,7 +1327,7 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
-    if(pl.abwesenheit&&!pl.ecaseEntered){
+    if(pl.abwesenheit&&!pl.ecaseEntered&&pl.abwesenheit!=='UA-VM'&&pl.abwesenheit!=='UA-NM'){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
     }
@@ -1734,7 +1746,12 @@ function renderMonthly(){
   const{y,m}=curMonth;
   document.getElementById('moLabel').textContent=`${MON[m]} ${y}`;
   const days=monthDays(y,m);
-  const persons=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const isBottom=p=>p.status==='praktikum'||p.status==='prklehr';
+  const persons=[...DB.participants].sort((a,b)=>{
+    const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
+    if(aB!==bB) return aB-bB;
+    return a.vorname.localeCompare(b.vorname,'de');
+  });
 
   if(!persons.length){
     document.getElementById('moArea').innerHTML='<div class="empty-state"><p>Keine Teilnehmer erfasst.</p></div>';
@@ -1754,9 +1771,8 @@ function renderMonthly(){
     r2+=`<th colspan="2" class="${wk}" style="font-weight:400;font-size:8px">${WD[d.getDay()]}</th>`;
     r3+=`<th class="${wk} mo-slot-h">VM</th><th class="${wk} mo-slot-h">NM</th>`;
   });
-  const statH=`<th rowspan="3" class="th-stat">AT</th><th rowspan="3" class="th-stat">Abs</th>`+
-    `<th rowspan="3" class="th-stat" style="color:var(--red)">UA</th>`+
-    `<th rowspan="3" class="th-stat" style="color:var(--amber)">ZS</th>`;
+  const statH=`<th rowspan="3" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
+    `<th rowspan="3" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
   r1+=statH+`</tr>`;r2+=`</tr>`;r3+=`</tr>`;
 
   let tbody='';
@@ -1770,28 +1786,28 @@ function renderMonthly(){
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
-      if(rawAbs==='UA') ua++;
+      if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') ua++;
       if(rawAbs==='ZS') zs++;
-      const effAbs=rawAbs==='ZS'?'':rawAbs;
+      const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
+      // Full-day absence (not ZS, not UA-VM/UA-NM)
+      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm)?'':rawAbs;
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        if(!plan.ecaseEntered&&effAbs!=='ZS'){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs">${effAbs}</td>`;return;
       }
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw">SL</td>`;return;}
-      // Individual VM + NM cells
-      const vmCls=blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      // Individual VM + NM cells (with partial UA-VM / UA-NM)
+      const vmCls=isUAvm?'moc-abs':blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmTxt=isUAvm?'UA':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCls=isUAnm?'moc-abs':blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmTxt=isUAnm?'UA':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
     tbody+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>${tds}
-      <td class="c-stat">${at}</td>
-      <td class="c-stat" style="color:${abs?'var(--red)':'var(--g5)'}">${abs||'–'}</td>
       <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
       <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
@@ -1800,6 +1816,7 @@ function renderMonthly(){
   const lgRow=arr=>arr.map(([c,l])=>`<span class="lg-i"><b>${c}</b>${l}</span>`).join('');
   const legend=`<div class="legend-box mo-legend-full">
     <div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
+    <div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
     <div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${lgRow(legendAbs())}</div></div>
   </div>`;
 
@@ -1919,7 +1936,8 @@ function getRptRows(p,year,month){
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
-    const effAbs=(isZS||isPA)?'':rawAbs;
+    const isUAhalf=rawAbs==='UA-VM'||rawAbs==='UA-NM';
+    const effAbs=(isZS||isPA||isUAhalf)?'':rawAbs;
     if(effAbs){
       as='8';ac=effAbs;
       bem=plan.abwesenheitText||note||AUTO_BEM[effAbs]||'';
