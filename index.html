@@ -1747,13 +1747,51 @@ function renderRapport(){
 }
 
 const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC','M'];
+// Ostersonntag (Gregorianischer Kalender, Meeus/Jones/Butcher)
+function easterSunday(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100;
+  const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3);
+  const h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4;
+  const l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const mo=Math.floor((h+l-7*m+114)/31);
+  const day=((h+l-7*m+114)%31)+1;
+  return new Date(year,mo-1,day);
+}
+
+// Gesetzliche Feiertage + Brückentage Kanton Thurgau (Motivationssemester)
+function tgHolidays(year){
+  const map={};
+  const add=(dt,name)=>{map[ds(dt)]=name;};
+  add(new Date(year,0,1),'Neujahrstag');
+  add(new Date(year,0,2),'Berchtoldstag');
+  const e=easterSunday(year);
+  const off=(o,name)=>{const dt=new Date(e);dt.setDate(dt.getDate()+o);add(dt,name);};
+  off(-2,'Karfreitag');
+  off(1,'Ostermontag');
+  off(39,'Auffahrt');
+  off(40,'Brückentag (Auffahrt)');
+  off(50,'Pfingstmontag');
+  add(new Date(year,4,1),'Tag der Arbeit');
+  add(new Date(year,7,1),'Nationalfeiertag');
+  return map;
+}
+
 function getRptRows(p,year,month){
+  const holidays=tgHolidays(year);
   return monthDays(year,month).map(d=>{
     const dstr=ds(d);
     const we=isWE(d);
     if(we) return{tag:d.getDate(),dow:WD[d.getDay()],we:true};
     const active=isActiveOnDay(p,d);
     if(!active) return{tag:d.getDate(),dow:WD[d.getDay()],inactive:true};
+    // Feiertag / Brückentag an einem regulären Arbeitstag → 8h bezahlte Absenz (BA) mit Bezeichnung
+    if(holidays[dstr]){
+      return{tag:d.getDate(),dow:WD[d.getDay()],az:'',as:'8',ac:'BA',bem:holidays[dstr],
+        ecDone:true,dstr,we:false,inactive:false};
+    }
     const plan=getPlan(dstr,p.id);
     const blk=getBlocks(p,d);
     const note=plan.bemerkung||'';
@@ -1799,7 +1837,7 @@ function buildRpt(){
 
   const rows=getRptRows(p,y,month);
   const atDays =rows.filter(r=>!r.we&&!r.inactive&&r.az).length;
-  const absDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac).length;
+  const absDays =rows.filter(r=>!r.we&&!r.inactive&&(r.ac||r.as)).length;
   const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone).length;
 
   let html='';
@@ -1837,7 +1875,7 @@ function buildRpt(){
   rows.forEach(r=>{
     if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}.</td><td></td><td></td><td></td><td style="color:var(--g5);font-size:11px">${r.dow}</td></tr>`;
     else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}.</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
-    else html+=`<tr class="${r.ac?'ra':''}">
+    else html+=`<tr class="${(r.ac||r.as)?'ra':''}">
       <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
       <td class="rpt-num">${r.az}</td>
       <td class="rpt-num" style="font-weight:${r.as?700:400}">${r.as||''}</td>
