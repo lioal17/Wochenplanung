@@ -1765,9 +1765,7 @@ function renderMonthly(){
     r2+=`<th colspan="2" class="${wk}" style="font-weight:400;font-size:8px">${WD[d.getDay()]}</th>`;
     r3+=`<th class="${wk} mo-slot-h">VM</th><th class="${wk} mo-slot-h">NM</th>`;
   });
-  const statH=`<th rowspan="3" class="th-stat" title="Anwesenheitstage">AT</th>`+
-    `<th rowspan="3" class="th-stat" title="Absenztage">Abs</th>`+
-    `<th rowspan="3" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
+  const statH=`<th rowspan="3" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
     `<th rowspan="3" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
   r1+=statH+`</tr>`;r2+=`</tr>`;r3+=`</tr>`;
 
@@ -1804,8 +1802,6 @@ function renderMonthly(){
       tds+=`<td class="${vmCls}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
     tbody+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>${tds}
-      <td class="c-stat">${at}</td>
-      <td class="c-stat" style="color:${abs?'var(--red)':'var(--g5)'}">${abs||'–'}</td>
       <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
       <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
