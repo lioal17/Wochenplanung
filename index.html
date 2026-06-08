@@ -949,12 +949,12 @@ const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','Se
 
 const WS = [
   'Schreinerei','Bewerben','Metall','Metallverpacken','Crea',
-  'Lernstücke','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
+  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
 ];
 const WS_ABBR={
-  'Schreinerei':'Schr','Bewerben':'Bew','Metall':'Met','Metallverpacken':'MeVp',
-  'Crea':'Crea','Lernstücke':'LStk','Loli':'Loli','Neophyten':'Neo',
-  'Feldeinsatz':'Feld','Textil':'Text','Reinigung':'Rein','Sport':'SP',
+  'Schreinerei':'SE','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
+  'Crea':'Crea','Lernstück':'LS','Lernstücke':'LS','Loli':'Loli','Neophyten':'NEO',
+  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'SP',
 };
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
@@ -991,6 +991,11 @@ const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
   ['DK','Deutschkurs (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
   ['SP','Sport'],['PRK','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
+];
+// Werkstatt-Kürzel für Legende
+const WS_LEGEND = [
+  ['SE','Schreinerei'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
+  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],
 ];
 // Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
@@ -1189,6 +1194,7 @@ function renderLegend(){
   const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
   el.innerHTML=
     `<div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
     `<div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${row(legendAbs())}</div></div>`;
 }
 
@@ -1810,6 +1816,7 @@ function renderMonthly(){
   const lgRow=arr=>arr.map(([c,l])=>`<span class="lg-i"><b>${c}</b>${l}</span>`).join('');
   const legend=`<div class="legend-box mo-legend-full">
     <div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
+    <div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
     <div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${lgRow(legendAbs())}</div></div>
   </div>`;
 
