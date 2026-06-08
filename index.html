@@ -385,8 +385,10 @@ input,select,textarea{font-family:inherit}
 .rpt-tbl td{padding:6px 12px;border-bottom:1px solid var(--g2)}
 .rpt-tbl tr.rw{background:var(--g1);color:var(--g5)}
 .rpt-tbl tr.ra{background:#fff8f0}
+.rpt-tbl tr.ra-ua{background:var(--red-bg)}
 .rpt-tbl tr.ri{background:var(--g1);color:var(--g4)}
 .rpt-tbl .rpt-code{font-weight:800;color:var(--red)}
+.rpt-tbl .rpt-ua{font-weight:800;color:var(--red)}
 .rpt-tbl .rpt-num{text-align:center;font-weight:600}
 
 /* ═══════════════════════════════════════════
@@ -953,6 +955,13 @@ const ABS = [
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 const SOFT_ABS = ['ZS','TZ'];
+
+// Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
+const AUTO_BEM = {
+  BA:'Bezahlte Absenz',FE:'Ferien',KR:'Krank',UN:'Unfall',
+  UA:'Unentschuldigte Absenz',KO:'Kompensation',ZV:'Zwischenverdienst',
+  TZ:'Teilzeit',MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
+};
 
 // Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
@@ -1797,11 +1806,14 @@ function getRptRows(p,year,month){
     const note=plan.bemerkung||'';
     let az='',as='',ac='',bem='';
     // ZS (Zu spät) wird NICHT als Absenz erfasst – TN hat 8h gearbeitet
+    // PA (Praktikum-intern) erscheint NICHT im Monatsrapport – nur intern
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
-    const effAbs=isZS?'':rawAbs;
+    const isPA=rawAbs==='PA';
+    const effAbs=(isZS||isPA)?'':rawAbs;
     if(effAbs){
-      as='8';ac=effAbs;bem=plan.abwesenheitText||note||'';
+      as='8';ac=effAbs;
+      bem=plan.abwesenheitText||note||AUTO_BEM[effAbs]||'';
     } else if(blk.vmL==='SL'||blk.nmL==='SL'){
       // Schnupperlehre (extern) – blockiert, keine LW-Stunden
       ac='SL';bem='Schnupperlehre'+(note?' · '+note:'');
@@ -1837,7 +1849,8 @@ function buildRpt(){
 
   const rows=getRptRows(p,y,month);
   const atDays =rows.filter(r=>!r.we&&!r.inactive&&r.az).length;
-  const absDays =rows.filter(r=>!r.we&&!r.inactive&&(r.ac||r.as)).length;
+  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&r.ac!=='UA').length;
+  const uaDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac==='UA').length;
   const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone).length;
 
   let html='';
@@ -1845,7 +1858,8 @@ function buildRpt(){
 
   html+=`<div class="rpt-stats">
     <div class="rpt-stat"><div class="val">${atDays}</div><div class="lbl">Arbeitstage</div></div>
-    <div class="rpt-stat"><div class="val" style="color:var(--red)">${absDays}</div><div class="lbl">Absenztage</div></div>
+    <div class="rpt-stat"><div class="val" style="color:var(--blue)">${baDays}</div><div class="lbl">Bezahlte Absenz</div></div>
+    <div class="rpt-stat"><div class="val" style="color:var(--red)">${uaDays}</div><div class="lbl">Unbezahlte Absenz</div></div>
     <div class="rpt-stat"><div class="val">${atDays*8}</div><div class="lbl">Arbeitsstunden</div></div>
     <div class="rpt-stat"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
   </div>`;
@@ -1875,13 +1889,17 @@ function buildRpt(){
   rows.forEach(r=>{
     if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}.</td><td></td><td></td><td></td><td style="color:var(--g5);font-size:11px">${r.dow}</td></tr>`;
     else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}.</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
-    else html+=`<tr class="${(r.ac||r.as)?'ra':''}">
-      <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
-      <td class="rpt-num">${r.az}</td>
-      <td class="rpt-num" style="font-weight:${r.as?700:400}">${r.as||''}</td>
-      <td class="rpt-num ${r.ac?'rpt-code':''}">${r.ac||''}</td>
-      <td>${esc(r.bem||'')}</td>
-    </tr>`;
+    else{
+      const isUA=r.ac==='UA';
+      const rowCls=isUA?'ra ra-ua':(r.ac||r.as)?'ra':'';
+      html+=`<tr class="${rowCls}">
+        <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
+        <td class="rpt-num">${r.az}</td>
+        <td class="rpt-num" style="font-weight:${r.as?700:400};${isUA?'color:var(--red)':''}">${r.as||''}</td>
+        <td class="rpt-num ${r.ac?'rpt-code':''}${isUA?' rpt-ua':''}">${r.ac||''}</td>
+        <td${isUA?' style="color:var(--red)"':''}>${esc(r.bem||'')}</td>
+      </tr>`;
+    }
   });
   html+='</tbody></table>';
 
@@ -1942,9 +1960,9 @@ function genPDF(){
 
   // Table
   const body=rows.map(r=>{
-    if(r.we)       return[`${pad(r.tag)}.`,'','','','',true,false];
-    if(r.inactive)return[`${pad(r.tag)}.`,'','','','nicht aktiv',false,true];
-    return[`${pad(r.tag)}.`,r.az||'',r.as||'',r.ac||'',r.bem||'',false,false];
+    if(r.we)       return[`${pad(r.tag)}.`,'','','','',true,false,false];
+    if(r.inactive)return[`${pad(r.tag)}.`,'','','','nicht aktiv',false,true,false];
+    return[`${pad(r.tag)}.`,r.az||'',r.as||'',r.ac||'',r.bem||'',false,false,r.ac==='UA'];
   });
 
   doc.autoTable({
@@ -1967,7 +1985,12 @@ function genPDF(){
       const r=body[d.row.index];
       if(r[5]){d.cell.styles.fillColor=[238,238,238];d.cell.styles.textColor=[160,160,160];}
       else if(r[6]){d.cell.styles.fillColor=[248,248,248];d.cell.styles.textColor=[200,200,200];}
-      else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
+      else if(r[7]){
+        // UA – Unbezahlte Absenz: rote Zeile
+        d.cell.styles.fillColor=[254,226,226];
+        d.cell.styles.textColor=[185,28,28];
+        if(d.column.index===3) d.cell.styles.fontStyle='bold';
+      } else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
       else if(r[3]){d.cell.styles.fillColor=[255,248,235];}
     },
     margin:{left:mg,right:mg},
