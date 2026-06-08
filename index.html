@@ -172,6 +172,8 @@ input,select,textarea{font-family:inherit}
 /* Row states */
 .plan-tbl tr.row-praktikum td{background:#f0fdf8}
 .plan-tbl tr.row-praktikum:hover td{background:#d1fae5}
+.plan-tbl tr.row-prklehr td{background:#f0fdf8}
+.plan-tbl tr.row-prklehr:hover td{background:#d1fae5}
 .plan-tbl tr.row-lehrstelle td{background:#f0fdf8}
 .plan-tbl tr.row-lehrstelle:hover td{background:#d1fae5}
 .plan-tbl tr.row-absent td{background:#fff8f0}
@@ -189,6 +191,7 @@ input,select,textarea{font-family:inherit}
   margin-left:4px;font-weight:700;vertical-align:middle;letter-spacing:.3px;
 }
 .chip-prak{background:var(--green);color:#fff}
+.chip-prklehr{background:var(--green);color:#fff}
 .chip-lehr{background:var(--teal);color:#fff}
 .chip-schn{background:var(--g5);color:#fff}
 
@@ -298,6 +301,7 @@ input,select,textarea{font-family:inherit}
 .p-card:hover{box-shadow:var(--sh2)}
 .p-card.sc-aktiv    {border-left:4px solid var(--navy-light)}
 .p-card.sc-praktikum{border-left:4px solid var(--green)}
+.p-card.sc-prklehr{border-left:4px solid var(--green)}
 .p-card.sc-lehrstelle{border-left:4px solid var(--teal)}
 .p-card.sc-schnupper{border-left:4px solid var(--g5)}
 .p-card-info{flex:1;min-width:0}
@@ -545,8 +549,8 @@ input,select,textarea{font-family:inherit}
      ╚══════════════════════════════════════════╝ -->
 <nav class="nav">
   <button class="nav-btn active" data-v="plan"    onclick="show('plan')"    >📅 Wochenplan</button>
-  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="monthly" onclick="show('monthly')" >📊 Monatsübersicht</button>
+  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
 </nav>
@@ -743,8 +747,10 @@ input,select,textarea{font-family:inherit}
       <label>Status *</label>
       <select class="fi" id="f_st" onchange="onSt()">
         <option value="aktiv" selected>Lernwerkstatt</option>
+        <option value="schnupper">Schnuppern</option>
         <option value="praktikum">Praktikum</option>
         <option value="lehrstelle">Lehrstelle</option>
+        <option value="prklehr">Praktikum + Lehrstelle</option>
       </select>
     </div>
     <div class="fg">
@@ -967,7 +973,7 @@ const AUTO_BEM = {
 const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
   ['DK','Deutschkurs (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
-  ['SP','Sport'],['PRK','Praktikum'],['SL','Schnupperlehre (extern)'],
+  ['SP','Sport'],['PRK','Praktikum'],['PRK+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
 ];
 // Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
@@ -1086,6 +1092,8 @@ function getBlocks(p, date){
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
   if(p.status==='praktikum')
     return {vmB:true,nmB:true,fullB:true,vmL:'PRK',nmL:'PRK'};
+  if(p.status==='prklehr')
+    return {vmB:true,nmB:true,fullB:true,vmL:'PRK+LS',nmL:'PRK+LS'};
   // Schnupperwoche (extern, S.EX) → ganze Woche blockiert wie Schule, Code SL (Schnupperlehre).
   if(getPlan(ds(date),p.id).sw==='S.EX')
     return {vmB:true,nmB:true,fullB:true,vmL:'SL',nmL:'SL'};
@@ -1197,11 +1205,12 @@ function renderDayPlan(){
     let rowCls='';
     if(absent) rowCls='row-absent';
     else if(p.status==='praktikum') rowCls='row-praktikum';
+    else if(p.status==='prklehr') rowCls='row-prklehr';
     else if(p.status==='lehrstelle') rowCls='row-lehrstelle';
     else if(p.status==='schnupper') rowCls='row-schnupper';
 
     // Status chip
-    const chipMap={praktikum:'chip-prak Prak.',lehrstelle:'chip-lehr Lehr.',schnupper:'chip-schn Schn.'};
+    const chipMap={praktikum:'chip-prak Prak.',lehrstelle:'chip-lehr Lehr.',schnupper:'chip-schn Schn.',prklehr:'chip-prklehr Prak+Lehr'};
     const cp=chipMap[p.status]||'';
     const chip=cp?`<span class="st-chip ${cp.split(' ')[0]}">${cp.split(' ')[1]}</span>`:'';
 
@@ -1215,7 +1224,7 @@ function renderDayPlan(){
                 bwJC==='yvi'?`<span class="bw-dot bw-yvi" title="Bewerben Yvi"></span>`:'';
 
     // Name – green for Lehrstelle / Praktikum
-    const nameGreen=p.status==='lehrstelle'||p.status==='praktikum';
+    const nameGreen=p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr';
 
     // VM cell
     const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',absent);
@@ -1236,7 +1245,7 @@ function renderDayPlan(){
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
         ${ABS.map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
-      <input class="abs-txt" type="text" placeholder="Freitext (optional)" value="${esc(absTxt)}"
+      <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
         onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
     </div>`;
 
@@ -1317,6 +1326,7 @@ function renderDayPlan(){
 
 function buildBlockedCell(label, type){
   if(label==='PRK') return `<span class="blocked-prk">Praktikum</span>`;
+  if(label==='PRK+LS') return `<span class="blocked-prk">PRK+LS</span>`;
   if(label==='S.LW') return `<span class="blocked-slw">S.LW</span>`;
   const cls=type==='sport'?'b-sport':'b-school';
   return `<div class="blocked ${cls}">${label||'–'}</div>`;
@@ -1414,8 +1424,8 @@ function copyPrev(){
     if(!DB.plans[cd]) DB.plans[cd]={};
     Object.entries(DB.plans[pd2]).forEach(([pid,data])=>{
       const p=DB.participants.find(x=>x.id===pid);
-      // Praktikum-Teilnehmer werden nie kopiert (fixiert)
-      if(p&&p.status==='praktikum') return;
+      // Praktikum / Prak+Lehr-Teilnehmer werden nie kopiert (fixiert)
+      if(p&&(p.status==='praktikum'||p.status==='prklehr')) return;
       const ex=DB.plans[cd][pid];
       if(ex&&(ex.vm||ex.nm)) return;
       const newEntry={...data,abwesenheit:'',abwesenheitText:'',ecaseEntered:false,bemerkung:''};
@@ -1462,7 +1472,7 @@ function renderPersons(){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
   }
-  const stLbl={aktiv:'Lernwerkstatt',praktikum:'Praktikum',lehrstelle:'Lehrstelle'};
+  const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
   el.innerHTML=sorted.map(p=>{
     const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
@@ -1533,7 +1543,7 @@ function closePM(){ document.getElementById('pmOverlay').classList.remove('open'
 
 function onSt(){
   const s=document.getElementById('f_st').value;
-  document.getElementById('pmExtra').style.display=s==='schnupper'?'none':'block';
+  document.getElementById('pmExtra').style.display=(s==='schnupper'||s==='prklehr')?'none':'block';
   document.getElementById('f_aktiv_g').style.display=s==='aktiv'?'flex':'none';
   // Stammwerkstatt bleibt immer ausgeblendet (Hintergrund-Info, für TN nicht relevant)
   document.getElementById('f_sw_g').style.display='none';
@@ -2036,7 +2046,7 @@ function genWeekPDF(){
     doc.text(sub,W-mg,13,{align:'right'});
   }
   function greenIfStatus(p,data){
-    if(p&&(p.status==='lehrstelle'||p.status==='praktikum')){
+    if(p&&(p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr')){
       data.cell.styles.textColor=[13,75,38];   // kräftiges Dunkelgrün
       data.cell.styles.fontStyle='bold';
     }
@@ -2056,8 +2066,8 @@ function genWeekPDF(){
   }
 
   // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
-  const offsiteWeek=p=>(p.status==='praktikum'||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
-  const offsiteDay=(p,dStr)=>(p.status==='praktikum'||getPlan(dStr,p.id).sw==='S.EX')?1:0;
+  const offsiteWeek=p=>((p.status==='praktikum'||p.status==='prklehr')||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
+  const offsiteDay=(p,dStr)=>((p.status==='praktikum'||p.status==='prklehr')||getPlan(dStr,p.id).sw==='S.EX')?1:0;
 
   // ── Alle TN der Woche ────────────────────
   const seen=new Set(); const allActive=[];
@@ -2111,7 +2121,7 @@ function genWeekPDF(){
       }
       if(data.column.index>=3){
         const v=data.cell.raw;
-        if(v==='PRK'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+        if(v==='PRK'||v==='PRK+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
         else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
@@ -2137,8 +2147,8 @@ function genWeekPDF(){
     const plan=getPlan(curDay,p.id);
     const blk=getBlocks(p,dayDate);
     const bwJC=p.bewerbenJC||p.jobCoach||'';
-    const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL):(plan.vm||'');
-    const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL):(plan.nm||'');
+    const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL==='PRK+LS'?'PRK+LS':blk.vmL):(plan.vm||'');
+    const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL==='PRK+LS'?'PRK+LS':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
     const swLbl=plan.sw==='S.EX'?'Schnupperwoche':'';
     const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
