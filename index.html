@@ -2177,18 +2177,24 @@ function genWeekPDF(){
       data.cell.styles.fontStyle='bold';
     }
   }
-  // Kürzel-Legende unten auf der Seite ausgeben, gibt das neue y zurück
+  // Kürzel-Legende: 3 Abschnitte mit farbigem Header und Hintergrundbox
   function pdfLegend(doc,startY){
-    const blockStr='Einteilung (Einteilungscode):   '+LEGEND_BLOCK.map(([c,m])=>`${c} = ${m}`).join('    ·   ');
-    const absStr  ='Absenzcode:   '+legendAbs().map(([c,m])=>`${c} = ${m}`).join('    ·   ');
-    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(60);
-    let yy=startY;
-    [blockStr,absStr].forEach(s=>{
-      const lines=doc.splitTextToSize(s,W-2*mg);
-      doc.text(lines,mg,yy);
-      yy+=lines.length*3.5+2;
-    });
-    return yy;
+    const lx=mg,lw=W-2*mg;
+    const avH=210-startY-3;
+    doc.setFillColor(244,247,251);doc.setDrawColor(175,195,220);doc.setLineWidth(0.3);
+    doc.rect(lx,startY-2,lw,avH+1,'FD');
+    let yy=startY+3.5;
+    const section=(label,items)=>{
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(25,50,95);
+      doc.text(label,lx+3,yy);yy+=3.5;
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(20,20,20);
+      const txt=items.map(([c,l])=>`${c} = ${l}`).join('   ·   ');
+      const lines=doc.splitTextToSize(txt,lw-6);
+      doc.text(lines,lx+3,yy);yy+=lines.length*3.5+2;
+    };
+    section('EINTEILUNG (EINTEILUNGSCODE)',LEGEND_BLOCK);
+    section('WERKSTATT-KÜRZEL',WS_LEGEND);
+    section('ABWESENHEITEN (ABSENZCODE)',legendAbs());
   }
 
   // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
@@ -2223,14 +2229,21 @@ function genWeekPDF(){
     return row;
   });
 
-  const cs1={0:{cellWidth:36,overflow:'ellipsize'},1:{cellWidth:9},2:{cellWidth:9}};
-  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:20};cs1[4+i*2]={cellWidth:20};});
+  const n1=allActive.length;
+  const lgH=38; // Legendenhöhe in mm (beide Seiten)
+  const avH1=210-17-lgH-8;
+  const rH1=avH1/(n1+1);
+  const cp1=Math.min(2.5,Math.max(1.2,rH1*0.28));
+  const fs1=Math.min(9,Math.max(6,Math.floor((rH1-cp1*2)/0.355)));
+
+  const cs1={0:{cellWidth:40,overflow:'ellipsize'},1:{cellWidth:10},2:{cellWidth:10}};
+  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:20,halign:'center'};cs1[4+i*2]={cellWidth:20,halign:'center'};});
 
   doc.autoTable({
-    head:[head1],body:body1,startY:17,margin:{left:mg,right:mg},
+    head:[head1],body:body1,startY:17,margin:{left:mg,right:mg,bottom:lgH+8},
     theme:'grid',
-    styles:{fontSize:6.5,cellPadding:1.5,overflow:'linebreak',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:6.5,halign:'center',lineColor:[30,55,100],lineWidth:0.3},
+    styles:{fontSize:fs1,cellPadding:cp1,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs1,halign:'center',lineColor:[30,55,100],lineWidth:0.3},
     columnStyles:cs1,
     alternateRowStyles:{fillColor:[205,228,246]},
     didParseCell:(data)=>{
@@ -2253,8 +2266,7 @@ function genWeekPDF(){
     },
   });
 
-  // Kürzel-Legende unter der Wochenübersicht
-  pdfLegend(doc, doc.lastAutoTable.finalY + 7);
+  pdfLegend(doc, Math.max(doc.lastAutoTable.finalY+5, 210-lgH-3));
 
   // ══════════════════════════════════════════
   // SEITE 2 – Tagesübersicht (curDay)
@@ -2289,16 +2301,15 @@ function genWeekPDF(){
 
   // Dynamische Schriftgrösse: Tabelle + Legende immer exakt auf 1 Seite
   const n2=dayActive.length;
-  const legendH=22; // geschätzte Legendenhöhe in mm
-  const availH=210-17-10-legendH; // verfügbare Höhe für Tabelle (mm)
-  const rowH=availH/(n2+1);       // +1 für Header-Zeile
-  const cp2=Math.min(2.5, Math.max(1, rowH*0.25));
-  const fs2=Math.min(9, Math.max(5, Math.floor((rowH-cp2*2)/0.355)));
+  const availH=210-17-10-lgH; // verfügbare Höhe für Tabelle (mm)
+  const rowH=availH/(n2+1);   // +1 für Header-Zeile
+  const cp2=Math.min(2.5,Math.max(1,rowH*0.25));
+  const fs2=Math.min(9,Math.max(5,Math.floor((rowH-cp2*2)/0.355)));
   const cs2={0:{cellWidth:50,overflow:'ellipsize'},1:{cellWidth:12},2:{cellWidth:14},
              3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
 
   doc.autoTable({
-    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:legendH+10},
+    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:lgH+10},
     theme:'grid',
     styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
     headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[30,55,100],lineWidth:0.3},
@@ -2323,8 +2334,7 @@ function genWeekPDF(){
     },
   });
 
-  // Kürzel-Legende: immer am fixen Ort am Seitenende (nicht nach Tabelle)
-  pdfLegend(doc, 210-legendH-3);
+  pdfLegend(doc, 210-lgH-3);
 
   // Footer Seite 2
   const pageCount=doc.getNumberOfPages();
