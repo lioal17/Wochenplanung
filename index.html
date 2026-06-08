@@ -961,7 +961,9 @@ function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 const ABS = [
   {c:'',     l:'– keine –'},
   {c:'FE',   l:'FE – Ferien'},
-  {c:'KR',   l:'KR – Krank'},
+  {c:'KR',    l:'KR – Krank (ganzer Tag)'},
+  {c:'KR-VM', l:'KR VM – Krank Vormittag'},
+  {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
   {c:'ZS',   l:'ZS – Zu spät'},
   {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
@@ -976,8 +978,8 @@ const ABS = [
   {c:'MI',   l:'MI – Militär/Zivilschutz'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
-// UA-VM/UA-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
-const SOFT_ABS = ['ZS','TZ','UA-VM','UA-NM'];
+// UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
+const SOFT_ABS = ['ZS','TZ','UA-VM','UA-NM','KR-VM','KR-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
@@ -1223,8 +1225,8 @@ function renderDayPlan(){
     // UA-VM / UA-NM: nur halbtags absent, jeweiliger Slot gesperrt, anderer bleibt planbar
     const softAbs = SOFT_ABS.includes(absCode);
     const absent  = !!absCode && !softAbs;
-    const vmAbsent = absent || absCode==='UA-VM';
-    const nmAbsent = absent || absCode==='UA-NM';
+    const vmAbsent = absent || absCode==='UA-VM' || absCode==='KR-VM';
+    const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM';
     const pid    = p.id;
 
     // Row class
@@ -1327,7 +1329,8 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
-    if(pl.abwesenheit&&!pl.ecaseEntered&&pl.abwesenheit!=='UA-VM'&&pl.abwesenheit!=='UA-NM'){
+    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM'];
+    if(pl.abwesenheit&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
     }
@@ -1789,8 +1792,9 @@ function renderMonthly(){
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') ua++;
       if(rawAbs==='ZS') zs++;
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
-      // Full-day absence (not ZS, not UA-VM/UA-NM)
-      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm)?'':rawAbs;
+      const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
+      // Full-day absence (not ZS, not half-day codes)
+      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm)?'':rawAbs;
       if(effAbs){
         abs++;
         if(!plan.ecaseEntered&&effAbs!=='ZS'){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
@@ -1800,10 +1804,10 @@ function renderMonthly(){
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw">SL</td>`;return;}
       // Individual VM + NM cells (with partial UA-VM / UA-NM)
-      const vmCls=isUAvm?'moc-abs':blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=isUAvm?'UA':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=isUAnm?'moc-abs':blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=isUAnm?'UA':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      const vmCls=(isUAvm||isKRvm)?'moc-abs':blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmTxt=isUAvm?'UA':isKRvm?'KR':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCls=(isUAnm||isKRnm)?'moc-abs':blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmTxt=isUAnm?'UA':isKRnm?'KR':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
@@ -1937,7 +1941,8 @@ function getRptRows(p,year,month){
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
     const isUAhalf=rawAbs==='UA-VM'||rawAbs==='UA-NM';
-    const effAbs=(isZS||isPA||isUAhalf)?'':rawAbs;
+    const isKRhalf=rawAbs==='KR-VM'||rawAbs==='KR-NM';
+    const effAbs=(isZS||isPA||isUAhalf||isKRhalf)?'':rawAbs;
     if(effAbs){
       as='8';ac=effAbs;
       bem=plan.abwesenheitText||note||AUTO_BEM[effAbs]||'';
