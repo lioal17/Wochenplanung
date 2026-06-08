@@ -2345,9 +2345,9 @@ function genWeekPDF(){
 
   const lgSection=(title,items,cols=4)=>{
     // Header
-    doc.setFillColor(30,55,100);doc.rect(lgX,lgY,lgW,7,'F');
+    doc.setFillColor(30,55,100);doc.rect(lgX,lgY,lgW,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255);
-    doc.text(title,lgX+4,lgY+5);lgY+=9;
+    doc.text(title,lgX+4,lgY+5.5);lgY+=14;
     // Items in cols columns
     const perCol=Math.ceil(items.length/cols);
     const colW=lgW/cols;
@@ -2362,7 +2362,7 @@ function genWeekPDF(){
       doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(40,40,40);
       doc.text(l,ix+cw,iy);
     });
-    lgY+=perCol*6+6;
+    lgY+=perCol*6+12;
   };
 
   lgSection('EINTEILUNG (EINTEILUNGSCODE)', LEGEND_BLOCK, 2);
