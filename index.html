@@ -644,7 +644,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chMonth(1)">&#8250;</button>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-secondary" onclick="openRapportModal()" title="Rapport pro Teilnehmer als PDF exportieren">📊 Rapport</button>
+          <button class="btn btn-secondary" onclick="openRapportModal()" title="Teilnehmer-Rapport als PDF exportieren">📊 Teilnehmer-Rapport</button>
           <div id="moHint"></div>
         </div>
       </div>
@@ -658,7 +658,7 @@ input,select,textarea{font-family:inherit}
   <div class="view" id="view-rapport">
     <div class="card">
       <div class="card-head">
-        <span class="card-title">Monatsrapport generieren</span>
+        <span class="card-title">Monatsrapport</span>
       </div>
       <div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg">
@@ -669,7 +669,7 @@ input,select,textarea{font-family:inherit}
           <label>Monat</label>
           <input type="month" class="fi" id="rptM" onchange="buildRpt()" style="width:155px">
         </div>
-        <button class="btn btn-success" onclick="genPDF()">📄 PDF generieren</button>
+        <button class="btn btn-success" onclick="genPDF()">📄 Monatsrapport generieren</button>
       </div>
       <div id="rptArea"></div>
     </div>
