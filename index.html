@@ -1274,7 +1274,8 @@ function renderDayPlan(){
     _pSortDay = curDay;
     const goesBottom=p=>{
       const bl=getBlocks(p,date);
-      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S');
+      const abs=getPlan(curDay,p.id).abwesenheit||'';
+      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W';
     };
     _pSortList = DB.participants
       .filter(p=>isActiveOnDay(p,date))
@@ -1526,6 +1527,7 @@ function onAbsChange(pid, day, val){
   } else {
     setPlan(day,pid,{abwesenheit:val});
   }
+  _pSortDay=null; // Absenz neu setzen → Liste sofort neu sortieren (KR-W/FE-W/S nach unten)
   renderDayPlan();
 }
 
