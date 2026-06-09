@@ -1012,23 +1012,23 @@ const WS_ABBR={
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
 const ABS = [
-  {c:'',     l:'– keine –'},
-  {c:'FE',   l:'FE – Ferien'},
-  {c:'KR',    l:'KR – Krank (ganzer Tag)'},
-  {c:'KR-VM', l:'KR VM – Krank Vormittag'},
-  {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
-  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
-  {c:'ZS',   l:'ZS – Zu spät'},
-  {c:'SL',   l:'SL – Schnupperlehre'},
-  {c:'PA',   l:'PA – Praktikum'},
-  {c:'BA',   l:'BA – Bezahlte Absenz'},
-  {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
+  {c:'',      l:'– keine –'},
+  {c:'BA',    l:'BA – Bezahlte Absenz'},
   {c:'BA-NM', l:'BA NM – Bezahlte Absenz Nachmittag'},
+  {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
+  {c:'FE',    l:'FE – Ferien'},
+  {c:'KR',    l:'KR – Krank (ganzer Tag)'},
+  {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
+  {c:'KR-VM', l:'KR VM – Krank Vormittag'},
+  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
+  {c:'MI',    l:'MI – Militär/Zivilschutz'},
+  {c:'PA',    l:'PA – Praktikum'},
+  {c:'SL',    l:'SL – Schnupperlehre'},
   {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
-  {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
   {c:'UA-NM', l:'UA NM – Unentschuldigt Nachmittag'},
-  {c:'UN',   l:'UN – Unfall'},
-  {c:'MI',   l:'MI – Militär/Zivilschutz'},
+  {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
+  {c:'UN',    l:'UN – Unfall'},
+  {c:'ZS',    l:'ZS – Zu spät'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
@@ -1044,8 +1044,8 @@ const AUTO_BEM = {
 
 // Schule-Code – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
-  ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderatelier (½ Tag)'],
-  ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
+  ['DAZ','Deutsch als Zweitsprache (½ Tag)'],['DK','Deutschkurs Migros (½ Tag)'],
+  ['FöA','Förderatelier (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['S','Schule (ganzer Tag)'],
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
@@ -1055,8 +1055,9 @@ const BLK_LABEL = {
 };
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
-  ['H','Holzwerkstatt'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
-  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],['Sport','Sport'],
+  ['BW','Bewerben'],['Crea','Crea'],['FL','Feldeinsatz'],['H','Holzwerkstatt'],
+  ['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
+  ['NEO','Neophyten'],['Sport','Sport'],
 ];
 // Absenz-Codes: Basis aus ABS-Array
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
