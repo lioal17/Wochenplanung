@@ -825,7 +825,6 @@ input,select,textarea{font-family:inherit}
             <option value="FöA">FöA – halber Tag</option>
             <option value="DK">DK – Deutschkurs Migros (½ Tag)</option>
             <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
-            <option value="M">M – Mathe halber Tag</option>
           </select>
         </div>
         <div class="fg" style="flex:1;min-width:110px">
@@ -989,7 +988,7 @@ const AUTO_BEM = {
 // Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
-  ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
+  ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
   ['Sport','Sport'],['PA','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
 ];
 // Werkstatt-Kürzel für Legende
@@ -1885,7 +1884,7 @@ function renderRapport(){
   buildRpt();
 }
 
-const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC','M'];
+const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC'];
 // Ostersonntag (Gregorianischer Kalender, Meeus/Jones/Butcher)
 function easterSunday(year){
   const a=year%19,b=Math.floor(year/100),c=year%100;
@@ -2219,7 +2218,7 @@ function genWeekPDF(){
       const plan=getPlan(ds(d),p.id);
       const blk=getBlocks(p,d);
       if(plan.abwesenheit){row.push(plan.abwesenheit,plan.abwesenheit);return;}
-      row.push(blk.vmB?blk.vmL:(plan.vm||''),blk.nmB?blk.nmL:(plan.nm||''));
+      row.push(blk.vmB?blk.vmL:wsAbbr(plan.vm||''),blk.nmB?blk.nmL:wsAbbr(plan.nm||''));
     });
     return row;
   });
@@ -2257,7 +2256,7 @@ function genWeekPDF(){
       if(data.column.index>=3){
         const v=data.cell.raw;
         if(v==='PA'||v==='PA+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
@@ -2268,10 +2267,15 @@ function genWeekPDF(){
   doc.addPage();
   const dayDate=pd(curDay);
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
-  pdfTitle(doc,`Einteilungsübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
+  pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
   const dayActive=DB.participants
-    .filter(p=>isActiveOnDay(p,dayDate))
+    .filter(p=>{
+      if(!isActiveOnDay(p,dayDate)) return false;
+      const pl=getPlan(curDay,p.id);
+      const bl=getBlocks(p,dayDate);
+      return WS.includes(pl.vm)||WS.includes(pl.nm)||pl.nm==='Sport'||bl.nmL==='Sport';
+    })
     .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
@@ -2324,7 +2328,7 @@ function genWeekPDF(){
       if((data.column.index===3||data.column.index===4)){
         const v=data.cell.raw;
         if(v==='Praktikum'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
@@ -2521,7 +2525,7 @@ const IMP_JC={
   lio:['ioannou','lucas'],
   tom:['schildknecht','thomas schildknecht']
 };
-const IMP_KTYP={DMA:'S',DAZ:'DAZ','FöA':'FöA',DK:'DK',IKPC:'IKPC',M:'M'};
+const IMP_KTYP={DMA:'S',DAZ:'DAZ','FöA':'FöA',DK:'DK',IKPC:'IKPC'};
 const IMP_DAY={Mo:1,Di:2,Mi:3,Do:4,Fr:5};
 
 function impJC(str){
