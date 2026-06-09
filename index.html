@@ -975,7 +975,6 @@ const ABS = [
   {c:'KR-VM', l:'KR VM – Krank Vormittag'},
   {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
   {c:'ZS',   l:'ZS – Zu spät'},
-  {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
   {c:'BA',   l:'BA – Bezahlte Absenz'},
   {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
@@ -1320,17 +1319,19 @@ function renderDayPlan(){
       </div>`;
     }
 
-    // Bemerkung – Freitext (oben) + Schnupperwoche-Dropdown (unten), unabhängig voneinander
+    // Schnuppern – Dropdown (oben) + Freitext (unten), unabhängig voneinander
     const bem=plan.bemerkung||'';
     const sw=plan.sw||'';
+    const isSchnuppertag=!sw&&(plan.abwesenheit==='SL');
     const bemCell=`<div class="bem-wrap">
+      <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
+        <option value=""${(!sw&&!isSchnuppertag)?' selected':''}>–</option>
+        <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
+        <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperwoche Extern</option>
+        <option value="S.TAG"${isSchnuppertag?' selected':''}>Schnuppertag</option>
+      </select>
       <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
         onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
-      <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
-        <option value=""${!sw?' selected':''}>–</option>
-        <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
-        <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperwoche</option>
-      </select>
     </div>`;
 
     rows+=`<tr class="${rowCls}">
@@ -1676,9 +1677,17 @@ function renderFPs(){
 
 
 function onBemChange(sel, pid, day){
-  const val=sel.value; // '' | 'S.EX' – gilt jeweils für die ganze Woche
+  const val=sel.value;
   const {y,w}=curWeek;
-  weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{sw:val}));
+  if(val==='S.TAG'){
+    // Schnuppertag: setzt Absenz SL nur für diesen Tag
+    setPlan(day,pid,{sw:'',abwesenheit:'SL'});
+  } else {
+    // Wenn vorher Schnuppertag war, Absenz SL löschen
+    const curPlan=getPlan(day,pid);
+    if(curPlan.abwesenheit==='SL') setPlan(day,pid,{abwesenheit:''});
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{sw:val}));
+  }
   renderDayPlan();
 }
 
@@ -1966,7 +1975,7 @@ function getRptRows(p,year,month){
     }
     const plan=getPlan(dstr,p.id);
     const blk=getBlocks(p,d);
-    const note=plan.bemerkung||'';
+    const note='';
     let az='',as='',ac='',bem='';
     // ZS (Zu spät) wird NICHT als Absenz erfasst – TN hat 8h gearbeitet
     // PA (Praktikum-intern) erscheint NICHT im Monatsrapport – nur intern
@@ -2320,7 +2329,7 @@ function genWeekPDF(){
     const vmVal=blk.vmB?(blk.vmL==='PA+LS'?'PA+LS':blk.vmL):(plan.vm||'');
     const nmVal=blk.nmB?(blk.nmL==='PA+LS'?'PA+LS':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
-    const swLbl=plan.sw==='S.EX'?'Schnupperwoche':'';
+    const swLbl=plan.sw==='S.EX'?'Schnupperwoche Extern':'';
     const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
     return[
       `${p.vorname} ${p.nachname}`,
