@@ -1612,7 +1612,7 @@ function clearCurrentDay(){
 // ────────────────────────────────────────────
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
