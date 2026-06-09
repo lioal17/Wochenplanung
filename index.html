@@ -1353,7 +1353,7 @@ function renderDayPlan(){
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
-        ${ABS.map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
+        ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
         onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
@@ -1515,7 +1515,13 @@ function onWsCh(sel, pid, slot){
 
 function onAbsChange(pid, day, val){
   if(val==='KR-W'||val==='FE-W'){
-    const{y,w}=curWeek;
+    // Ganze-Woche-Codes können nur am Montag gesetzt werden und füllen immer Mo–Fr
+    if(pd(day).getDay()!==1){
+      toast('⚠ KR-W / FE-W kann nur am Montag eingesteuert werden','t-warn');
+      renderDayPlan();
+      return;
+    }
+    const{y,w}=isoWeek(pd(day));
     weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:val}));
   } else {
     setPlan(day,pid,{abwesenheit:val});
