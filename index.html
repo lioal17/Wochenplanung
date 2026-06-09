@@ -597,16 +597,13 @@ input,select,textarea{font-family:inherit}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-              📄 PDF
+            <button class="btn btn-secondary" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+              📄 Wochenplan generieren
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen">
+            <button class="btn btn-secondary" onclick="copyPrev()" title="Alle Einträge der Vorwoche in die aktuelle Woche kopieren">
               📋 Vorwoche kopieren
             </button>
-            <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
-              ⚡ Auto-Einfüllen
-            </button>
-            <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="clearCurrentDay()" title="Alle Einträge des aktuellen Tages löschen">
+            <button class="btn btn-danger" onclick="clearCurrentDay()" title="Alle Einträge des aktuellen Tages löschen">
               🗑 Alle Einträge löschen
             </button>
           </div>
