@@ -156,6 +156,7 @@ input,select,textarea{font-family:inherit}
    PLAN TABLE
 ═══════════════════════════════════════════ */
 .tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
+/* plan-tbl-wrap overrides tbl-wrap for the day plan */
 .plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
 .plan-tbl th{
   background:var(--g9);color:#fff;padding:9px 10px;
@@ -233,6 +234,11 @@ input,select,textarea{font-family:inherit}
 }
 .blocked.b-school{color:var(--blue);border-color:var(--blue-bg)}
 .blocked.b-sport{color:var(--purple);border-color:var(--purple-bg)}
+.blocked.b-absent{background:#fff1f2;border-color:#fecdd3;color:var(--red);font-weight:900;letter-spacing:1px}
+
+/* Plan table scroll + sticky header */
+.plan-tbl-wrap{max-height:calc(100vh - 230px);overflow-y:auto;overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
+.plan-tbl thead th{position:sticky;top:0;z-index:5;background:var(--g9);}
 
 /* Absence */
 .abs-wrap{display:flex;flex-direction:column;gap:3px}
@@ -1252,11 +1258,15 @@ function renderDayPlan(){
     // Name – green for Lehrstelle / Praktikum
     const nameGreen=p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr';
 
-    // VM cell
-    const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',vmAbsent);
+    // VM cell – absence has priority over block and workshop
+    const vmCell = vmAbsent
+      ? buildAbsCell(absCode)
+      : blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',false);
 
-    // NM cell
-    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',nmAbsent);
+    // NM cell – absence has priority over block and workshop
+    const nmCell = nmAbsent
+      ? buildAbsCell(absCode)
+      : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',false);
 
     // Count werkstatten for summary
     if(!vmAbsent && !blk.vmB && plan.vm) wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
@@ -1357,7 +1367,7 @@ function renderDayPlan(){
   }
 
   area.innerHTML=`
-    <div class="tbl-wrap">
+    <div class="tbl-wrap plan-tbl-wrap">
       <table class="plan-tbl">
         <thead><tr>
           <th style="min-width:155px">Name</th>
@@ -1375,6 +1385,10 @@ function renderDayPlan(){
     </div>
     ${sumChips?`<div class="plan-summary">${sumChips}</div>`:''}
   `;
+}
+
+function buildAbsCell(code){
+  return `<div class="blocked b-absent">${code||'ABS'}</div>`;
 }
 
 function buildBlockedCell(label, type){
