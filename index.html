@@ -1273,18 +1273,15 @@ function renderDayPlan(){
     _pSortDay = curDay;
     const goesBottom=p=>{
       const bl=getBlocks(p,date);
-      return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||
-             p.status==='praktikum'||p.status==='prklehr';
+      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S');
     };
     _pSortList = DB.participants
       .filter(p=>isActiveOnDay(p,date))
       .sort((a,b)=>{
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
-        // Schnupper: nach Vorname sortieren
-        if(a.status==='schnupper'&&b.status==='schnupper')
-          return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
-        return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
+        // Alle TN: immer nach Vorname sortieren
+        return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
       });
   }
   const active = _pSortList;
@@ -1855,7 +1852,7 @@ function renderMonthly(){
   const persons=[...DB.participants].sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
+    return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
   });
 
   if(!persons.length){
@@ -2504,7 +2501,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -2573,14 +2570,25 @@ function genWeekPDF(){
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
+  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
   const dayActive=DB.participants
     .filter(p=>{
       if(!isActiveOnDay(p,dayDate)) return false;
       const pl=getPlan(curDay,p.id);
       const bl=getBlocks(p,dayDate);
-      return WS.includes(pl.vm)||WS.includes(pl.nm)||pl.nm==='Sport'||bl.nmL==='Sport';
+      // Praktikum / PA+LS → nie auf Tagesliste
+      if(p.status==='praktikum'||p.status==='prklehr') return false;
+      // Ganztag Schule → nie auf Tagesliste
+      if(bl.fullB&&bl.vmL==='S') return false;
+      // Ganztags-Absenz → nie auf Tagesliste
+      const rawAbs=pl.abwesenheit||'';
+      if(rawAbs&&!SOFT_ABS_PDF.has(rawAbs)) return false;
+      // Nur TN mit effektivem Werkstatt-Eintrag (nicht gesperrter Slot)
+      const hasVm=!bl.vmB&&WS.includes(pl.vm);
+      const hasNm=!bl.nmB&&(WS.includes(pl.nm)||pl.nm==='Sport');
+      return hasVm||hasNm;
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
