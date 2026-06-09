@@ -2312,8 +2312,14 @@ function genRapportPDF(){
 
       // Abwesenheiten
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
-      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr++;
+      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM'||rawAbs==='KR-W') stats.kr++;
       if(rawAbs==='ZS') stats.zs++;
+
+      // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
+      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
+      const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
+      const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
+      const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
 
       // Schule-Blöcke
       if(blk.fullB&&blk.vmL==='S') stats.s_days++;
@@ -2326,11 +2332,11 @@ function genRapportPDF(){
         if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
       }
 
-      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot)
-      if(!blk.vmB&&plan.vm==='Sport')    stats.sport++;
-      if(!blk.nmB&&plan.nm==='Sport')    stats.sport++;
-      if(!blk.vmB&&plan.vm==='Bewerben') stats.bw++;
-      if(!blk.nmB&&plan.nm==='Bewerben') stats.bw++;
+      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Sport')    stats.sport++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Sport')    stats.sport++;
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Bewerben') stats.bw++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Bewerben') stats.bw++;
 
       // Schnuppern
       if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
