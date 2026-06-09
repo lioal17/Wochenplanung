@@ -784,7 +784,7 @@ input,select,textarea{font-family:inherit}
       <label>Stammwerkstatt <small style="text-transform:none;letter-spacing:0">(Hintergrund)</small></label>
       <select class="fi" id="f_sw">
         <option value="">– keine –</option>
-        <option>Schreinerei</option><option>Bewerben</option><option>Metall</option>
+        <option>Holzwerkstatt</option><option>Bewerben</option><option>Metall</option>
         <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
         <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
         <option>Textil</option><option>Reinigung</option>
@@ -823,7 +823,7 @@ input,select,textarea{font-family:inherit}
             <option value="DAZ">DAZ – halber Tag (VM)</option>
             <option value="S">S – Schule Ganztag</option>
             <option value="FöA">FöA – halber Tag</option>
-            <option value="DK">DK – Deutschkurs halber Tag</option>
+            <option value="DK">DK – Deutschkurs Migros (½ Tag)</option>
             <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
             <option value="M">M – Mathe halber Tag</option>
           </select>
@@ -864,7 +864,7 @@ input,select,textarea{font-family:inherit}
           <label>Werkstatt</label>
           <select class="fi" id="fp_ws">
             <option value="">– Werkstatt wählen –</option>
-            <option>Schreinerei</option><option>Bewerben</option><option>Metall</option>
+            <option>Holzwerkstatt</option><option>Bewerben</option><option>Metall</option>
             <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
             <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
             <option>Textil</option><option>Reinigung</option>
@@ -950,13 +950,13 @@ const WDL = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Sa
 const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
 const WS = [
-  'Schreinerei','Bewerben','Metall','Metallverpacken','Crea',
+  'Holzwerkstatt','Bewerben','Metall','Metallverpacken','Crea',
   'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
 ];
 const WS_ABBR={
-  'Schreinerei':'SE','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
+  'Holzwerkstatt':'H','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
   'Crea':'Crea','Lernstück':'LS','Lernstücke':'LS','Loli':'Loli','Neophyten':'NEO',
-  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'SP',
+  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'Sport',
 };
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
@@ -974,31 +974,27 @@ const ABS = [
   {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
   {c:'UA-NM', l:'UA NM – Unentschuldigt Nachmittag'},
   {c:'UN',   l:'UN – Unfall'},
-  {c:'ZV',   l:'ZV – Zwischenverdienst'},
-  {c:'KO',   l:'KO – Kompensation'},
-  {c:'TZ',   l:'TZ – Teilzeit'},
   {c:'MI',   l:'MI – Militär/Zivilschutz'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
-const SOFT_ABS = ['ZS','TZ','UA-VM','UA-NM','KR-VM','KR-NM'];
+const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
   BA:'Bezahlte Absenz',FE:'Ferien',KR:'Krank',UN:'Unfall',
-  UA:'Unentschuldigte Absenz',KO:'Kompensation',ZV:'Zwischenverdienst',
-  TZ:'Teilzeit',MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
+  UA:'Unentschuldigte Absenz',MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
 
 // Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
-  ['DK','Deutschkurs (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
-  ['SP','Sport'],['PRK','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
+  ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['M','Mathematik (½ Tag)'],
+  ['Sport','Sport'],['PA','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
 ];
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
-  ['SE','Schreinerei'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
+  ['H','Holzwerkstatt'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
   ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],
 ];
 // Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
@@ -1117,7 +1113,7 @@ function getBlocks(p, date){
   if(p.status==='schnupper')
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
   if(p.status==='praktikum')
-    return {vmB:true,nmB:true,fullB:true,vmL:'PRK',nmL:'PRK'};
+    return {vmB:true,nmB:true,fullB:true,vmL:'PA',nmL:'PA'};
   if(p.status==='prklehr')
     return {vmB:true,nmB:true,fullB:true,vmL:'PA+LS',nmL:'PA+LS'};
   // Schnupperwoche (extern, S.EX) → ganze Woche blockiert wie Schule, Code SL (Schnupperlehre).
@@ -1131,7 +1127,7 @@ function getBlocks(p, date){
     else { vmB=true; if(!vmL) vmL=s.typ; }
   }
   for(const sp of (p.sporttermine||[])){
-    if(+sp===dow){ nmB=true; if(!nmL) nmL='SP'; }
+    if(+sp===dow){ nmB=true; if(!nmL) nmL='Sport'; }
   }
   return {vmB,nmB,fullB,vmL,nmL};
 }
@@ -1261,12 +1257,12 @@ function renderDayPlan(){
     const vmCell = blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',vmAbsent);
 
     // NM cell
-    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='SP'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',nmAbsent);
+    const nmCell = blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',nmAbsent);
 
     // Count werkstatten for summary
     if(!vmAbsent && !blk.vmB && plan.vm) wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
     if(!nmAbsent){
-      if(blk.nmL==='SP'||plan.nm==='Sport') wsCounts['Sport']=(wsCounts['Sport']||0)+1;
+      if(blk.nmL==='Sport'||plan.nm==='Sport') wsCounts['Sport']=(wsCounts['Sport']||0)+1;
       else if(!blk.nmB && plan.nm) wsCounts[plan.nm]=(wsCounts[plan.nm]||0)+1;
     }
 
@@ -1383,7 +1379,7 @@ function renderDayPlan(){
 }
 
 function buildBlockedCell(label, type){
-  if(label==='PRK') return `<span class="blocked-prk">Praktikum</span>`;
+  if(label==='PA') return `<span class="blocked-prk">PA</span>`;
   if(label==='PA+LS') return `<span class="blocked-prk">PA+LS</span>`;
   if(label==='S.LW') return `<span class="blocked-slw">S.LW</span>`;
   const cls=type==='sport'?'b-sport':'b-school';
@@ -1546,7 +1542,7 @@ function renderPersons(){
           ${p.einsatzVon?`<span>▶ ${fd(p.einsatzVon)}</span>`:''}
           ${p.einsatzBis?`<span>⏹ ${fd(p.einsatzBis)}</span>`:''}
           ${p.status!=='schnupper'?`<span>📚 ${sch}</span>`:''}
-          ${p.status!=='schnupper'&&p.sporttermine?.length?`<span>🏃 SP: ${spt}</span>`:''}
+          ${p.status!=='schnupper'&&p.sporttermine?.length?`<span>🏃 Sport: ${spt}</span>`:''}
           ${p.aktiviertAm?`<span>✅ Aktiv seit ${fd(p.aktiviertAm)}</span>`:''}
         </div>
       </div>
@@ -1808,9 +1804,9 @@ function renderMonthly(){
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
       // Individual VM + NM cells (with partial UA-VM / UA-NM)
-      const vmCls=(isUAvm||isKRvm)?'moc-abs':blk.vmB?((blk.vmL==='PRK'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmCls=(isUAvm||isKRvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
       const vmTxt=isUAvm?'UA':isKRvm?'KR':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=(isUAnm||isKRnm)?'moc-abs':blk.nmB?((blk.nmL==='PRK'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmCls=(isUAnm||isKRnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
       const nmTxt=isUAnm?'UA':isKRnm?'KR':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
@@ -2007,8 +2003,7 @@ function buildRpt(){
   html+=`<div class="rpt-legend">
     <strong>Absenzencode:</strong>&nbsp;&nbsp;
     FE = Ferien &nbsp;·&nbsp; KR = Krankheit &nbsp;·&nbsp; BA = bezahlte Absenz &nbsp;·&nbsp;
-    ZV = Zwischenverdienst &nbsp;·&nbsp; KO = Kompensation &nbsp;·&nbsp; UN = Unfall &nbsp;·&nbsp;
-    UA = Unbezahlte Absenz &nbsp;·&nbsp; TZ = Teilzeit &nbsp;·&nbsp; MI = Militär oder Zivilschutz
+    UN = Unfall &nbsp;·&nbsp; UA = Unbezahlte Absenz &nbsp;·&nbsp; MI = Militär oder Zivilschutz
   </div>`;
 
   html+=`<table class="rpt-tbl"><thead><tr>
@@ -2060,13 +2055,13 @@ function genPDF(){
   doc.text('Absenzencode',mg+2,yp+6);
   doc.setFont('helvetica','normal');
   const leg=[
-    [mg+30,'FE = Ferien',          mg+78,'ZV = Zwischenverdienst', mg+138,'UA = Unbezahlte Absenz'],
-    [mg+30,'KR = Krankheit',       mg+78,'KO = Kompensation',      mg+138,'TZ = Teilzeit'],
-    [mg+30,'BA = bezahlte Absenz', mg+78,'UN = Unfall',            mg+138,'MI = Militär oder Zivilschutz'],
+    [mg+30,'FE = Ferien',          mg+100,'UA = Unbezahlte Absenz'],
+    [mg+30,'KR = Krankheit',       mg+100,'MI = Militär oder Zivilschutz'],
+    [mg+30,'BA = bezahlte Absenz', mg+100,'UN = Unfall'],
   ];
-  leg.forEach(([x1,t1,x2,t2,x3,t3],i)=>{
+  leg.forEach(([x1,t1,x2,t2],i)=>{
     const yy=yp+6+i*5.5;
-    doc.text(t1,x1,yy);doc.text(t2,x2,yy);doc.text(t3,x3,yy);
+    doc.text(t1,x1,yy);doc.text(t2,x2,yy);
   });
   yp+=29;
 
@@ -2261,8 +2256,8 @@ function genWeekPDF(){
       }
       if(data.column.index>=3){
         const v=data.cell.raw;
-        if(v==='PRK'||v==='PA+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        if(v==='PA'||v==='PA+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','M','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
@@ -2284,8 +2279,8 @@ function genWeekPDF(){
     const plan=getPlan(curDay,p.id);
     const blk=getBlocks(p,dayDate);
     const bwJC=p.bewerbenJC||p.jobCoach||'';
-    const vmVal=blk.vmB?(blk.vmL==='PRK'?'Praktikum':blk.vmL==='PA+LS'?'PA+LS':blk.vmL):(plan.vm||'');
-    const nmVal=blk.nmB?(blk.nmL==='PRK'?'Praktikum':blk.nmL==='PA+LS'?'PA+LS':blk.nmL):(plan.nm||'');
+    const vmVal=blk.vmB?(blk.vmL==='PA+LS'?'PA+LS':blk.vmL):(plan.vm||'');
+    const nmVal=blk.nmB?(blk.nmL==='PA+LS'?'PA+LS':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
     const swLbl=plan.sw==='S.EX'?'Schnupperwoche':'';
     const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
@@ -2329,7 +2324,7 @@ function genWeekPDF(){
       if((data.column.index===3||data.column.index===4)){
         const v=data.cell.raw;
         if(v==='Praktikum'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','SP','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        else if(['S','DAZ','FöA','DK','IKPC','M','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
