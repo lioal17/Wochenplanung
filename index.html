@@ -561,8 +561,8 @@ input,select,textarea{font-family:inherit}
       <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
     </div>
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
-    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -573,8 +573,8 @@ input,select,textarea{font-family:inherit}
 <nav class="nav">
   <button class="nav-btn active" data-v="plan"    onclick="show('plan')"    >📅 Wochenplan</button>
   <button class="nav-btn"        data-v="monthly" onclick="show('monthly')" >📊 Monatsübersicht</button>
-  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
+  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
 </nav>
 
@@ -2312,8 +2312,14 @@ function genRapportPDF(){
 
       // Abwesenheiten
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
-      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr++;
+      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM'||rawAbs==='KR-W') stats.kr++;
       if(rawAbs==='ZS') stats.zs++;
+
+      // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
+      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
+      const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
+      const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
+      const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
 
       // Schule-Blöcke
       if(blk.fullB&&blk.vmL==='S') stats.s_days++;
@@ -2326,11 +2332,11 @@ function genRapportPDF(){
         if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
       }
 
-      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot)
-      if(!blk.vmB&&plan.vm==='Sport')    stats.sport++;
-      if(!blk.nmB&&plan.nm==='Sport')    stats.sport++;
-      if(!blk.vmB&&plan.vm==='Bewerben') stats.bw++;
-      if(!blk.nmB&&plan.nm==='Bewerben') stats.bw++;
+      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Sport')    stats.sport++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Sport')    stats.sport++;
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Bewerben') stats.bw++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Bewerben') stats.bw++;
 
       // Schnuppern
       if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
@@ -2356,7 +2362,7 @@ function genRapportPDF(){
   doc.setFillColor(30,58,95);
   doc.rect(mg,yp,W-2*mg,15,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
-  doc.text('Rapport',W/2,yp+10,{align:'center'});
+  doc.text('Teilnehmer-Rapport',W/2,yp+10,{align:'center'});
   doc.setFontSize(8.5);doc.setFont('helvetica','normal');
   doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
   yp+=21;
@@ -2410,12 +2416,13 @@ function genRapportPDF(){
       cellPadding:{top:3,right:5,bottom:3,left:5},
     },
     columnStyles:{
-      0:{cellWidth:90},
-      1:{cellWidth:42,halign:'right'},
-      2:{cellWidth:18,halign:'center',textColor:[140,140,140]},
-      3:{cellWidth:28,halign:'right'},
+      0:{cellWidth:84},
+      1:{cellWidth:46,halign:'left'},
+      2:{cellWidth:22,halign:'center',textColor:[140,140,140]},
+      3:{cellWidth:26,halign:'right'},
     },
     didParseCell:(d)=>{
+      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='center';return;}
       if(d.section!=='body') return;
       const txt=d.row.raw[0];
       const isSec=['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt);
