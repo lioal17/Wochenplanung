@@ -144,12 +144,12 @@ input,select,textarea{font-family:inherit}
 .day-bar{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
 .day-btn{
   padding:7px 14px;border-radius:6px;border:1px solid var(--g3);
-  background:#fff;font-size:12px;font-weight:600;color:var(--g6);
+  background:#fff;font-size:12px;font-weight:600;color:#1e3a5f;
   cursor:pointer;transition:all .15s;
 }
 .day-btn:hover{border-color:var(--navy-light);color:var(--navy)}
-.day-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.day-btn.today{border-color:var(--amber);color:var(--amber);padding:10px 20px;font-size:13.5px;font-weight:700;box-shadow:0 0 0 2px var(--amber)}
+.day-btn.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
+.day-btn.today{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
 .day-btn.today.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
 
 /* ═══════════════════════════════════════════
@@ -593,7 +593,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chWeek(-1)">&#8249;</button>
           <div class="week-label" id="weekLabel">–</div>
           <button class="btn-icon" onclick="chWeek(1)">&#8250;</button>
-          <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
+          <button class="day-btn" onclick="goToday()">Heute</button>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
