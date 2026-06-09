@@ -158,7 +158,7 @@ input,select,textarea{font-family:inherit}
 .tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
 /* plan-tbl-wrap = tbl-wrap ohne sticky */
 .plan-tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
-.plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
 .plan-tbl th{
   background:var(--g9);color:#fff;padding:9px 10px;
   text-align:left;font-size:11px;font-weight:600;letter-spacing:.5px;
@@ -595,7 +595,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chWeek(1)">&#8250;</button>
           <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
               📄 PDF
@@ -640,7 +640,10 @@ input,select,textarea{font-family:inherit}
           <div class="week-label" id="moLabel">–</div>
           <button class="btn-icon" onclick="chMonth(1)">&#8250;</button>
         </div>
-        <div id="moHint"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="openRapportModal()" title="Lernbericht pro Teilnehmer als PDF exportieren">📊 Rapport</button>
+          <div id="moHint"></div>
+        </div>
       </div>
       <div id="moArea"></div>
     </div>
@@ -943,6 +946,42 @@ input,select,textarea{font-family:inherit}
 </div>
 </div>
 
+<!-- ╔══════════════════════════════════════════╗
+     ║  RAPPORT MODAL                           ║
+     ╚══════════════════════════════════════════╝ -->
+<div class="overlay" id="rapportOverlay">
+<div class="modal" style="max-width:480px">
+  <div class="modal-head">
+    <div class="modal-title">Lernbericht (Rapport) exportieren</div>
+    <button class="modal-x" onclick="closeRapportModal()">&times;</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:4px">
+    <div class="fg">
+      <label>Teilnehmer</label>
+      <select class="fi" id="rptRP" style="width:100%"></select>
+    </div>
+    <div class="fg">
+      <label>Zeitraum</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+          <input type="radio" name="rptRange" value="all" checked onchange="toggleRapportMonth()"> Ganze Laufzeit
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+          <input type="radio" name="rptRange" value="month" onchange="toggleRapportMonth()"> Monat wählen
+        </label>
+      </div>
+      <div id="rptMonthWrap" style="display:none;margin-top:8px">
+        <input type="month" class="fi" id="rptRM" style="width:160px">
+      </div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="closeRapportModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="genRapportPDF()">📊 PDF exportieren</button>
+  </div>
+</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
@@ -1027,6 +1066,9 @@ let dirty = false;
 let curWeek  = null; // {y, w}
 let curDay   = null; // "YYYY-MM-DD"
 let curMonth = null; // {y, m}
+
+// Sort cache – recomputed only when day changes, stable during same-day edits
+let _pSortDay=null, _pSortList=null;
 
 // Modal temp state
 let editId = null;
@@ -1217,18 +1259,23 @@ function renderDayPlan(){
   const date = pd(curDay);
   const area = document.getElementById('planArea');
 
-  const goesBottom=p=>{
-    const pl=getPlan(curDay,p.id); const bl=getBlocks(p,date); const abs=pl.abwesenheit||'';
-    return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||pl.sw==='S.EX'||
-           p.status==='praktikum'||p.status==='prklehr'||abs==='BA'||abs==='FE';
-  };
-  const active = DB.participants
-    .filter(p=>isActiveOnDay(p,date))
-    .sort((a,b)=>{
-      const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
-      if(ab!==bb) return ab-bb;
-      return a.vorname.localeCompare(b.vorname,'de');
-    });
+  // Rebuild sort only when day changes – never during same-day edits (no jumping)
+  if(_pSortDay !== curDay){
+    _pSortDay = curDay;
+    const goesBottom=p=>{
+      const bl=getBlocks(p,date);
+      return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||
+             p.status==='praktikum'||p.status==='prklehr';
+    };
+    _pSortList = DB.participants
+      .filter(p=>isActiveOnDay(p,date))
+      .sort((a,b)=>{
+        const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
+        if(ab!==bb) return ab-bb;
+        return a.nachname.localeCompare(b.nachname,'de');
+      });
+  }
+  const active = _pSortList;
 
   if(!active.length){
     area.innerHTML=`<div class="empty-state"><p>Keine aktiven Teilnehmer für diesen Tag.</p><button class="btn btn-primary" onclick="show('person')">+ Teilnehmer hinzufügen</button></div>`;
@@ -1394,8 +1441,8 @@ function renderDayPlan(){
           <th style="width:55px">JC</th>
           <th style="width:42px">IIZ</th>
           <th style="width:32px">BW</th>
-          <th style="min-width:160px">VM <small style="font-weight:400;opacity:.7">08:15–12:00</small></th>
-          <th style="min-width:160px">NM <small style="font-weight:400;opacity:.7">13:15–17:00</small></th>
+          <th style="width:170px">VM <small style="font-weight:400;opacity:.7">08:15–12:00</small></th>
+          <th style="width:170px">NM <small style="font-weight:400;opacity:.7">13:15–17:00</small></th>
           <th style="min-width:155px">Abwesenheit</th>
           <th style="width:58px;text-align:center">eCase</th>
           <th style="min-width:120px">Schnuppern</th>
@@ -1714,6 +1761,7 @@ function savePM(){
   } else {
     DB.participants.push({id:uid(),...data});
   }
+  _pSortDay=null; // invalidate sort cache
   saveDB(); closePM(); renderPersons(); renderWBAlerts();
   toast(`✓ ${vn} ${nn} gespeichert`,'t-ok');
 }
@@ -1723,6 +1771,7 @@ function delPerson(id){
   if(!confirm(`${p.vorname} ${p.nachname} wirklich löschen?\n\nAlle Einplanungen werden ebenfalls entfernt.`)) return;
   DB.participants=DB.participants.filter(x=>x.id!==id);
   Object.keys(DB.plans).forEach(d=>{ if(DB.plans[d]) delete DB.plans[d][id]; });
+  _pSortDay=null; // invalidate sort cache
   saveDB(); renderPersons(); renderWBAlerts(); toast('Teilnehmer gelöscht');
 }
 
@@ -1794,7 +1843,7 @@ function renderMonthly(){
   const persons=[...DB.participants].sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.vorname.localeCompare(b.vorname,'de');
+    return a.nachname.localeCompare(b.nachname,'de');
   });
 
   if(!persons.length){
@@ -2189,6 +2238,181 @@ function genPDF(){
 }
 
 // ────────────────────────────────────────────
+// LERNBERICHT (RAPPORT) MODAL + PDF
+// ────────────────────────────────────────────
+function openRapportModal(){
+  const sel=document.getElementById('rptRP');
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de'));
+  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.nachname} ${p.vorname}</option>`).join('');
+  const now=new Date();
+  document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  document.querySelector('input[name="rptRange"][value="all"]').checked=true;
+  document.getElementById('rptMonthWrap').style.display='none';
+  document.getElementById('rapportOverlay').classList.add('open');
+}
+function closeRapportModal(){
+  document.getElementById('rapportOverlay').classList.remove('open');
+}
+function toggleRapportMonth(){
+  const isMonth=document.querySelector('input[name="rptRange"]:checked').value==='month';
+  document.getElementById('rptMonthWrap').style.display=isMonth?'block':'none';
+}
+
+function genRapportPDF(){
+  const pid=document.getElementById('rptRP').value; if(!pid) return;
+  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+  const rangeVal=document.querySelector('input[name="rptRange"]:checked').value;
+
+  let startDate, endDate, rangeLabel;
+  if(rangeVal==='month'){
+    const mv=document.getElementById('rptRM').value; if(!mv) return;
+    const[ry,rm]=mv.split('-').map(Number);
+    startDate=new Date(ry,rm-1,1); endDate=new Date(ry,rm,0);
+    rangeLabel=`${MON[rm-1]} ${ry}`;
+  } else {
+    startDate=p.eintrittsdatum?new Date(p.eintrittsdatum):new Date();
+    endDate=p.austrittsdatum?new Date(p.austrittsdatum):new Date();
+    rangeLabel='Ganze Laufzeit';
+  }
+
+  // Collect all weekdays in range where TN is active
+  const stats={
+    ua:0, kr:0, zs:0,
+    s_days:0, daz:0, foa:0, dk:0,
+    sport:0, bw:0,
+    schnuppertag:0, schnupperwoche:0,
+  };
+  const d=new Date(startDate);
+  while(d<=endDate){
+    if(!isWE(d)&&isActiveOnDay(p,d)){
+      const dstr=ds(d);
+      const plan=getPlan(dstr,p.id);
+      const blk=getBlocks(p,d);
+      const rawAbs=plan.abwesenheit||'';
+
+      // Abwesenheiten
+      if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
+      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr++;
+      if(rawAbs==='ZS') stats.zs++;
+
+      // Schule-Blöcke
+      if(blk.fullB&&blk.vmL==='S') stats.s_days++;
+      else {
+        if(blk.vmB&&blk.vmL==='DAZ') stats.daz++;
+        if(blk.nmB&&blk.nmL==='DAZ') stats.daz++;
+        if(blk.vmB&&blk.vmL==='FöA') stats.foa++;
+        if(blk.nmB&&blk.nmL==='FöA') stats.foa++;
+        if(blk.vmB&&blk.vmL==='DK')  stats.dk++;
+        if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
+      }
+
+      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot)
+      if(!blk.vmB&&plan.vm==='Sport')    stats.sport++;
+      if(!blk.nmB&&plan.nm==='Sport')    stats.sport++;
+      if(!blk.vmB&&plan.vm==='Bewerben') stats.bw++;
+      if(!blk.nmB&&plan.nm==='Bewerben') stats.bw++;
+
+      // Schnuppern
+      if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
+      if(rawAbs==='SL'&&!plan.sw)   stats.schnuppertag++;
+    }
+    d.setDate(d.getDate()+1);
+  }
+
+  const s_lek   = stats.s_days * 8;
+  const daz_lek = stats.daz * 4;
+  const foa_lek = stats.foa * 4;
+  const dk_lek  = stats.dk * 4;
+  const total_sch = s_lek + daz_lek + foa_lek + dk_lek;
+  const sport_lek = stats.sport * 2;
+  const bw_lek    = stats.bw * 4.5;
+
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, mg=14;
+  let yp=mg;
+
+  // Header bar
+  doc.setFillColor(30,58,95);
+  doc.rect(mg,yp,W-2*mg,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
+  doc.text('Lernbericht',mg+4,yp+9.5);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(rangeLabel,W-mg-4,yp+9.5,{align:'right'});
+  yp+=20;
+
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  doc.text(`${p.nachname} ${p.vorname}`,mg,yp);
+  if(p.jc){ doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100);
+    doc.text(`Jobcoach: ${p.jc}`,W-mg,yp,{align:'right'}); }
+  yp+=10;
+  doc.setDrawColor(220);doc.line(mg,yp,W-mg,yp);
+  yp+=8;
+
+  // Stats table rows
+  const rows=[
+    ['ABWESENHEITEN','','',''],
+    ['Unentschuldigte Absenz (UA)',`${stats.ua} Tag${stats.ua!==1?'e':''}`, '',''],
+    ['Krankheit (KR)',`${stats.kr} Tag${stats.kr!==1?'e':''}`, '',''],
+    ['Zu spät (ZS)',`${stats.zs}×`, '',''],
+    ['','','',''],
+    ['SCHULE','','',''],
+    ['Schultag (S)',`${stats.s_days} Tag${stats.s_days!==1?'e':''}`, '× 8 Lektionen',`= ${s_lek} Lektionen`],
+    ['DAZ – Deutsch als Zweitsprache',`${stats.daz} Einheit${stats.daz!==1?'en':''}`, '× 4 Lektionen',`= ${daz_lek} Lektionen`],
+    ['FöA – Förderangebot',`${stats.foa} Einheit${stats.foa!==1?'en':''}`, '× 4 Lektionen',`= ${foa_lek} Lektionen`],
+    ...(stats.dk>0?[['DK – Deutschkurs Migros',`${stats.dk} Einheit${stats.dk!==1?'en':''}`, '× 4 Lektionen',`= ${dk_lek} Lektionen`]]:[]),
+    ['TOTAL Schul-Lektionen','','',`${total_sch} Lektionen`],
+    ['','','',''],
+    ['WERKSTATT','','',''],
+    ['Sport',`${stats.sport} Einheit${stats.sport!==1?'en':''}`, '× 2 Lektionen',`= ${sport_lek} Lektionen`],
+    ['Bewerben (BW)',`${stats.bw} Einheit${stats.bw!==1?'en':''}`, '× 4.5 Lektionen',`= ${bw_lek.toFixed(1)} Lektionen`],
+    ['','','',''],
+    ['SCHNUPPERN','','',''],
+    ['Schnuppertag (Extern, einzeln)',`${stats.schnuppertag} Tag${stats.schnuppertag!==1?'e':''}`, '',''],
+    ['Schnupperwoche Extern',`${stats.schnupperwoche} Tag${stats.schnupperwoche!==1?'e':''}`, '',''],
+  ];
+
+  doc.autoTable({
+    startY:yp,
+    body:rows,
+    styles:{fontSize:9,cellPadding:{top:2,right:4,bottom:2,left:4},lineColor:[235,235,235],lineWidth:.2},
+    columnStyles:{
+      0:{cellWidth:100},
+      1:{cellWidth:42,halign:'right'},
+      2:{cellWidth:32,halign:'center',textColor:[120,120,120]},
+      3:{cellWidth:22,halign:'right'},
+    },
+    didParseCell:(d)=>{
+      if(d.section!=='body') return;
+      const txt=d.row.raw[0];
+      if(['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt)){
+        d.cell.styles.fillColor=[30,58,95];d.cell.styles.textColor=[255,255,255];
+        d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=8.5;
+      } else if(txt==='TOTAL Schul-Lektionen'){
+        d.cell.styles.fillColor=[219,234,254];d.cell.styles.fontStyle='bold';
+      } else if(txt===''){
+        d.cell.styles.minCellHeight=2;d.cell.styles.fillColor=[248,248,248];
+      }
+    },
+    margin:{left:mg,right:mg},
+  });
+
+  yp=doc.lastAutoTable.finalY+8;
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(150);
+  const today=new Date();
+  doc.text(`Erstellt am ${pad(today.getDate())}.${pad(today.getMonth()+1)}.${today.getFullYear()}`,mg,yp);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(55,55,55);
+  doc.text('BASISJOB',W-mg,287,{align:'right'});
+
+  const fn=rangeVal==='month'
+    ?`Rapport_${p.nachname}_${p.vorname}_${document.getElementById('rptRM').value}.pdf`
+    :`Rapport_${p.nachname}_${p.vorname}_Laufzeit.pdf`;
+  doc.save(fn);
+  closeRapportModal();
+  toast('📊 Rapport wird heruntergeladen…','t-ok');
+}
+
+// ────────────────────────────────────────────
 // WOCHENPLAN PDF  (Seite 1: Wochenübersicht, Seite 2: Tagesübersicht)
 // ────────────────────────────────────────────
 function genWeekPDF(){
@@ -2551,6 +2775,9 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // Close modals on backdrop click
 document.getElementById('pmOverlay').addEventListener('click',e=>{
   if(e.target===e.currentTarget) closePM();
+});
+document.getElementById('rapportOverlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) closeRapportModal();
 });
 
 // ────────────────────────────────────────────
