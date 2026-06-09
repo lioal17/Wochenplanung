@@ -1014,6 +1014,7 @@ const ABS = [
   {c:'BA-NM', l:'BA NM – Bezahlte Absenz Nachmittag'},
   {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
   {c:'FE',    l:'FE – Ferien'},
+  {c:'FE-W',  l:'FE-W – Ferien ganze Woche'},
   {c:'KR',    l:'KR – Krank (ganzer Tag)'},
   {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
   {c:'KR-VM', l:'KR VM – Krank Vormittag'},
@@ -1034,7 +1035,7 @@ const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
   BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz Vormittag','BA-NM':'Bezahlte Absenz Nachmittag',
-  FE:'Ferien',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',UN:'Unfall',
+  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',UN:'Unfall',
   UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz Vormittag','UA-NM':'Unentschuldigte Absenz Nachmittag',
   MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
@@ -1513,9 +1514,9 @@ function onWsCh(sel, pid, slot){
 }
 
 function onAbsChange(pid, day, val){
-  if(val==='KR-W'){
+  if(val==='KR-W'||val==='FE-W'){
     const{y,w}=curWeek;
-    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:'KR-W'}));
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:val}));
   } else {
     setPlan(day,pid,{abwesenheit:val});
   }
