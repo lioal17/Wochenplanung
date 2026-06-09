@@ -270,7 +270,10 @@ input,select,textarea{font-family:inherit}
 .legend-box{margin-top:18px;padding:14px 16px;background:var(--g1,#f6f8fb);border:1px solid var(--g2,#e6eaf0);border-radius:8px}
 .legend-box .lg-grp{margin-bottom:8px}
 .legend-box .lg-grp:last-child{margin-bottom:0}
-.legend-box .lg-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g6,#6b7280);margin-bottom:5px}
+.legend-box .lg-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  padding:4px 10px;border-radius:4px;margin-bottom:6px;display:inline-block}
+.legend-box .lg-h-blue{background:#dbeafe;color:#1e3a5f}
+.legend-box .lg-h-red{background:#fee2e2;color:#991b1b}
 .legend-box .lg-row{display:flex;flex-wrap:wrap;gap:4px 14px}
 .legend-box .lg-i{font-size:11.5px;color:var(--g8,#374151);white-space:nowrap}
 .legend-box .lg-i b{color:var(--navy,#1e3a5f);font-weight:700;margin-right:3px}
@@ -991,11 +994,10 @@ const AUTO_BEM = {
   UA:'Unentschuldigte Absenz',MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
 
-// Kürzel-Legende (Einteilung/Sperren) – zentrale Quelle für Bildschirm + PDF
+// Schule-Code – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
   ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
   ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
-  ['Sport','Sport'],['PA','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
@@ -1006,10 +1008,12 @@ const BLK_LABEL = {
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
   ['H','Holzwerkstatt'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
-  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],
+  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],['Sport','Sport'],
 ];
-// Abwesenheits-Kürzel aus ABS ableiten (Code + Bedeutung)
+// Absenz-Codes: Basis aus ABS-Array
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
+// Absenz-Code kombiniert: PA+LS (Planungssperre) + alle ABS-Einträge
+function legendAbsCombined(){ return [['PA+LS','Praktikum + Lehrstelle'],...legendAbs()]; }
 
 const JC_CSS = {lio:'jc-lio',tom:'jc-tom',yvi:'jc-yvi'};
 const JC_LBL = {lio:'Lio',tom:'Tom',yvi:'Yvi'};
@@ -1205,9 +1209,9 @@ function renderLegend(){
   const el=document.getElementById('legendBox'); if(!el) return;
   const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
   el.innerHTML=
-    `<div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
-    `<div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
-    `<div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${row(legendAbs())}</div></div>`;
+    `<div class="lg-grp"><div class="lg-h lg-h-blue">Schule-Code</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h lg-h-blue">Werkstatt-Code</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${row(legendAbsCombined())}</div></div>`;
 }
 
 function renderDayPlan(){
@@ -1843,9 +1847,9 @@ function renderMonthly(){
 
   const lgRow=arr=>arr.map(([c,l])=>`<span class="lg-i"><b>${c}</b>${l}</span>`).join('');
   const legend=`<div class="legend-box mo-legend-full">
-    <div class="lg-grp"><div class="lg-h">Einteilung (Einteilungscode)</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
-    <div class="lg-grp"><div class="lg-h">Werkstatt-Kürzel</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
-    <div class="lg-grp"><div class="lg-h">Abwesenheiten (Absenzcode)</div><div class="lg-row">${lgRow(legendAbs())}</div></div>
+    <div class="lg-grp"><div class="lg-h lg-h-blue">Schule-Code</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
+    <div class="lg-grp"><div class="lg-h lg-h-blue">Werkstatt-Code</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
+    <div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${lgRow(legendAbsCombined())}</div></div>
   </div>`;
 
   document.getElementById('moArea').innerHTML=`
@@ -2367,10 +2371,10 @@ function genWeekPDF(){
   const lgX=mg, lgW=W-2*mg;
   let lgY=22;
 
-  const lgSection=(title,items,cols=4)=>{
+  const lgSection=(title,items,cols=4,bgRgb=[30,55,100],titleRgb=[255,255,255])=>{
     // Header
-    doc.setFillColor(30,55,100);doc.rect(lgX,lgY,lgW,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255);
+    doc.setFillColor(...bgRgb);doc.rect(lgX,lgY,lgW,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...titleRgb);
     doc.text(title,lgX+4,lgY+5.5);lgY+=14;
     // Items in cols columns
     const perCol=Math.ceil(items.length/cols);
@@ -2389,9 +2393,9 @@ function genWeekPDF(){
     lgY+=perCol*6+12;
   };
 
-  lgSection('EINTEILUNG (EINTEILUNGSCODE)', LEGEND_BLOCK, 2);
-  lgSection('WERKSTATT-KÜRZEL', WS_LEGEND, 3);
-  lgSection('ABWESENHEITEN (ABSENZCODE)', legendAbs(), 3);
+  lgSection('SCHULE-CODE', LEGEND_BLOCK, 2, [219,234,254], [30,55,100]);
+  lgSection('WERKSTATT-CODE', WS_LEGEND, 3, [219,234,254], [30,55,100]);
+  lgSection('ABSENZ-CODE', legendAbsCombined(), 3, [254,226,226], [150,20,20]);
 
   // Footer alle Seiten
   const pageCount=doc.getNumberOfPages();
