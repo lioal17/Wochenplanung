@@ -997,6 +997,12 @@ const LEGEND_BLOCK = [
   ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
   ['Sport','Sport'],['PA','Praktikum'],['PA+LS','Praktikum + Lehrstelle'],['SL','Schnupperlehre (extern)'],
 ];
+// Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
+const BLK_LABEL = {
+  'S':'Schule','DAZ':'DAZ','FöA':'Förderangebot','DK':'Deutschkurs Migros',
+  'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
+  'PA+LS':'Prakt. + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
+};
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
   ['H','Holzwerkstatt'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
@@ -1208,9 +1214,14 @@ function renderDayPlan(){
   const date = pd(curDay);
   const area = document.getElementById('planArea');
 
+  const notPlannable=p=>p.status==='praktikum'||p.status==='prklehr';
   const active = DB.participants
     .filter(p=>isActiveOnDay(p,date))
-    .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>{
+      const ab=notPlannable(a)?1:0, bb=notPlannable(b)?1:0;
+      if(ab!==bb) return ab-bb;
+      return a.vorname.localeCompare(b.vorname,'de');
+    });
 
   if(!active.length){
     area.innerHTML=`<div class="empty-state"><p>Keine aktiven Teilnehmer für diesen Tag.</p><button class="btn btn-primary" onclick="show('person')">+ Teilnehmer hinzufügen</button></div>`;
@@ -1392,11 +1403,11 @@ function buildAbsCell(code){
 }
 
 function buildBlockedCell(label, type){
-  if(label==='PA') return `<span class="blocked-prk">PA</span>`;
-  if(label==='PA+LS') return `<span class="blocked-prk">PA+LS</span>`;
+  const txt=BLK_LABEL[label]||label||'–';
+  if(label==='PA'||label==='PA+LS') return `<span class="blocked-prk">${txt}</span>`;
   if(label==='S.LW') return `<span class="blocked-slw">S.LW</span>`;
   const cls=type==='sport'?'b-sport':'b-school';
-  return `<div class="blocked ${cls}">${label||'–'}</div>`;
+  return `<div class="blocked ${cls}">${txt}</div>`;
 }
 
 function buildWsCell(pid, slot, val, disabled){
