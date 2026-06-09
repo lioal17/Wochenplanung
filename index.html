@@ -1017,6 +1017,7 @@ const ABS = [
   {c:'BA-NM', l:'BA NM – Bezahlte Absenz Nachmittag'},
   {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
   {c:'FE',    l:'FE – Ferien'},
+  {c:'FE-W',  l:'FE-W – Ferien ganze Woche'},
   {c:'KR',    l:'KR – Krank (ganzer Tag)'},
   {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
   {c:'KR-VM', l:'KR VM – Krank Vormittag'},
@@ -1037,7 +1038,7 @@ const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
   BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz VM','BA-NM':'Bezahlte Absenz NM',
-  FE:'Ferien',KR:'Krank','KR-VM':'Krank VM','KR-NM':'Krank NM',UN:'Unfall',
+  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank VM','KR-NM':'Krank NM','KR-W':'Krank ganze Woche',UN:'Unfall',
   UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz VM','UA-NM':'Unentschuldigte Absenz NM',
   MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
@@ -1276,8 +1277,10 @@ function renderDayPlan(){
     _pSortDay = curDay;
     const goesBottom=p=>{
       const bl=getBlocks(p,date);
+      const abs=getPlan(curDay,p.id).abwesenheit||'';
       return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||
-             p.status==='praktikum'||p.status==='prklehr';
+             p.status==='praktikum'||p.status==='prklehr'||
+             abs==='KR-W'||abs==='FE-W';
     };
     _pSortList = DB.participants
       .filter(p=>isActiveOnDay(p,date))
@@ -1356,7 +1359,7 @@ function renderDayPlan(){
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
-        ${ABS.map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
+        ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
         onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
@@ -2303,8 +2306,17 @@ function genRapportPDF(){
     const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
     rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
   } else {
-    startDate=p.einsatzVon?new Date(p.einsatzVon):new Date();
-    endDate=p.einsatzBis?new Date(p.einsatzBis):new Date();
+    // Ganze Laufzeit: Einsatz-Daten verwenden, sonst aus den vorhandenen Planungsdaten ableiten
+    let planMin=null, planMax=null;
+    Object.keys(DB.plans).forEach(dstr=>{
+      if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
+        const dt=pd(dstr);
+        if(!planMin||dt<planMin) planMin=dt;
+        if(!planMax||dt>planMax) planMax=dt;
+      }
+    });
+    startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
+    endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
     rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
   }
 
@@ -2315,35 +2327,45 @@ function genRapportPDF(){
     sport:0, bw:0,
     schnuppertag:0, schnupperwoche:0,
   };
+  // Feiertage/Brückentage über alle Jahre im Bereich – LW geschlossen, fällt NICHT in den Rapport
+  const holiSet={};
+  for(let yr=startDate.getFullYear(); yr<=endDate.getFullYear(); yr++) Object.assign(holiSet, tgHolidays(yr));
+
   const d=new Date(startDate);
   while(d<=endDate){
-    if(!isWE(d)&&isActiveOnDay(p,d)){
+    if(!isWE(d)&&isActiveOnDay(p,d)&&!holiSet[ds(d)]){
       const dstr=ds(d);
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
 
-      // Abwesenheiten
+      // Abwesenheiten (KR-W zählt als KR-Tag; FE-W zählt nicht – Ferien)
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
-      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr++;
+      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM'||rawAbs==='KR-W') stats.kr++;
       if(rawAbs==='ZS') stats.zs++;
 
-      // Schule-Blöcke
-      if(blk.fullB&&blk.vmL==='S') stats.s_days++;
+      // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt/Schul-Zählung
+      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
+      const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
+      const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
+      const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
+
+      // Schule-Blöcke (nur zählen wenn der Slot nicht durch Absenz gesperrt ist)
+      if(blk.fullB&&blk.vmL==='S'&&!fullAbsent) stats.s_days++;
       else {
-        if(blk.vmB&&blk.vmL==='DAZ') stats.daz++;
-        if(blk.nmB&&blk.nmL==='DAZ') stats.daz++;
-        if(blk.vmB&&blk.vmL==='FöA') stats.foa++;
-        if(blk.nmB&&blk.nmL==='FöA') stats.foa++;
-        if(blk.vmB&&blk.vmL==='DK')  stats.dk++;
-        if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
+        if(blk.vmB&&blk.vmL==='DAZ'&&!vmAbs) stats.daz++;
+        if(blk.nmB&&blk.nmL==='DAZ'&&!nmAbs) stats.daz++;
+        if(blk.vmB&&blk.vmL==='FöA'&&!vmAbs) stats.foa++;
+        if(blk.nmB&&blk.nmL==='FöA'&&!nmAbs) stats.foa++;
+        if(blk.vmB&&blk.vmL==='DK'&&!vmAbs)  stats.dk++;
+        if(blk.nmB&&blk.nmL==='DK'&&!nmAbs)  stats.dk++;
       }
 
-      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot)
-      if(!blk.vmB&&plan.vm==='Sport')    stats.sport++;
-      if(!blk.nmB&&plan.nm==='Sport')    stats.sport++;
-      if(!blk.vmB&&plan.vm==='Bewerben') stats.bw++;
-      if(!blk.nmB&&plan.nm==='Bewerben') stats.bw++;
+      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Sport')    stats.sport++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Sport')    stats.sport++;
+      if(!blk.vmB&&!vmAbs&&plan.vm==='Bewerben') stats.bw++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='Bewerben') stats.bw++;
 
       // Schnuppern
       if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
