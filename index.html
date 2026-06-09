@@ -2269,16 +2269,20 @@ function genRapportPDF(){
   const p=DB.participants.find(x=>x.id===pid); if(!p) return;
   const rangeVal=document.querySelector('input[name="rptRange"]:checked').value;
 
+  const fmtD=d=>`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
   let startDate, endDate, rangeLabel;
   if(rangeVal==='month'){
     const mv=document.getElementById('rptRM').value; if(!mv) return;
     const[ry,rm]=mv.split('-').map(Number);
     startDate=new Date(ry,rm-1,1); endDate=new Date(ry,rm,0);
-    rangeLabel=`${MON[rm-1]} ${ry}`;
+    const kwFirst=isoWeek(startDate).w;
+    const kwLast=isoWeek(endDate).w;
+    const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
+    rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
   } else {
     startDate=p.eintrittsdatum?new Date(p.eintrittsdatum):new Date();
     endDate=p.austrittsdatum?new Date(p.austrittsdatum):new Date();
-    rangeLabel='Ganze Laufzeit';
+    rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
   }
 
   // Collect all weekdays in range where TN is active
@@ -2335,82 +2339,98 @@ function genRapportPDF(){
 
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const W=210, mg=14;
+  const W=210, mg=16;
   let yp=mg;
 
   // Header bar
   doc.setFillColor(30,58,95);
-  doc.rect(mg,yp,W-2*mg,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(255);
-  doc.text('Rapport',W/2,yp+10.5,{align:'center'});
-  doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(rangeLabel,W-mg-4,yp+10.5,{align:'right'});
-  yp+=22;
+  doc.rect(mg,yp,W-2*mg,15,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
+  doc.text('Rapport',W/2,yp+10,{align:'center'});
+  doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+  doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
+  yp+=21;
 
-  doc.setFontSize(15);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  // Name + Jobcoach
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(30,58,95);
   doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
+  yp+=7;
   if(p.jc){
-    yp+=6;
-    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100);
+    doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
     doc.text(`Jobcoach: ${p.jc}`,W/2,yp,{align:'center'});
+    yp+=5;
   }
-  yp+=8;
-  doc.setDrawColor(200);doc.line(mg,yp,W-mg,yp);
-  yp+=8;
+  doc.setDrawColor(200,210,230);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
+  yp+=7;
 
-  // Stats table rows
+  // Stats table – every value on one line
+  const n=(v,sfx)=>`${v} ${sfx}`;        // count helper
   const rows=[
     ['ABWESENHEITEN','','',''],
-    ['Unentschuldigte Absenz (UA)',`${stats.ua} Tag${stats.ua!==1?'e':''}`, '',''],
-    ['Krankheit (KR)',`${stats.kr} Tag${stats.kr!==1?'e':''}`, '',''],
-    ['Zu spät (ZS)',`${stats.zs}×`, '',''],
+    ['Unentschuldigte Absenz (UA)', n(stats.ua,stats.ua===1?'Tag':'Tage'), '', ''],
+    ['Krankheit (KR)',              n(stats.kr,stats.kr===1?'Tag':'Tage'), '', ''],
+    ['Zu spät (ZS)',               `${stats.zs}×`,                         '', ''],
     ['','','',''],
     ['SCHULE','','',''],
-    ['Schultag (S)',`${stats.s_days} Tag${stats.s_days!==1?'e':''}`, '× 8 Lektionen',`= ${s_lek} Lektionen`],
-    ['DAZ – Deutsch als Zweitsprache',`${stats.daz} Einheit${stats.daz!==1?'en':''}`, '× 4 Lektionen',`= ${daz_lek} Lektionen`],
-    ['FöA – Förderatelier',`${stats.foa} Einheit${stats.foa!==1?'en':''}`, '× 4 Lektionen',`= ${foa_lek} Lektionen`],
-    ...(stats.dk>0?[['DK – Deutschkurs Migros',`${stats.dk} Einheit${stats.dk!==1?'en':''}`, '× 4 Lektionen',`= ${dk_lek} Lektionen`]]:[]),
-    ['TOTAL Schul-Lektionen','','',`${total_sch} Lektionen`],
+    ['Schultag (S)',                n(stats.s_days,stats.s_days===1?'Tag':'Tage'), '× 8', `${s_lek}`],
+    ['DAZ – Deutsch als Zweitsprache', n(stats.daz,stats.daz===1?'Einheit':'Einheiten'), '× 4', `${daz_lek}`],
+    ['FöA – Förderatelier',         n(stats.foa,stats.foa===1?'Einheit':'Einheiten'), '× 4', `${foa_lek}`],
+    ...(stats.dk>0?[['DK – Deutschkurs Migros', n(stats.dk,stats.dk===1?'Einheit':'Einheiten'), '× 4', `${dk_lek}`]]:[]),
+    ['TOTAL Schul-Lektionen', '', '', `${total_sch}`],
     ['','','',''],
     ['WERKSTATT','','',''],
-    ['Sport',`${stats.sport} Einheit${stats.sport!==1?'en':''}`, '× 2 Lektionen',`= ${sport_lek} Lektionen`],
-    ['Bewerben (BW)',`${stats.bw} Einheit${stats.bw!==1?'en':''}`, '× 4.5 Lektionen',`= ${bw_lek.toFixed(1)} Lektionen`],
+    ['Sport',        n(stats.sport,stats.sport===1?'Einheit':'Einheiten'), '× 2',   `${sport_lek}`],
+    ['Bewerben (BW)',n(stats.bw,stats.bw===1?'Einheit':'Einheiten'),       '× 4.5', bw_lek.toFixed(1)],
     ['','','',''],
     ['SCHNUPPERN','','',''],
-    ['Schnuppertag (Extern, einzeln)',`${stats.schnuppertag} Tag${stats.schnuppertag!==1?'e':''}`, '',''],
-    ['Schnupperlehre (ganze Woche)',`${stats.schnupperwoche} Tag${stats.schnupperwoche!==1?'e':''}`, '',''],
+    ['Schnuppertag',              n(stats.schnuppertag,stats.schnuppertag===1?'Tag':'Tage'),   '', ''],
+    ['Schnupperlehre (ganze Woche)', n(stats.schnupperwoche,stats.schnupperwoche===1?'Tag':'Tage'), '', ''],
   ];
 
   doc.autoTable({
     startY:yp,
+    head:[['Bereich / Betreff', 'Anzahl', 'Faktor', 'Lektionen']],
     body:rows,
-    styles:{fontSize:9.5,cellPadding:{top:2.5,right:5,bottom:2.5,left:5},lineColor:[235,235,235],lineWidth:.2},
+    styles:{
+      fontSize:9,cellPadding:{top:2.5,right:5,bottom:2.5,left:5},
+      lineColor:[230,235,245],lineWidth:.25,overflow:'linebreak',
+    },
+    headStyles:{
+      fillColor:[50,80,120],textColor:255,fontStyle:'bold',fontSize:8.5,
+      cellPadding:{top:3,right:5,bottom:3,left:5},
+    },
     columnStyles:{
-      0:{cellWidth:96},
-      1:{cellWidth:38,halign:'right'},
-      2:{cellWidth:30,halign:'center',textColor:[120,120,120]},
-      3:{cellWidth:18,halign:'right'},
+      0:{cellWidth:90},
+      1:{cellWidth:42,halign:'right'},
+      2:{cellWidth:18,halign:'center',textColor:[140,140,140]},
+      3:{cellWidth:28,halign:'right'},
     },
     didParseCell:(d)=>{
       if(d.section!=='body') return;
       const txt=d.row.raw[0];
-      if(['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt)){
+      const isSec=['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt);
+      if(isSec){
         d.cell.styles.fillColor=[30,58,95];d.cell.styles.textColor=[255,255,255];
         d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=8.5;
+        d.cell.styles.cellPadding={top:3,right:5,bottom:3,left:5};
       } else if(txt==='TOTAL Schul-Lektionen'){
         d.cell.styles.fillColor=[219,234,254];d.cell.styles.fontStyle='bold';
+        d.cell.styles.textColor=d.column.index===3?[30,58,95]:[60,60,60];
       } else if(txt===''){
-        d.cell.styles.minCellHeight=2;d.cell.styles.fillColor=[248,248,248];
+        d.cell.styles.minCellHeight=1.5;d.cell.styles.fillColor=[245,247,252];
+        d.cell.styles.cellPadding={top:0,right:0,bottom:0,left:0};
+      } else if(d.row.index%2===0){
+        d.cell.styles.fillColor=[250,251,255];
       }
     },
     margin:{left:mg,right:mg},
   });
 
-  yp=doc.lastAutoTable.finalY+8;
-  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(150);
+  yp=doc.lastAutoTable.finalY+10;
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(170,170,170);
   const today=new Date();
   doc.text(`Erstellt am ${pad(today.getDate())}.${pad(today.getMonth()+1)}.${today.getFullYear()}`,mg,yp);
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(55,55,55);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,58,95);
   doc.text('BASISJOB',W-mg,287,{align:'right'});
 
   const fn=rangeVal==='month'
