@@ -1984,7 +1984,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2247,7 +2247,7 @@ function genPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
