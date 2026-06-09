@@ -834,7 +834,7 @@ input,select,textarea{font-family:inherit}
           <select class="fi" id="s_typ">
             <option value="DAZ">DAZ – halber Tag (VM)</option>
             <option value="S">S – Schule Ganztag</option>
-            <option value="FöA">FöA – halber Tag</option>
+            <option value="FöA">FöA – Förderatelier (½ Tag)</option>
             <option value="DK">DK – Deutschkurs Migros (½ Tag)</option>
             <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
           </select>
@@ -1017,6 +1017,8 @@ const ABS = [
   {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
   {c:'BA',   l:'BA – Bezahlte Absenz'},
+  {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
+  {c:'BA-NM', l:'BA NM – Bezahlte Absenz Nachmittag'},
   {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
   {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
   {c:'UA-NM', l:'UA NM – Unentschuldigt Nachmittag'},
@@ -1025,22 +1027,24 @@ const ABS = [
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
-const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM'];
+const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
-  BA:'Bezahlte Absenz',FE:'Ferien',KR:'Krank',UN:'Unfall',
-  UA:'Unentschuldigte Absenz',MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
+  BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz VM','BA-NM':'Bezahlte Absenz NM',
+  FE:'Ferien',KR:'Krank','KR-VM':'Krank VM','KR-NM':'Krank NM',UN:'Unfall',
+  UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz VM','UA-NM':'Unentschuldigte Absenz NM',
+  MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
 
 // Schule-Code – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
-  ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderangebot (½ Tag)'],
+  ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderatelier (½ Tag)'],
   ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
-  'S':'Schule','DAZ':'DAZ','FöA':'Förderangebot','DK':'Deutschkurs Migros',
+  'S':'Schule','DAZ':'DAZ','FöA':'Förderatelier','DK':'Deutschkurs Migros',
   'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
   'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
 };
@@ -1295,8 +1299,8 @@ function renderDayPlan(){
     // UA-VM / UA-NM: nur halbtags absent, jeweiliger Slot gesperrt, anderer bleibt planbar
     const softAbs = SOFT_ABS.includes(absCode);
     const absent  = !!absCode && !softAbs;
-    const vmAbsent = absent || absCode==='UA-VM' || absCode==='KR-VM';
-    const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM';
+    const vmAbsent = absent || absCode==='UA-VM' || absCode==='KR-VM' || absCode==='BA-VM';
+    const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM' || absCode==='BA-NM';
     const pid    = p.id;
 
     // Row class
@@ -1885,21 +1889,24 @@ function renderMonthly(){
       if(rawAbs==='ZS') zs++;
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
       const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
+      const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
       // Full-day absence (not ZS, not half-day codes)
-      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm)?'':rawAbs;
+      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
       if(effAbs){
         abs++;
         if(!plan.ecaseEntered&&effAbs!=='ZS'){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
+      if((isBAvm||isBAnm)&&!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
-      // Individual VM + NM cells (with partial UA-VM / UA-NM)
-      const vmCls=(isUAvm||isKRvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=isUAvm?'UA':isKRvm?'KR':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=(isUAnm||isKRnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=isUAnm?'UA':isKRnm?'KR':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      // Individual VM + NM cells (with partial absences)
+      const vmCls=(isUAvm||isKRvm||isBAvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCls=(isUAnm||isKRnm||isBAnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
@@ -2025,39 +2032,37 @@ function getRptRows(p,year,month){
     }
     const plan=getPlan(dstr,p.id);
     const blk=getBlocks(p,d);
-    const note='';
+    const absTxt=plan.abwesenheitText||'';
     let az='',as='',ac='',bem='';
-    // ZS (Zu spät) wird NICHT als Absenz erfasst – TN hat 8h gearbeitet
-    // PA (Praktikum-intern) erscheint NICHT im Monatsrapport – nur intern
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
-    const isUAhalf=rawAbs==='UA-VM'||rawAbs==='UA-NM';
-    const isKRhalf=rawAbs==='KR-VM'||rawAbs==='KR-NM';
-    const effAbs=(isZS||isPA||isUAhalf||isKRhalf)?'':rawAbs;
-    if(effAbs){
+    const HALF_ABS=['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
+    const isHalfAbs=HALF_ABS.includes(rawAbs);
+    const effAbs=(isZS||isPA||isHalfAbs)?'':rawAbs;
+    if(isHalfAbs){
+      // Halbtags-Absenz: 4h Absenz + 4h Arbeitszeit
+      az='4';as='4';ac=rawAbs;
+      bem=AUTO_BEM[rawAbs]||'';
+    } else if(effAbs){
       as='8';ac=effAbs;
-      bem=plan.abwesenheitText||note||AUTO_BEM[effAbs]||'';
+      bem=AUTO_BEM[effAbs]||'';
     } else if(blk.vmL==='SL'||blk.nmL==='SL'){
-      // Schnupperlehre (extern) – blockiert, keine LW-Stunden
-      ac='SL';bem='Schnupperlehre'+(note?' · '+note:'');
+      ac='SL';bem='Schnupperlehre';
     } else if(plan.sw==='S.LW'){
-      // Schnupperwoche Lernwerkstatt – zählt als normaler 8h-Arbeitstag, keine Bemerkung nötig
-      az='8';bem=note;
+      az='8';
     } else {
       const isSchool=SCHOOL_TYPES.includes(blk.vmL)||SCHOOL_TYPES.includes(blk.nmL);
-      // "vor Ort" = im LW eingeteilt (Werkstatt in nicht gesperrtem Slot); ZS gilt als anwesend
       const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
       if(isSchool){
-        bem='Schule'+(note?' · '+note:'');
-        // Ganzer Schultag (S) zählt automatisch als 8h; halber Schultag nur wenn nachmittags im LW
+        bem='Schule';
         if(blk.vmL==='S' || present) az='8';
       } else if(present){
-        az='8';bem=note;            // Stunden nur wenn tatsächlich vor Ort
-      } else {
-        bem=note;                   // nichts eingeteilt → keine Stunden (nicht vor Ort)
+        az='8';
       }
     }
+    // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
+    if(absTxt) bem=absTxt+(bem&&bem!==absTxt?' · '+bem:'');
     return{tag:d.getDate(),dow:WD[d.getDay()],az,as,ac,bem,
       ecDone:plan.ecaseEntered||false,dstr,we:false,inactive:false};
   });
@@ -2363,7 +2368,7 @@ function genRapportPDF(){
     ['SCHULE','','',''],
     ['Schultag (S)',`${stats.s_days} Tag${stats.s_days!==1?'e':''}`, '× 8 Lektionen',`= ${s_lek} Lektionen`],
     ['DAZ – Deutsch als Zweitsprache',`${stats.daz} Einheit${stats.daz!==1?'en':''}`, '× 4 Lektionen',`= ${daz_lek} Lektionen`],
-    ['FöA – Förderangebot',`${stats.foa} Einheit${stats.foa!==1?'en':''}`, '× 4 Lektionen',`= ${foa_lek} Lektionen`],
+    ['FöA – Förderatelier',`${stats.foa} Einheit${stats.foa!==1?'en':''}`, '× 4 Lektionen',`= ${foa_lek} Lektionen`],
     ...(stats.dk>0?[['DK – Deutschkurs Migros',`${stats.dk} Einheit${stats.dk!==1?'en':''}`, '× 4 Lektionen',`= ${dk_lek} Lektionen`]]:[]),
     ['TOTAL Schul-Lektionen','','',`${total_sch} Lektionen`],
     ['','','',''],
