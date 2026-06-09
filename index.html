@@ -2066,7 +2066,7 @@ function getRptRows(p,year,month){
       const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
       if(isSchool){
         bem='Schule';
-        if(blk.vmL==='S' || present) az='8';
+        az='8'; // Schule = immer 8h Arbeitszeit (auch ohne Werkstatt-Eintrag)
       } else if(present){
         az='8';
       }
@@ -2125,14 +2125,12 @@ function buildRpt(){
     if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}.</td><td></td><td></td><td></td><td style="color:var(--g5);font-size:11px">${r.dow}</td></tr>`;
     else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}.</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
     else{
-      const isUA=r.ac==='UA';
-      const rowCls=isUA?'ra ra-ua':(r.ac||r.as)?'ra':'';
-      html+=`<tr class="${rowCls}">
+      html+=`<tr>
         <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
         <td class="rpt-num">${r.az}</td>
-        <td class="rpt-num" style="font-weight:${r.as?700:400};${isUA?'color:var(--red)':''}">${r.as||''}</td>
-        <td class="rpt-num ${r.ac?'rpt-code':''}${isUA?' rpt-ua':''}">${r.ac||''}</td>
-        <td${isUA?' style="color:var(--red)"':''}>${esc(r.bem||'')}</td>
+        <td class="rpt-num" style="font-weight:${r.as?700:400}">${r.as||''}</td>
+        <td class="rpt-num ${r.ac?'rpt-code':''}">${r.ac||''}</td>
+        <td>${esc(r.bem||'')}</td>
       </tr>`;
     }
   });
@@ -2220,13 +2218,7 @@ function genPDF(){
       const r=body[d.row.index];
       if(r[5]){d.cell.styles.fillColor=[238,238,238];d.cell.styles.textColor=[160,160,160];}
       else if(r[6]){d.cell.styles.fillColor=[248,248,248];d.cell.styles.textColor=[200,200,200];}
-      else if(r[7]){
-        // UA – Unbezahlte Absenz: rote Zeile
-        d.cell.styles.fillColor=[254,226,226];
-        d.cell.styles.textColor=[185,28,28];
-        if(d.column.index===3) d.cell.styles.fontStyle='bold';
-      } else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
-      else if(r[3]){d.cell.styles.fillColor=[255,248,235];}
+      else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
     },
     margin:{left:mg,right:mg},
   });
