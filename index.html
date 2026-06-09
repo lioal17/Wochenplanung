@@ -2291,8 +2291,8 @@ function genRapportPDF(){
     const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
     rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
   } else {
-    startDate=p.eintrittsdatum?new Date(p.eintrittsdatum):new Date();
-    endDate=p.austrittsdatum?new Date(p.austrittsdatum):new Date();
+    startDate=p.einsatzVon?new Date(p.einsatzVon):new Date();
+    endDate=p.einsatzBis?new Date(p.einsatzBis):new Date();
     rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
   }
 
@@ -2366,9 +2366,9 @@ function genRapportPDF(){
   doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(30,58,95);
   doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
   yp+=7;
-  if(p.jc){
+  if(p.jobCoach){
     doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
-    doc.text(`Jobcoach: ${p.jc}`,W/2,yp,{align:'center'});
+    doc.text(`Jobcoach: ${JC_LBL[p.jobCoach]||p.jobCoach}`,W/2,yp,{align:'center'});
     yp+=5;
   }
   doc.setDrawColor(200,210,230);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
