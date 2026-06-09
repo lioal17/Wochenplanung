@@ -2356,7 +2356,7 @@ function genRapportPDF(){
   doc.setFillColor(30,58,95);
   doc.rect(mg,yp,W-2*mg,15,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
-  doc.text('Rapport',W/2,yp+10,{align:'center'});
+  doc.text('Teilnehmer-Rapport',W/2,yp+10,{align:'center'});
   doc.setFontSize(8.5);doc.setFont('helvetica','normal');
   doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
   yp+=21;
@@ -2410,12 +2410,13 @@ function genRapportPDF(){
       cellPadding:{top:3,right:5,bottom:3,left:5},
     },
     columnStyles:{
-      0:{cellWidth:90},
-      1:{cellWidth:42,halign:'right'},
-      2:{cellWidth:18,halign:'center',textColor:[140,140,140]},
-      3:{cellWidth:28,halign:'right'},
+      0:{cellWidth:84},
+      1:{cellWidth:46,halign:'left'},
+      2:{cellWidth:22,halign:'center',textColor:[140,140,140]},
+      3:{cellWidth:26,halign:'right'},
     },
     didParseCell:(d)=>{
+      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='center';return;}
       if(d.section!=='body') return;
       const txt=d.row.raw[0];
       const isSec=['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt);
