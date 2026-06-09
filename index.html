@@ -520,13 +520,13 @@ input,select,textarea{font-family:inherit}
     <small>BASISJOB · Motivationssemester</small>
   </div>
   <div class="header-right">
-    <div class="save-info" id="saveInfo"></div>
-    <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten jetzt als JSON-Datei sichern">
-      💾 Speichern
-    </button>
-    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()" title="JSON-Datei laden">
-      📂 Import
-    </button>
+    <div style="text-align:right">
+      <div class="save-info" id="saveInfo"></div>
+      <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten jetzt sichern (immer in denselben Ordner)">💾 Speichern</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern / neu wählen" style="padding:0 8px">📁</button>
+    <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -799,6 +799,7 @@ input,select,textarea{font-family:inherit}
           <label>Typ</label>
           <select class="fi" id="s_typ">
             <option value="DAZ">DAZ – halber Tag (VM)</option>
+            <option value="DAZ-NM">DAZ – halber Tag (NM)</option>
             <option value="S">S – Schule Ganztag</option>
             <option value="FöA">FöA – halber Tag</option>
             <option value="DK">DK – Deutschkurs halber Tag</option>
@@ -895,19 +896,26 @@ const WS = [
 ];
 
 const ABS = [
-  {c:'',     l:'– keine –'},
-  {c:'FE',   l:'FE – Ferien'},
-  {c:'KR',   l:'KR – Krank'},
-  {c:'ZS',   l:'ZS – Zu spät'},
-  {c:'SL',   l:'SL – Schnupperlehre'},
-  {c:'PA',   l:'PA – Praktikum'},
-  {c:'BA',   l:'BA – Bezahlte Absenz'},
-  {c:'UA',   l:'UA – Unentschuldigte Absenz'},
-  {c:'UN',   l:'UN – Unfall'},
-  {c:'ZV',   l:'ZV – Zwischenverdienst'},
-  {c:'KO',   l:'KO – Kompensation'},
-  {c:'TZ',   l:'TZ – Teilzeit'},
-  {c:'MI',   l:'MI – Militär/Zivilschutz'},
+  {c:'',      l:'– keine –'},
+  {c:'FE',    l:'FE – Ferien'},
+  {c:'KR',    l:'KR – Krank'},
+  {c:'KR-VM', l:'KR-VM – Krank VM'},
+  {c:'KR-NM', l:'KR-NM – Krank NM'},
+  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
+  {c:'ZS',    l:'ZS – Zu spät'},
+  {c:'SL',    l:'SL – Schnupperlehre'},
+  {c:'PA',    l:'PA – Praktikum'},
+  {c:'BA',    l:'BA – Bezahlte Absenz'},
+  {c:'BA-VM', l:'BA-VM – Bezahlte Absenz VM'},
+  {c:'BA-NM', l:'BA-NM – Bezahlte Absenz NM'},
+  {c:'UA',    l:'UA – Unentschuldigte Absenz'},
+  {c:'UA-VM', l:'UA-VM – Unentschuldigte Absenz VM'},
+  {c:'UA-NM', l:'UA-NM – Unentschuldigte Absenz NM'},
+  {c:'UN',    l:'UN – Unfall'},
+  {c:'ZV',    l:'ZV – Zwischenverdienst'},
+  {c:'KO',    l:'KO – Kompensation'},
+  {c:'TZ',    l:'TZ – Teilzeit'},
+  {c:'MI',    l:'MI – Militär/Zivilschutz'},
 ];
 
 const JC_CSS = {lio:'jc-lio',tom:'jc-tom',yvi:'jc-yvi'};
@@ -1003,6 +1011,7 @@ function getBlocks(p, date){
   for(const s of (p.schultage||[])){
     if(+s.wochentag!==dow) continue;
     if(s.typ==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; }
+    else if(s.typ==='DAZ-NM'){ nmB=true; if(!nmL) nmL='DAZ'; }
     else { vmB=true; if(!vmL) vmL=s.typ; }
   }
   for(const sp of (p.sporttermine||[])){
@@ -1073,7 +1082,7 @@ function renderDayPlan(){
 
   const active = DB.participants
     .filter(p=>isActiveOnDay(p,date))
-    .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   if(!active.length){
     area.innerHTML=`<div class="empty-state"><p>Keine aktiven Teilnehmer für diesen Tag.</p><button class="btn btn-primary" onclick="show('person')">+ Teilnehmer hinzufügen</button></div>`;
@@ -1257,8 +1266,13 @@ function onWsCh(sel, pid, slot){
 }
 
 function onAbsChange(pid, day, val){
-  setPlan(day,pid,{abwesenheit:val});
-  renderDayPlan(); // re-render to update row color, disable ws selects, show ecase
+  if(val==='KR-W'){
+    const{y,w}=curWeek;
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:'KR-W'}));
+  } else {
+    setPlan(day,pid,{abwesenheit:val});
+  }
+  renderDayPlan();
 }
 
 function rebuildSummary(){ /* lightweight – just re-render day */ renderDayPlan(); }
@@ -1344,7 +1358,7 @@ function cleanupWeek(){
 // ────────────────────────────────────────────
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
@@ -1572,7 +1586,7 @@ function renderMonthly(){
   const{y,m}=curMonth;
   document.getElementById('moLabel').textContent=`${MON[m]} ${y}`;
   const days=monthDays(y,m);
-  const persons=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const persons=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   if(!persons.length){
     document.getElementById('moArea').innerHTML='<div class="empty-state"><p>Keine Teilnehmer erfasst.</p></div>';
@@ -1633,7 +1647,7 @@ function chMonth(d){
 // ────────────────────────────────────────────
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -1836,7 +1850,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  allActive.sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -1884,7 +1898,7 @@ function genWeekPDF(){
         const v=data.cell.raw;
         if(v==='PRK'){data.cell.styles.textColor=[21,128,61];data.cell.styles.fontStyle='bold';}
         else if(v==='S.LW'){data.cell.styles.textColor=[146,64,14];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','M','SP'].includes(v)) data.cell.styles.textColor=[150,150,150];
+        else if(['S','DAZ','DAZ-NM','FöA','DK','IKPC','M','SP'].includes(v)) data.cell.styles.textColor=[150,150,150];
       }
     },
   });
@@ -1899,7 +1913,7 @@ function genWeekPDF(){
 
   const dayActive=DB.participants
     .filter(p=>isActiveOnDay(p,dayDate))
-    .sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -1960,19 +1974,87 @@ function genWeekPDF(){
 // ────────────────────────────────────────────
 // SAVE / EXPORT / IMPORT
 // ────────────────────────────────────────────
-function manualSave(){ doExport('manuell'); }
+let savedFileHandle = null;
 
-function doExport(reason){
+function updateSaveFileLabel(){
+  const el=document.getElementById('saveFileLabel');
+  if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
+}
+
+async function manualSave(){
   const now=new Date();
-  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`Lernwerkstatt_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
-  a.click();URL.revokeObjectURL(a.href);
-  dirty=false;
-  localStorage.setItem(SAVEKEY,now.toISOString());
-  updateSaveInfo();
-  toast('💾 Datei gespeichert','t-ok');
+  const data=JSON.stringify(DB,null,2);
+  if('showSaveFilePicker' in window){
+    try{
+      if(!savedFileHandle){
+        savedFileHandle=await window.showSaveFilePicker({
+          suggestedName:`Lernwerkstatt_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`,
+          types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
+        });
+      }
+      const w=await savedFileHandle.createWritable();
+      await w.write(data); await w.close();
+      dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+      updateSaveInfo(); updateSaveFileLabel();
+      toast(`💾 Gespeichert: ${savedFileHandle.name}`,'t-ok');
+    }catch(e){
+      if(e.name==='AbortError') return;
+      savedFileHandle=null; updateSaveFileLabel();
+      toast('Speichern fehlgeschlagen – Speicherort neu wählen','t-err');
+    }
+  } else {
+    // Fallback für Browser ohne File System Access API
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`Lernwerkstatt_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+    a.click(); URL.revokeObjectURL(a.href);
+    dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+    updateSaveInfo(); toast('💾 Datei gespeichert','t-ok');
+  }
+}
+
+async function changeSaveLocation(){
+  const now=new Date();
+  const data=JSON.stringify(DB,null,2);
+  if('showSaveFilePicker' in window){
+    try{
+      savedFileHandle=await window.showSaveFilePicker({
+        suggestedName:`Lernwerkstatt_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`,
+        types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
+      });
+      updateSaveFileLabel();
+      toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
+    }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
+  } else {
+    toast('Ihr Browser unterstützt diese Funktion nicht (verwende Chrome/Edge)','t-err');
+  }
+}
+
+async function doImportFSA(){
+  if('showOpenFilePicker' in window){
+    try{
+      const opts={types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],multiple:false};
+      const[fh]=await window.showOpenFilePicker(opts);
+      const file=await fh.getFile();
+      const text=await file.text();
+      processImportJSON(text);
+    }catch(e){ if(e.name!=='AbortError') toast('Import fehlgeschlagen','t-err'); }
+  } else {
+    document.getElementById('importFile').click();
+  }
+}
+
+function processImportJSON(text){
+  try{
+    const d=JSON.parse(text);
+    if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
+    DB.participants=d.participants||[]; DB.plans=d.plans||{};
+    saveDB(); dirty=false; updateSaveInfo();
+    toast('📂 Daten erfolgreich importiert','t-ok');
+    const active=document.querySelector('.nav-btn.active');
+    if(active) show(active.dataset.v);
+  }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
 }
 
 function updateSaveInfo(){
@@ -1996,19 +2078,8 @@ function showBanner(msg,cls,ms=0){
 function doImport(input){
   const file=input.files[0]; if(!file) return;
   const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const d=JSON.parse(e.target.result);
-      if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
-      DB.participants=d.participants||[];DB.plans=d.plans||{};
-      saveDB();dirty=false;
-      updateSaveInfo();toast('📂 Daten erfolgreich importiert','t-ok');
-      // Re-render current view
-      const active=document.querySelector('.nav-btn.active');
-      if(active) show(active.dataset.v);
-    }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
-  };
-  r.readAsText(file);input.value='';
+  r.onload=e=>{ processImportJSON(e.target.result); };
+  r.readAsText(file); input.value='';
 }
 
 // ────────────────────────────────────────────
