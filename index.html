@@ -593,7 +593,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chWeek(-1)">&#8249;</button>
           <div class="week-label" id="weekLabel">–</div>
           <button class="btn-icon" onclick="chWeek(1)">&#8250;</button>
-          <button class="day-btn" onclick="goToday()">Heute</button>
+          <button class="day-btn" onclick="goToday()" style="border-color:#1e3a5f;color:#1e3a5f">Heute</button>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1353,7 +1353,7 @@ function renderDayPlan(){
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
-        ${ABS.map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
+        ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
         onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
@@ -1515,7 +1515,13 @@ function onWsCh(sel, pid, slot){
 
 function onAbsChange(pid, day, val){
   if(val==='KR-W'||val==='FE-W'){
-    const{y,w}=curWeek;
+    // Ganze-Woche-Codes können nur am Montag gesetzt werden und füllen immer Mo–Fr
+    if(pd(day).getDay()!==1){
+      toast('⚠ KR-W / FE-W kann nur am Montag eingesteuert werden','t-warn');
+      renderDayPlan();
+      return;
+    }
+    const{y,w}=isoWeek(pd(day));
     weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:val}));
   } else {
     setPlan(day,pid,{abwesenheit:val});
@@ -1612,7 +1618,7 @@ function clearCurrentDay(){
 // ────────────────────────────────────────────
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
@@ -1984,7 +1990,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2247,7 +2253,7 @@ function genPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2279,8 +2285,17 @@ function genRapportPDF(){
     const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
     rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
   } else {
-    startDate=p.einsatzVon?new Date(p.einsatzVon):new Date();
-    endDate=p.einsatzBis?new Date(p.einsatzBis):new Date();
+    // Ganze Laufzeit: Einsatz-Daten verwenden, sonst aus den vorhandenen Planungsdaten ableiten
+    let planMin=null, planMax=null;
+    Object.keys(DB.plans).forEach(dstr=>{
+      if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
+        const dt=pd(dstr);
+        if(!planMin||dt<planMin) planMin=dt;
+        if(!planMax||dt>planMax) planMax=dt;
+      }
+    });
+    startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
+    endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
     rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
   }
 
@@ -2310,15 +2325,15 @@ function genRapportPDF(){
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
       const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
 
-      // Schule-Blöcke
-      if(blk.fullB&&blk.vmL==='S') stats.s_days++;
+      // Schule-Blöcke (nur zählen wenn der Slot nicht durch Absenz gesperrt ist)
+      if(blk.fullB&&blk.vmL==='S'&&!fullAbsent) stats.s_days++;
       else {
-        if(blk.vmB&&blk.vmL==='DAZ') stats.daz++;
-        if(blk.nmB&&blk.nmL==='DAZ') stats.daz++;
-        if(blk.vmB&&blk.vmL==='FöA') stats.foa++;
-        if(blk.nmB&&blk.nmL==='FöA') stats.foa++;
-        if(blk.vmB&&blk.vmL==='DK')  stats.dk++;
-        if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
+        if(blk.vmB&&blk.vmL==='DAZ'&&!vmAbs) stats.daz++;
+        if(blk.nmB&&blk.nmL==='DAZ'&&!nmAbs) stats.daz++;
+        if(blk.vmB&&blk.vmL==='FöA'&&!vmAbs) stats.foa++;
+        if(blk.nmB&&blk.nmL==='FöA'&&!nmAbs) stats.foa++;
+        if(blk.vmB&&blk.vmL==='DK'&&!vmAbs)  stats.dk++;
+        if(blk.nmB&&blk.nmL==='DK'&&!nmAbs)  stats.dk++;
       }
 
       // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
