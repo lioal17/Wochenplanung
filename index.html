@@ -561,8 +561,8 @@ input,select,textarea{font-family:inherit}
       <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
     </div>
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
-    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
