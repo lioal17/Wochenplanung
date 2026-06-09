@@ -2279,8 +2279,17 @@ function genRapportPDF(){
     const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
     rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
   } else {
-    startDate=p.einsatzVon?new Date(p.einsatzVon):new Date();
-    endDate=p.einsatzBis?new Date(p.einsatzBis):new Date();
+    // Ganze Laufzeit: Einsatz-Daten verwenden, sonst aus den vorhandenen Planungsdaten ableiten
+    let planMin=null, planMax=null;
+    Object.keys(DB.plans).forEach(dstr=>{
+      if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
+        const dt=pd(dstr);
+        if(!planMin||dt<planMin) planMin=dt;
+        if(!planMax||dt>planMax) planMax=dt;
+      }
+    });
+    startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
+    endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
     rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
   }
 
@@ -2310,15 +2319,15 @@ function genRapportPDF(){
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
       const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
 
-      // Schule-Blöcke
-      if(blk.fullB&&blk.vmL==='S') stats.s_days++;
+      // Schule-Blöcke (nur zählen wenn der Slot nicht durch Absenz gesperrt ist)
+      if(blk.fullB&&blk.vmL==='S'&&!fullAbsent) stats.s_days++;
       else {
-        if(blk.vmB&&blk.vmL==='DAZ') stats.daz++;
-        if(blk.nmB&&blk.nmL==='DAZ') stats.daz++;
-        if(blk.vmB&&blk.vmL==='FöA') stats.foa++;
-        if(blk.nmB&&blk.nmL==='FöA') stats.foa++;
-        if(blk.vmB&&blk.vmL==='DK')  stats.dk++;
-        if(blk.nmB&&blk.nmL==='DK')  stats.dk++;
+        if(blk.vmB&&blk.vmL==='DAZ'&&!vmAbs) stats.daz++;
+        if(blk.nmB&&blk.nmL==='DAZ'&&!nmAbs) stats.daz++;
+        if(blk.vmB&&blk.vmL==='FöA'&&!vmAbs) stats.foa++;
+        if(blk.nmB&&blk.nmL==='FöA'&&!nmAbs) stats.foa++;
+        if(blk.vmB&&blk.vmL==='DK'&&!vmAbs)  stats.dk++;
+        if(blk.nmB&&blk.nmL==='DK'&&!nmAbs)  stats.dk++;
       }
 
       // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
