@@ -556,13 +556,13 @@ input,select,textarea{font-family:inherit}
     <small>BASISJOB · Motivationssemester</small>
   </div>
   <div class="header-right">
-    <div class="save-info" id="saveInfo"></div>
-    <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten jetzt als JSON-Datei sichern">
-      💾 Speichern
-    </button>
-    <button class="btn btn-secondary btn-sm" onclick="openImportMenu()" title="Daten-Sicherung laden oder wiederherstellen">
-      📂 Import
-    </button>
+    <div style="text-align:right">
+      <div class="save-info" id="saveInfo"></div>
+      <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
+    <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -600,11 +600,14 @@ input,select,textarea{font-family:inherit}
             <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
               📄 PDF
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen (Praktikum + Schultage werden übersprungen)">
+            <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen">
               📋 Vorwoche kopieren
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="clearCurrentWeek()" title="Nur die Einteilung der aktuellen Woche löschen" style="color:var(--red)">
-              🗑 Woche leeren
+            <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
+              ⚡ Auto-Einfüllen
+            </button>
+            <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="clearCurrentWeek()" title="Alle Einträge dieser Woche löschen">
+              🗑 Clean Up
             </button>
           </div>
           <div id="planEcBadge"></div>
@@ -833,6 +836,7 @@ input,select,textarea{font-family:inherit}
           <label>Typ</label>
           <select class="fi" id="s_typ">
             <option value="DAZ">DAZ – halber Tag (VM)</option>
+            <option value="DAZ-NM">DAZ – halber Tag (NM)</option>
             <option value="S">S – Schule Ganztag</option>
             <option value="FöA">FöA – Förderatelier (½ Tag)</option>
             <option value="DK">DK – Deutschkurs Migros (½ Tag)</option>
@@ -1013,6 +1017,7 @@ const ABS = [
   {c:'KR',    l:'KR – Krank (ganzer Tag)'},
   {c:'KR-VM', l:'KR VM – Krank Vormittag'},
   {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
+  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
   {c:'ZS',   l:'ZS – Zu spät'},
   {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
@@ -1185,6 +1190,7 @@ function getBlocks(p, date){
   for(const s of (p.schultage||[])){
     if(+s.wochentag!==dow) continue;
     if(s.typ==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; }
+    else if(s.typ==='DAZ-NM'){ nmB=true; if(!nmL) nmL='DAZ'; }
     else { vmB=true; if(!vmL) vmL=s.typ; }
   }
   for(const sp of (p.sporttermine||[])){
@@ -1277,7 +1283,7 @@ function renderDayPlan(){
       .sort((a,b)=>{
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
-        return a.vorname.localeCompare(b.vorname,'de');
+        return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
       });
   }
   const active = _pSortList;
@@ -1510,8 +1516,13 @@ function onWsCh(sel, pid, slot){
 }
 
 function onAbsChange(pid, day, val){
-  setPlan(day,pid,{abwesenheit:val});
-  renderDayPlan(); // re-render to update row color, disable ws selects, show ecase
+  if(val==='KR-W'){
+    const{y,w}=curWeek;
+    weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:'KR-W'}));
+  } else {
+    setPlan(day,pid,{abwesenheit:val});
+  }
+  renderDayPlan();
 }
 
 function rebuildSummary(){ /* lightweight – just re-render day */ renderDayPlan(); }
@@ -1607,7 +1618,7 @@ function clearCurrentWeek(){
 // ────────────────────────────────────────────
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
@@ -1848,7 +1859,7 @@ function renderMonthly(){
   const persons=[...DB.participants].sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.vorname.localeCompare(b.vorname,'de');
+    return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
   });
 
   if(!persons.length){
@@ -1977,7 +1988,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2248,7 +2259,7 @@ function genPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2496,7 +2507,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -2572,7 +2583,7 @@ function genWeekPDF(){
       const bl=getBlocks(p,dayDate);
       return WS.includes(pl.vm)||WS.includes(pl.nm)||pl.nm==='Sport'||bl.nmL==='Sport';
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -2677,29 +2688,84 @@ function genWeekPDF(){
 }
 
 // ────────────────────────────────────────────
-// SAVE / EXPORT / IMPORT
+// SAVE / EXPORT / IMPORT (File System Access API)
 // ────────────────────────────────────────────
-function manualSave(){ doExport('manuell'); }
+let savedFileHandle = null;
 
-function doExport(reason){
+function updateSaveFileLabel(){
+  const el=document.getElementById('saveFileLabel');
+  if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
+}
+
+async function manualSave(){
   const now=new Date();
-  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  // Dateiname mit Datum + Zeit: "Lernwerkstatt Fr 06.06.2026 · 23.50.json"
-  // (Doppelpunkt ist in Windows-Dateinamen unzulässig → Punkt zwischen Std. und Min.)
-  a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
-  a.click();URL.revokeObjectURL(a.href);
-  dirty=false;
-  localStorage.setItem(SAVEKEY,now.toISOString());
-  snapshotBackup(); // Wiederherstellungspunkt = zuletzt gesicherter Stand
-  updateSaveInfo();
-  if(reason==='auto'){
-    toast('💾 Automatische Freitag-Sicherung gespeichert','t-ok');
-    showBanner('✅ Automatische Sicherung abgeschlossen – Freitag 13:05 Uhr','bn-green',9000);
+  const data=JSON.stringify(DB,null,2);
+  if('showSaveFilePicker' in window){
+    try{
+      if(!savedFileHandle){
+        savedFileHandle=await window.showSaveFilePicker({
+          suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}.json`,
+          types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
+        });
+      }
+      const w=await savedFileHandle.createWritable();
+      await w.write(data); await w.close();
+      dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+      snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
+      toast(`💾 Gespeichert: ${savedFileHandle.name}`,'t-ok');
+    }catch(e){
+      if(e.name==='AbortError') return;
+      savedFileHandle=null; updateSaveFileLabel();
+      toast('Speichern fehlgeschlagen – Speicherort neu wählen','t-err');
+    }
   } else {
-    toast('💾 Datei gespeichert','t-ok');
+    // Fallback für Firefox / ältere Browser
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
+    a.click(); URL.revokeObjectURL(a.href);
+    dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+    snapshotBackup(); updateSaveInfo(); toast('💾 Datei gespeichert','t-ok');
   }
+}
+
+async function changeSaveLocation(){
+  const now=new Date();
+  if('showSaveFilePicker' in window){
+    try{
+      savedFileHandle=await window.showSaveFilePicker({
+        suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}.json`,
+        types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
+      });
+      updateSaveFileLabel(); toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
+    }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
+  } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
+}
+
+async function doImportFSA(){
+  if('showOpenFilePicker' in window){
+    try{
+      const[fh]=await window.showOpenFilePicker({
+        types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],multiple:false
+      });
+      const text=await(await fh.getFile()).text();
+      processImportJSON(text);
+    }catch(e){ if(e.name!=='AbortError') toast('Import fehlgeschlagen','t-err'); }
+  } else { document.getElementById('importFile').click(); }
+}
+
+function processImportJSON(text){
+  try{
+    const d=JSON.parse(text);
+    if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
+    snapshotBackup();
+    DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
+    saveDB(); dirty=false; updateSaveInfo();
+    toast('📂 Daten erfolgreich importiert','t-ok');
+    const active=document.querySelector('.nav-btn.active');
+    if(active) show(active.dataset.v);
+  }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
 }
 
 function updateSaveInfo(){
@@ -2719,35 +2785,12 @@ function showBanner(msg,cls,ms=0){
   if(ms) setTimeout(()=>document.getElementById('autoBanner')?.remove(),ms);
 }
 
-function checkAutoSave(){
-  const now=new Date();
-  if(now.getDay()!==5||now.getHours()!==13||now.getMinutes()!==5) return;
-  const last=localStorage.getItem(SAVEKEY);
-  if(last){
-    const d=new Date(last);
-    if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&
-       d.getDate()===now.getDate()&&d.getHours()===13&&d.getMinutes()===5) return;
-  }
-  doExport('auto');
-}
 
 function doImport(input){
   const file=input.files[0]; if(!file) return;
   const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const d=JSON.parse(e.target.result);
-      if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
-      snapshotBackup(); // aktuellen Stand sichern, damit ein falscher Import rückgängig gemacht werden kann
-      DB.participants=d.participants||[];DB.plans=d.plans||{};DB.rptNotes=d.rptNotes||{};
-      saveDB();dirty=false;
-      updateSaveInfo();toast('📂 Daten erfolgreich importiert','t-ok');
-      // Re-render current view
-      const active=document.querySelector('.nav-btn.active');
-      if(active) show(active.dataset.v);
-    }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
-  };
-  r.readAsText(file);input.value='';
+  r.onload=e=>{ processImportJSON(e.target.result); };
+  r.readAsText(file); input.value='';
 }
 
 // ────────────────────────────────────────────
@@ -3067,7 +3110,6 @@ function init(){
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
   renderWBAlerts();
-  setInterval(checkAutoSave,30000);
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
     e.preventDefault();e.returnValue='';
