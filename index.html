@@ -2712,7 +2712,7 @@ async function manualSave(){
     try{
       if(!savedFileHandle){
         savedFileHandle=await window.showSaveFilePicker({
-          suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}.json`,
+          suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
           types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
         });
       }
@@ -2743,7 +2743,7 @@ async function changeSaveLocation(){
   if('showSaveFilePicker' in window){
     try{
       savedFileHandle=await window.showSaveFilePicker({
-        suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}.json`,
+        suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
         types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
       });
       updateSaveFileLabel(); toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
