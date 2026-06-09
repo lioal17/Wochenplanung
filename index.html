@@ -1281,6 +1281,9 @@ function renderDayPlan(){
       .sort((a,b)=>{
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
+        // Schnupper: nach Vorname sortieren
+        if(a.status==='schnupper'&&b.status==='schnupper')
+          return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
         return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
       });
   }
@@ -1307,13 +1310,12 @@ function renderDayPlan(){
     const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM' || absCode==='BA-NM';
     const pid    = p.id;
 
-    // Row class
+    // Row class – bei Absenz keine Einfärbung
     let rowCls='';
-    if(absent) rowCls='row-absent';
-    else if(p.status==='praktikum') rowCls='row-praktikum';
-    else if(p.status==='prklehr') rowCls='row-prklehr';
-    else if(p.status==='lehrstelle') rowCls='row-lehrstelle';
-    else if(p.status==='schnupper') rowCls='row-schnupper';
+    if(!absent&&p.status==='praktikum') rowCls='row-praktikum';
+    else if(!absent&&p.status==='prklehr') rowCls='row-prklehr';
+    else if(!absent&&p.status==='lehrstelle') rowCls='row-lehrstelle';
+    else if(!absent&&p.status==='schnupper') rowCls='row-schnupper';
 
     // Status chip
     const chipMap={praktikum:'chip-prak Prak.',lehrstelle:'chip-lehr Lehr.',schnupper:'chip-schn Schn.',prklehr:'chip-prklehr Prak+Lehr'};
