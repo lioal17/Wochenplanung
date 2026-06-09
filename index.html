@@ -203,7 +203,7 @@ input,select,textarea{font-family:inherit}
 .jc{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700}
 .jc-lio{background:var(--red-bg);color:var(--red)}
 .jc-tom{background:var(--blue-bg);color:var(--blue)}
-.jc-yvi{background:#fce7f3;color:#be185d}
+.jc-yvi{background:#fef3c7;color:#be185d}
 
 /* BW dot */
 .bw-dot{
@@ -606,8 +606,8 @@ input,select,textarea{font-family:inherit}
             <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
               ⚡ Auto-Einfüllen
             </button>
-            <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="clearCurrentWeek()" title="Alle Einträge dieser Woche löschen">
-              🗑 Clean Up
+            <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="clearCurrentDay()" title="Alle Einträge des aktuellen Tages löschen">
+              🗑 Alle Einträge löschen
             </button>
           </div>
           <div id="planEcBadge"></div>
@@ -1012,23 +1012,23 @@ const WS_ABBR={
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
 const ABS = [
-  {c:'',     l:'– keine –'},
-  {c:'FE',   l:'FE – Ferien'},
-  {c:'KR',    l:'KR – Krank (ganzer Tag)'},
-  {c:'KR-VM', l:'KR VM – Krank Vormittag'},
-  {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
-  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
-  {c:'ZS',   l:'ZS – Zu spät'},
-  {c:'SL',   l:'SL – Schnupperlehre'},
-  {c:'PA',   l:'PA – Praktikum'},
-  {c:'BA',   l:'BA – Bezahlte Absenz'},
-  {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
+  {c:'',      l:'– keine –'},
+  {c:'BA',    l:'BA – Bezahlte Absenz'},
   {c:'BA-NM', l:'BA NM – Bezahlte Absenz Nachmittag'},
+  {c:'BA-VM', l:'BA VM – Bezahlte Absenz Vormittag'},
+  {c:'FE',    l:'FE – Ferien'},
+  {c:'KR',    l:'KR – Krank (ganzer Tag)'},
+  {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
+  {c:'KR-VM', l:'KR VM – Krank Vormittag'},
+  {c:'KR-W',  l:'KR-W – Krank ganze Woche'},
+  {c:'MI',    l:'MI – Militär/Zivilschutz'},
+  {c:'PA',    l:'PA – Praktikum'},
+  {c:'SL',    l:'SL – Schnupperlehre'},
   {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
-  {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
   {c:'UA-NM', l:'UA NM – Unentschuldigt Nachmittag'},
-  {c:'UN',   l:'UN – Unfall'},
-  {c:'MI',   l:'MI – Militär/Zivilschutz'},
+  {c:'UA-VM', l:'UA VM – Unentschuldigt Vormittag'},
+  {c:'UN',    l:'UN – Unfall'},
+  {c:'ZS',    l:'ZS – Zu spät'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
@@ -1044,8 +1044,8 @@ const AUTO_BEM = {
 
 // Schule-Code – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
-  ['S','Schule (ganzer Tag)'],['DAZ','Deutsch als Zweitsprache (½ Tag)'],['FöA','Förderatelier (½ Tag)'],
-  ['DK','Deutschkurs Migros (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],
+  ['DAZ','Deutsch als Zweitsprache (½ Tag)'],['DK','Deutschkurs Migros (½ Tag)'],
+  ['FöA','Förderatelier (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['S','Schule (ganzer Tag)'],
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
@@ -1055,8 +1055,9 @@ const BLK_LABEL = {
 };
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
-  ['H','Holzwerkstatt'],['BW','Bewerben'],['M','Metall'],['MV','Metallverpacken'],
-  ['Crea','Crea'],['LS','Lernstück'],['Loli','Loli'],['NEO','Neophyten'],['FL','Feldeinsatz'],['Sport','Sport'],
+  ['BW','Bewerben'],['Crea','Crea'],['FL','Feldeinsatz'],['H','Holzwerkstatt'],
+  ['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
+  ['NEO','Neophyten'],['Sport','Sport'],
 ];
 // Absenz-Codes: Basis aus ABS-Array
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
@@ -1433,7 +1434,7 @@ function renderDayPlan(){
         </td></tr>`).join('');
       badge.innerHTML=`<div class="ec-badge-wrap">
         <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-          ⚠️ ${openEC} eCase-Eintrag${openEC>1?'e':''} offen ▾
+          ⚠️ ${openEC} ${openEC===1?'eCase-Eintrag offen':'eCase-Einträge offen'} ▾
         </button>
         <div class="ec-drop" style="display:none">
           <table style="width:100%;border-collapse:collapse;font-size:12px">${rows}</table>
@@ -1595,19 +1596,15 @@ function copyPrev(){
   saveDB(); toast(`📋 Vorwoche kopiert (${n} Einträge)`,'t-ok'); renderPlan();
 }
 
-function clearCurrentWeek(){
-  const{y,w}=curWeek;
-  const days=weekDays(y,w);
-  const label=`KW ${pad(w)} / ${y}`;
-  if(!confirm(`Wochenplanung ${label} wirklich leeren?\n\nAlle Werkstatt-Einteilungen dieser Woche werden gelöscht.\nTeilnehmerdaten und andere Wochen bleiben unverändert.`)) return;
+function clearCurrentDay(){
+  const date=pd(curDay);
+  const label=`${WD[date.getDay()]} ${pad(date.getDate())}.${pad(date.getMonth()+1)}.${date.getFullYear()}`;
+  if(!confirm(`Alle Einträge für ${label} wirklich löschen?\n\nWerkstatt-Einteilungen, Abwesenheiten und Bemerkungen dieses Tages werden entfernt.\nAndere Tage bleiben unverändert.`)) return;
   let n=0;
-  days.forEach(d=>{
-    const dstr=ds(d);
-    if(DB.plans[dstr]){
-      n+=Object.keys(DB.plans[dstr]).length;
-      delete DB.plans[dstr];
-    }
-  });
+  if(DB.plans[curDay]){
+    n=Object.keys(DB.plans[curDay]).length;
+    delete DB.plans[curDay];
+  }
   saveDB(); dirty=true;
   toast(`🗑 ${label} geleert (${n} Einträge entfernt)`,'t-ok');
   renderPlan();
@@ -1903,9 +1900,11 @@ function renderMonthly(){
       const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
       // Full-day absence (not ZS, not half-day codes)
       const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
+      if(rawAbs==='ZS'&&!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered&&effAbs!=='ZS'){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        if(!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
@@ -1950,7 +1949,7 @@ function renderMonthly(){
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        ⚠️ ${totalOpen} offene eCase-Einträge in ${MON[m]} ▾
+        ⚠️ ${totalOpen} ${totalOpen===1?'offener eCase-Eintrag':'offene eCase-Einträge'} in ${MON[m]} ▾
       </button>
       <div class="ec-drop" style="display:none">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
