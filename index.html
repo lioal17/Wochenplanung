@@ -156,7 +156,8 @@ input,select,textarea{font-family:inherit}
    PLAN TABLE
 ═══════════════════════════════════════════ */
 .tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
-/* plan-tbl-wrap overrides tbl-wrap for the day plan */
+/* plan-tbl-wrap = tbl-wrap ohne sticky */
+.plan-tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
 .plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
 .plan-tbl th{
   background:var(--g9);color:#fff;padding:9px 10px;
@@ -233,12 +234,10 @@ input,select,textarea{font-family:inherit}
   color:var(--g6);border:1px dashed var(--g4);
 }
 .blocked.b-school{color:var(--blue);border-color:var(--blue-bg)}
-.blocked.b-sport{color:var(--purple);border-color:var(--purple-bg)}
+.blocked.b-sport{color:#15803d;border-color:#86efac}
 .blocked.b-absent{background:#fff1f2;border-color:#fecdd3;color:var(--red);font-weight:900;letter-spacing:1px}
 
 /* Plan table scroll + sticky header */
-.plan-tbl-wrap{max-height:calc(100vh - 230px);overflow-y:auto;overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
-.plan-tbl thead th{position:sticky;top:0;z-index:5;background:var(--g9);}
 
 /* Absence */
 .abs-wrap{display:flex;flex-direction:column;gap:3px}
@@ -273,6 +272,7 @@ input,select,textarea{font-family:inherit}
 .legend-box .lg-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
   padding:4px 10px;border-radius:4px;margin-bottom:6px;display:inline-block}
 .legend-box .lg-h-blue{background:#dbeafe;color:#1e3a5f}
+.legend-box .lg-h-green{background:#dcfce7;color:#15803d}
 .legend-box .lg-h-red{background:#fee2e2;color:#991b1b}
 .legend-box .lg-row{display:flex;flex-wrap:wrap;gap:4px 14px}
 .legend-box .lg-i{font-size:11.5px;color:var(--g8,#374151);white-space:nowrap}
@@ -371,11 +371,11 @@ input,select,textarea{font-family:inherit}
 /* Sub-cell divs inside each day cell */
 .mo-vm,.mo-nm{display:block;padding:2px 1px;line-height:1.35;min-height:13px}
 .mo-vm{border-bottom:1px dotted var(--g2)}
-.moc-work{background:#f0fdf8;color:var(--green)}
+.moc-work{background:#dcfce7;color:#15803d}
 .moc-abs{background:var(--red-bg);color:var(--red);font-weight:700}
 .moc-sch{background:var(--blue-bg);color:var(--blue);font-weight:600}
 .moc-prk{background:#dcfce7;color:#15803d;font-weight:700}
-.moc-slw{background:var(--amber-bg);color:var(--amber);font-weight:700}
+.moc-slw{background:var(--red-bg);color:var(--red);font-weight:700}
 .moc-empty{background:#fff;color:var(--g4)}
 .mo-vm-sep{height:1px;background:var(--g2)}
 .mo-slot-lbl{font-size:6.5px;font-weight:700;opacity:.55;margin-right:2px;letter-spacing:.2px}
@@ -1003,7 +1003,7 @@ const LEGEND_BLOCK = [
 const BLK_LABEL = {
   'S':'Schule','DAZ':'DAZ','FöA':'Förderangebot','DK':'Deutschkurs Migros',
   'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
-  'PA+LS':'Prakt. + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
+  'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre Extern','S.LW':'S.LW',
 };
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
@@ -1210,7 +1210,7 @@ function renderLegend(){
   const row=arr=>arr.map(([c,m])=>`<span class="lg-i"><b>${c}</b>${m}</span>`).join('');
   el.innerHTML=
     `<div class="lg-grp"><div class="lg-h lg-h-blue">Schule-Code</div><div class="lg-row">${row(LEGEND_BLOCK)}</div></div>`+
-    `<div class="lg-grp"><div class="lg-h lg-h-blue">Werkstatt-Code</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
+    `<div class="lg-grp"><div class="lg-h lg-h-green">Werkstatt-Code</div><div class="lg-row">${row(WS_LEGEND)}</div></div>`+
     `<div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${row(legendAbsCombined())}</div></div>`;
 }
 
@@ -1218,11 +1218,15 @@ function renderDayPlan(){
   const date = pd(curDay);
   const area = document.getElementById('planArea');
 
-  const notPlannable=p=>p.status==='praktikum'||p.status==='prklehr';
+  const goesBottom=p=>{
+    const pl=getPlan(curDay,p.id); const bl=getBlocks(p,date); const abs=pl.abwesenheit||'';
+    return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||pl.sw==='S.EX'||
+           p.status==='praktikum'||p.status==='prklehr'||abs==='BA'||abs==='FE';
+  };
   const active = DB.participants
     .filter(p=>isActiveOnDay(p,date))
     .sort((a,b)=>{
-      const ab=notPlannable(a)?1:0, bb=notPlannable(b)?1:0;
+      const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
       if(ab!==bb) return ab-bb;
       return a.vorname.localeCompare(b.vorname,'de');
     });
@@ -1393,7 +1397,7 @@ function renderDayPlan(){
           <th style="min-width:160px">NM <small style="font-weight:400;opacity:.7">13:15–17:00</small></th>
           <th style="min-width:155px">Abwesenheit</th>
           <th style="width:58px;text-align:center">eCase</th>
-          <th style="min-width:120px">Bemerkung</th>
+          <th style="min-width:120px">Schnuppern</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -1409,6 +1413,7 @@ function buildAbsCell(code){
 function buildBlockedCell(label, type){
   const txt=BLK_LABEL[label]||label||'–';
   if(label==='PA'||label==='PA+LS') return `<span class="blocked-prk">${txt}</span>`;
+  if(label==='SL') return `<div class="blocked b-absent">${txt}</div>`;
   if(label==='S.LW') return `<span class="blocked-slw">S.LW</span>`;
   const cls=type==='sport'?'b-sport':'b-school';
   return `<div class="blocked ${cls}">${txt}</div>`;
@@ -1848,7 +1853,7 @@ function renderMonthly(){
   const lgRow=arr=>arr.map(([c,l])=>`<span class="lg-i"><b>${c}</b>${l}</span>`).join('');
   const legend=`<div class="legend-box mo-legend-full">
     <div class="lg-grp"><div class="lg-h lg-h-blue">Schule-Code</div><div class="lg-row">${lgRow(LEGEND_BLOCK)}</div></div>
-    <div class="lg-grp"><div class="lg-h lg-h-blue">Werkstatt-Code</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
+    <div class="lg-grp"><div class="lg-h lg-h-green">Werkstatt-Code</div><div class="lg-row">${lgRow(WS_LEGEND)}</div></div>
     <div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${lgRow(legendAbsCombined())}</div></div>
   </div>`;
 
@@ -2394,7 +2399,7 @@ function genWeekPDF(){
   };
 
   lgSection('SCHULE-CODE', LEGEND_BLOCK, 2, [219,234,254], [30,55,100]);
-  lgSection('WERKSTATT-CODE', WS_LEGEND, 3, [219,234,254], [30,55,100]);
+  lgSection('WERKSTATT-CODE', WS_LEGEND, 3, [220,252,231], [21,128,61]);
   lgSection('ABSENZ-CODE', legendAbsCombined(), 3, [254,226,226], [150,20,20]);
 
   // Footer alle Seiten
