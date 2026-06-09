@@ -188,8 +188,8 @@ input,select,textarea{font-family:inherit}
 .cell-name{font-weight:600;font-size:13px;white-space:nowrap}
 .cell-name-green{color:var(--green);font-weight:700}
 .bw-yvi{background:#be185d}
-.blocked-prk{background:#dcfce7;color:#15803d;font-weight:700;font-size:12px;text-align:center;border-radius:4px;padding:6px 4px;display:block;letter-spacing:.3px}
-.blocked-slw{background:#fef9c3;color:#92400e;font-weight:700;font-size:12px;text-align:center;border-radius:4px;padding:6px 4px;display:block;letter-spacing:.3px}
+.blocked-prk{background:#dcfce7;color:#15803d;font-weight:700;font-size:11px;text-align:center;border-radius:4px;padding:7px 4px;display:flex;align-items:center;justify-content:center;letter-spacing:.3px;white-space:nowrap}
+.blocked-slw{background:#fef9c3;color:#92400e;font-weight:700;font-size:11px;text-align:center;border-radius:4px;padding:7px 4px;display:flex;align-items:center;justify-content:center;letter-spacing:.3px;white-space:nowrap}
 .st-chip{
   display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;
   margin-left:4px;font-weight:700;vertical-align:middle;letter-spacing:.3px;
@@ -214,8 +214,8 @@ input,select,textarea{font-family:inherit}
 
 /* Werkstatt select */
 .ws-sel{
-  border:1px solid var(--g3);border-radius:5px;padding:5px 7px;
-  font-size:12px;background:#fff;color:var(--g8);width:100%;min-width:140px;
+  border:1px solid var(--g3);border-radius:5px;padding:7px 7px;
+  font-size:12px;background:#fff;color:var(--g8);width:100%;box-sizing:border-box;
 }
 .ws-sel:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 2px rgba(42,82,152,.15)}
 .ws-sel:disabled{background:var(--g2);color:var(--g5);cursor:not-allowed}
@@ -229,7 +229,7 @@ input,select,textarea{font-family:inherit}
 .blocked{
   display:flex;align-items:center;justify-content:center;
   border-radius:5px;padding:7px 6px;font-size:10px;font-weight:800;
-  letter-spacing:.8px;text-transform:uppercase;
+  letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;
   background:repeating-linear-gradient(135deg,var(--g2),var(--g2) 3px,var(--g3) 3px,var(--g3) 6px);
   color:var(--g6);border:1px dashed var(--g4);
 }
@@ -641,7 +641,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chMonth(1)">&#8250;</button>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-secondary btn-sm" onclick="openRapportModal()" title="Lernbericht pro Teilnehmer als PDF exportieren">📊 Rapport</button>
+          <button class="btn btn-secondary" onclick="openRapportModal()" title="Rapport pro Teilnehmer als PDF exportieren">📊 Rapport</button>
           <div id="moHint"></div>
         </div>
       </div>
@@ -1014,6 +1014,7 @@ const ABS = [
   {c:'KR-VM', l:'KR VM – Krank Vormittag'},
   {c:'KR-NM', l:'KR NM – Krank Nachmittag'},
   {c:'ZS',   l:'ZS – Zu spät'},
+  {c:'SL',   l:'SL – Schnupperlehre'},
   {c:'PA',   l:'PA – Praktikum'},
   {c:'BA',   l:'BA – Bezahlte Absenz'},
   {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
@@ -1041,7 +1042,7 @@ const LEGEND_BLOCK = [
 const BLK_LABEL = {
   'S':'Schule','DAZ':'DAZ','FöA':'Förderangebot','DK':'Deutschkurs Migros',
   'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
-  'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre Extern','S.LW':'S.LW',
+  'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
 };
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
@@ -1272,7 +1273,7 @@ function renderDayPlan(){
       .sort((a,b)=>{
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
-        return a.nachname.localeCompare(b.nachname,'de');
+        return a.vorname.localeCompare(b.vorname,'de');
       });
   }
   const active = _pSortList;
@@ -1374,7 +1375,7 @@ function renderDayPlan(){
       <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
         <option value=""${(!sw&&!isSchnuppertag)?' selected':''}>–</option>
         <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
-        <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperwoche Extern</option>
+        <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperlehre</option>
         <option value="S.TAG"${isSchnuppertag?' selected':''}>Schnuppertag</option>
       </select>
       <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
@@ -1843,7 +1844,7 @@ function renderMonthly(){
   const persons=[...DB.participants].sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.nachname.localeCompare(b.nachname,'de');
+    return a.vorname.localeCompare(b.vorname,'de');
   });
 
   if(!persons.length){
@@ -1930,7 +1931,7 @@ function renderMonthly(){
           onchange="setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
-      <button class="warn-bar ec-badge-btn" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
         ⚠️ ${totalOpen} offene eCase-Einträge in ${MON[m]} ▾
       </button>
       <div class="ec-drop" style="display:none">
@@ -2242,8 +2243,8 @@ function genPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de'));
-  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.nachname} ${p.vorname}</option>`).join('');
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de'));
+  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   document.querySelector('input[name="rptRange"][value="all"]').checked=true;
@@ -2334,19 +2335,22 @@ function genRapportPDF(){
 
   // Header bar
   doc.setFillColor(30,58,95);
-  doc.rect(mg,yp,W-2*mg,14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
-  doc.text('Lernbericht',mg+4,yp+9.5);
+  doc.rect(mg,yp,W-2*mg,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(255);
+  doc.text('Rapport',W/2,yp+10.5,{align:'center'});
   doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(rangeLabel,W-mg-4,yp+9.5,{align:'right'});
-  yp+=20;
+  doc.text(rangeLabel,W-mg-4,yp+10.5,{align:'right'});
+  yp+=22;
 
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(0);
-  doc.text(`${p.nachname} ${p.vorname}`,mg,yp);
-  if(p.jc){ doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100);
-    doc.text(`Jobcoach: ${p.jc}`,W-mg,yp,{align:'right'}); }
-  yp+=10;
-  doc.setDrawColor(220);doc.line(mg,yp,W-mg,yp);
+  doc.setFontSize(15);doc.setFont('helvetica','bold');doc.setTextColor(0);
+  doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
+  if(p.jc){
+    yp+=6;
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(100);
+    doc.text(`Jobcoach: ${p.jc}`,W/2,yp,{align:'center'});
+  }
+  yp+=8;
+  doc.setDrawColor(200);doc.line(mg,yp,W-mg,yp);
   yp+=8;
 
   // Stats table rows
@@ -2369,18 +2373,18 @@ function genRapportPDF(){
     ['','','',''],
     ['SCHNUPPERN','','',''],
     ['Schnuppertag (Extern, einzeln)',`${stats.schnuppertag} Tag${stats.schnuppertag!==1?'e':''}`, '',''],
-    ['Schnupperwoche Extern',`${stats.schnupperwoche} Tag${stats.schnupperwoche!==1?'e':''}`, '',''],
+    ['Schnupperlehre (ganze Woche)',`${stats.schnupperwoche} Tag${stats.schnupperwoche!==1?'e':''}`, '',''],
   ];
 
   doc.autoTable({
     startY:yp,
     body:rows,
-    styles:{fontSize:9,cellPadding:{top:2,right:4,bottom:2,left:4},lineColor:[235,235,235],lineWidth:.2},
+    styles:{fontSize:9.5,cellPadding:{top:2.5,right:5,bottom:2.5,left:5},lineColor:[235,235,235],lineWidth:.2},
     columnStyles:{
-      0:{cellWidth:100},
-      1:{cellWidth:42,halign:'right'},
-      2:{cellWidth:32,halign:'center',textColor:[120,120,120]},
-      3:{cellWidth:22,halign:'right'},
+      0:{cellWidth:96},
+      1:{cellWidth:38,halign:'right'},
+      2:{cellWidth:30,halign:'center',textColor:[120,120,120]},
+      3:{cellWidth:18,halign:'right'},
     },
     didParseCell:(d)=>{
       if(d.section!=='body') return;
@@ -2553,7 +2557,7 @@ function genWeekPDF(){
     const vmVal=blk.vmB?(blk.vmL==='PA+LS'?'PA+LS':blk.vmL):(plan.vm||'');
     const nmVal=blk.nmB?(blk.nmL==='PA+LS'?'PA+LS':blk.nmL):(plan.nm||'');
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
-    const swLbl=plan.sw==='S.EX'?'Schnupperwoche Extern':'';
+    const swLbl=plan.sw==='S.EX'?'Schnupperlehre':'';
     const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
     return[
       `${p.vorname} ${p.nachname}`,
