@@ -144,13 +144,13 @@ input,select,textarea{font-family:inherit}
 .day-bar{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
 .day-btn{
   padding:7px 14px;border-radius:6px;border:1px solid var(--g3);
-  background:#fff;font-size:12px;font-weight:600;color:var(--g6);
+  background:#fff;font-size:12px;font-weight:600;color:#1e3a5f;
   cursor:pointer;transition:all .15s;
 }
 .day-btn:hover{border-color:var(--navy-light);color:var(--navy)}
-.day-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.day-btn.today{border-color:var(--amber);color:var(--amber)}
-.day-btn.today.active{background:var(--amber);color:#fff;border-color:var(--amber)}
+.day-btn.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
+.day-btn.today{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+.day-btn.today.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
 
 /* ═══════════════════════════════════════════
    PLAN TABLE
@@ -561,8 +561,8 @@ input,select,textarea{font-family:inherit}
       <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
     </div>
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
-    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -573,8 +573,8 @@ input,select,textarea{font-family:inherit}
 <nav class="nav">
   <button class="nav-btn active" data-v="plan"    onclick="show('plan')"    >📅 Wochenplan</button>
   <button class="nav-btn"        data-v="monthly" onclick="show('monthly')" >📊 Monatsübersicht</button>
-  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
+  <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
 </nav>
 
@@ -593,20 +593,17 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chWeek(-1)">&#8249;</button>
           <div class="week-label" id="weekLabel">–</div>
           <button class="btn-icon" onclick="chWeek(1)">&#8250;</button>
-          <button class="btn btn-secondary btn-sm" onclick="goToday()">Heute</button>
+          <button class="day-btn active today" onclick="goToday()">Heute</button>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-              📄 PDF
+            <button class="btn btn-secondary" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
+              📄 Wochenplan generieren
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="copyPrev()" title="Werkstatt-Einträge der Vorwoche übernehmen">
+            <button class="btn btn-secondary" onclick="copyPrev()" title="Alle Einträge der Vorwoche in die aktuelle Woche kopieren">
               📋 Vorwoche kopieren
             </button>
-            <button class="btn btn-primary btn-sm" onclick="autofill()" title="Fixpräferenzen und Sport aus Stammdaten einfüllen">
-              ⚡ Auto-Einfüllen
-            </button>
-            <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #b91c1c" onclick="clearCurrentDay()" title="Alle Einträge des aktuellen Tages löschen">
+            <button class="btn btn-danger" onclick="clearCurrentDay()" title="Alle Einträge des aktuellen Tages löschen">
               🗑 Alle Einträge löschen
             </button>
           </div>
@@ -644,7 +641,7 @@ input,select,textarea{font-family:inherit}
           <button class="btn-icon" onclick="chMonth(1)">&#8250;</button>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-secondary" onclick="openRapportModal()" title="Rapport pro Teilnehmer als PDF exportieren">📊 Rapport</button>
+          <button class="btn btn-secondary" onclick="openRapportModal()" title="Teilnehmer-Rapport als PDF exportieren">📊 Teilnehmer-Rapport</button>
           <div id="moHint"></div>
         </div>
       </div>
@@ -658,7 +655,7 @@ input,select,textarea{font-family:inherit}
   <div class="view" id="view-rapport">
     <div class="card">
       <div class="card-head">
-        <span class="card-title">Monatsrapport generieren</span>
+        <span class="card-title">Monatsrapport</span>
       </div>
       <div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg">
@@ -669,7 +666,7 @@ input,select,textarea{font-family:inherit}
           <label>Monat</label>
           <input type="month" class="fi" id="rptM" onchange="buildRpt()" style="width:155px">
         </div>
-        <button class="btn btn-success" onclick="genPDF()">📄 PDF generieren</button>
+        <button class="btn btn-success" onclick="genPDF()">📄 Monatsrapport generieren</button>
       </div>
       <div id="rptArea"></div>
     </div>
@@ -1037,9 +1034,9 @@ const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
-  BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz VM','BA-NM':'Bezahlte Absenz NM',
-  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank VM','KR-NM':'Krank NM','KR-W':'Krank ganze Woche',UN:'Unfall',
-  UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz VM','UA-NM':'Unentschuldigte Absenz NM',
+  BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz Vormittag','BA-NM':'Bezahlte Absenz Nachmittag',
+  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',UN:'Unfall',
+  UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz Vormittag','UA-NM':'Unentschuldigte Absenz Nachmittag',
   MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
 
@@ -1050,7 +1047,7 @@ const LEGEND_BLOCK = [
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
-  'S':'Schule','DAZ':'DAZ','FöA':'Förderatelier','DK':'Deutschkurs Migros',
+  'S':'Schule','DAZ':'DAZ','FöA':'FöA','DK':'Deutschkurs Migros',
   'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
   'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
 };
@@ -1278,16 +1275,15 @@ function renderDayPlan(){
     const goesBottom=p=>{
       const bl=getBlocks(p,date);
       const abs=getPlan(curDay,p.id).abwesenheit||'';
-      return (bl.fullB&&bl.vmL==='S')||p.status==='schnupper'||
-             p.status==='praktikum'||p.status==='prklehr'||
-             abs==='KR-W'||abs==='FE-W';
+      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W';
     };
     _pSortList = DB.participants
       .filter(p=>isActiveOnDay(p,date))
       .sort((a,b)=>{
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
-        return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
+        // Alle TN: immer nach Vorname sortieren
+        return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
       });
   }
   const active = _pSortList;
@@ -1313,13 +1309,12 @@ function renderDayPlan(){
     const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM' || absCode==='BA-NM';
     const pid    = p.id;
 
-    // Row class
+    // Row class – bei Absenz keine Einfärbung
     let rowCls='';
-    if(absent) rowCls='row-absent';
-    else if(p.status==='praktikum') rowCls='row-praktikum';
-    else if(p.status==='prklehr') rowCls='row-prklehr';
-    else if(p.status==='lehrstelle') rowCls='row-lehrstelle';
-    else if(p.status==='schnupper') rowCls='row-schnupper';
+    if(!absent&&p.status==='praktikum') rowCls='row-praktikum';
+    else if(!absent&&p.status==='prklehr') rowCls='row-prklehr';
+    else if(!absent&&p.status==='lehrstelle') rowCls='row-lehrstelle';
+    else if(!absent&&p.status==='schnupper') rowCls='row-schnupper';
 
     // Status chip
     const chipMap={praktikum:'chip-prak Prak.',lehrstelle:'chip-lehr Lehr.',schnupper:'chip-schn Schn.',prklehr:'chip-prklehr Prak+Lehr'};
@@ -1433,7 +1428,7 @@ function renderDayPlan(){
         <td style="padding:3px 8px;color:var(--red);font-weight:700">${e.abs}</td>
         <td style="padding:3px 8px">
           <input type="checkbox" title="In eCase eingetragen"
-            onchange="setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
+            onchange="this.closest('.ec-drop').style.display='none';setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
         </td></tr>`).join('');
       badge.innerHTML=`<div class="ec-badge-wrap">
         <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -1522,23 +1517,23 @@ function onWsCh(sel, pid, slot){
 function onAbsChange(pid, day, val){
   const curAbs=getPlan(day,pid).abwesenheit||'';
   const isWeekCode=c=>c==='KR-W'||c==='FE-W';
-
   if(isWeekCode(val)){
-    // Setzen: nur am Montag erlaubt – ganze Woche (Mo–Fr) befüllen
+    // Ganze-Woche-Codes können nur am Montag gesetzt werden und füllen immer Mo–Fr
     if(pd(day).getDay()!==1){
       toast('⚠ KR-W / FE-W kann nur am Montag eingesteuert werden','t-warn');
-      _pSortDay=null; renderDayPlan(); return;
+      renderDayPlan();
+      return;
     }
     const{y,w}=isoWeek(pd(day));
     weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:val}));
   } else if(isWeekCode(curAbs)&&val===''){
-    // Entfernen: war ein Wochen-Code → ganze Woche leeren
+    // Entfernen: war ein Wochen-Code → ganze Woche (Mo–Fr) wieder leeren
     const{y,w}=isoWeek(pd(day));
     weekDays(y,w).forEach(d=>setPlan(ds(d),pid,{abwesenheit:''}));
   } else {
     setPlan(day,pid,{abwesenheit:val});
   }
-  _pSortDay=null; // sofort neu sortieren
+  _pSortDay=null; // Absenz neu setzen → Liste sofort neu sortieren (KR-W/FE-W/S nach unten)
   renderDayPlan();
 }
 
@@ -1555,31 +1550,6 @@ function goToday(){
   curWeek=isoWeek(new Date()); curDay=ds(new Date()); renderPlan();
 }
 
-function autofill(){
-  const {y,w}=curWeek; const days=weekDays(y,w);
-  let n=0;
-  days.forEach(date=>{
-    const dstr=ds(date); const dow=date.getDay();
-    DB.participants.forEach(p=>{
-      if(!isActiveOnDay(p,date)||p.status==='schnupper') return;
-      const blk=getBlocks(p,date);
-      const ex=getPlan(dstr,p.id);
-
-      // Fix prefs
-      for(const fp of (p.fixpraeferenzen||[])){
-        const fd2=+fp.wochentag;
-        if(fd2!==0&&fd2!==dow) continue;
-        if(!ex.vm&&!blk.vmB){ DB.plans[dstr]=DB.plans[dstr]||{}; DB.plans[dstr][p.id]=DB.plans[dstr][p.id]||{}; DB.plans[dstr][p.id].vm=fp.werkstatt; n++; }
-        if(fp.ganztag&&!ex.nm&&!blk.nmB){ DB.plans[dstr]=DB.plans[dstr]||{}; DB.plans[dstr][p.id]=DB.plans[dstr][p.id]||{}; DB.plans[dstr][p.id].nm=fp.werkstatt; n++; }
-      }
-      // Sport
-      for(const sp of (p.sporttermine||[])){
-        if(+sp===dow&&!ex.nm&&!blk.nmB){ DB.plans[dstr]=DB.plans[dstr]||{}; DB.plans[dstr][p.id]=DB.plans[dstr][p.id]||{}; DB.plans[dstr][p.id].nm='Sport'; n++; }
-      }
-    });
-  });
-  saveDB(); toast(`⚡ ${n} Felder automatisch gefüllt`,'t-ok'); renderPlan();
-}
 
 function copyPrev(){
   let{y,w}=curWeek; let pw=w-1,py=y;
@@ -1631,7 +1601,7 @@ function clearCurrentDay(){
 // ────────────────────────────────────────────
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
@@ -1872,7 +1842,7 @@ function renderMonthly(){
   const persons=[...DB.participants].sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de');
+    return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
   });
 
   if(!persons.length){
@@ -1961,7 +1931,7 @@ function renderMonthly(){
       <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
       <td style="padding:4px 10px;text-align:center">
         <input type="checkbox" title="In eCase eingetragen"
-          onchange="setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
+          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2003,7 +1973,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2082,7 +2052,7 @@ function getRptRows(p,year,month){
       const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
       if(isSchool){
         bem='Schule';
-        if(blk.vmL==='S' || present) az='8';
+        az='8'; // Schule = immer 8h Arbeitszeit (auch ohne Werkstatt-Eintrag)
       } else if(present){
         az='8';
       }
@@ -2141,14 +2111,12 @@ function buildRpt(){
     if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}.</td><td></td><td></td><td></td><td style="color:var(--g5);font-size:11px">${r.dow}</td></tr>`;
     else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}.</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
     else{
-      const isUA=r.ac==='UA';
-      const rowCls=isUA?'ra ra-ua':(r.ac||r.as)?'ra':'';
-      html+=`<tr class="${rowCls}">
+      html+=`<tr>
         <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
         <td class="rpt-num">${r.az}</td>
-        <td class="rpt-num" style="font-weight:${r.as?700:400};${isUA?'color:var(--red)':''}">${r.as||''}</td>
-        <td class="rpt-num ${r.ac?'rpt-code':''}${isUA?' rpt-ua':''}">${r.ac||''}</td>
-        <td${isUA?' style="color:var(--red)"':''}>${esc(r.bem||'')}</td>
+        <td class="rpt-num" style="font-weight:${r.as?700:400}">${r.as||''}</td>
+        <td class="rpt-num ${r.ac?'rpt-code':''}">${r.ac||''}</td>
+        <td>${esc(r.bem||'')}</td>
       </tr>`;
     }
   });
@@ -2236,13 +2204,7 @@ function genPDF(){
       const r=body[d.row.index];
       if(r[5]){d.cell.styles.fillColor=[238,238,238];d.cell.styles.textColor=[160,160,160];}
       else if(r[6]){d.cell.styles.fillColor=[248,248,248];d.cell.styles.textColor=[200,200,200];}
-      else if(r[7]){
-        // UA – Unbezahlte Absenz: rote Zeile
-        d.cell.styles.fillColor=[254,226,226];
-        d.cell.styles.textColor=[185,28,28];
-        if(d.column.index===3) d.cell.styles.fontStyle='bold';
-      } else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
-      else if(r[3]){d.cell.styles.fillColor=[255,248,235];}
+      else if(r[3]&&d.column.index===3){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=[180,20,20];}
     },
     margin:{left:mg,right:mg},
   });
@@ -2274,7 +2236,7 @@ function genPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
   const now=new Date();
   document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -2339,12 +2301,12 @@ function genRapportPDF(){
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
 
-      // Abwesenheiten (KR-W zählt als KR-Tag; FE-W zählt nicht – Ferien)
+      // Abwesenheiten
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
       if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM'||rawAbs==='KR-W') stats.kr++;
       if(rawAbs==='ZS') stats.zs++;
 
-      // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt/Schul-Zählung
+      // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
       const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
       const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
@@ -2391,7 +2353,7 @@ function genRapportPDF(){
   doc.setFillColor(30,58,95);
   doc.rect(mg,yp,W-2*mg,15,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
-  doc.text('Rapport',W/2,yp+10,{align:'center'});
+  doc.text('Teilnehmer-Rapport',W/2,yp+10,{align:'center'});
   doc.setFontSize(8.5);doc.setFont('helvetica','normal');
   doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
   yp+=21;
@@ -2445,12 +2407,13 @@ function genRapportPDF(){
       cellPadding:{top:3,right:5,bottom:3,left:5},
     },
     columnStyles:{
-      0:{cellWidth:90},
-      1:{cellWidth:42,halign:'right'},
-      2:{cellWidth:18,halign:'center',textColor:[140,140,140]},
-      3:{cellWidth:28,halign:'right'},
+      0:{cellWidth:84},
+      1:{cellWidth:46,halign:'left'},
+      2:{cellWidth:22,halign:'center',textColor:[140,140,140]},
+      3:{cellWidth:26,halign:'right'},
     },
     didParseCell:(d)=>{
+      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='center';return;}
       if(d.section!=='body') return;
       const txt=d.row.raw[0];
       const isSec=['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt);
@@ -2541,7 +2504,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -2610,14 +2573,25 @@ function genWeekPDF(){
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
+  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
   const dayActive=DB.participants
     .filter(p=>{
       if(!isActiveOnDay(p,dayDate)) return false;
       const pl=getPlan(curDay,p.id);
       const bl=getBlocks(p,dayDate);
-      return WS.includes(pl.vm)||WS.includes(pl.nm)||pl.nm==='Sport'||bl.nmL==='Sport';
+      // Praktikum / PA+LS → nie auf Tagesliste
+      if(p.status==='praktikum'||p.status==='prklehr') return false;
+      // Ganztag Schule → nie auf Tagesliste
+      if(bl.fullB&&bl.vmL==='S') return false;
+      // Ganztags-Absenz → nie auf Tagesliste
+      const rawAbs=pl.abwesenheit||'';
+      if(rawAbs&&!SOFT_ABS_PDF.has(rawAbs)) return false;
+      // Nur TN mit effektivem Werkstatt-Eintrag (nicht gesperrter Slot)
+      const hasVm=!bl.vmB&&WS.includes(pl.vm);
+      const hasNm=!bl.nmB&&(WS.includes(pl.nm)||pl.nm==='Sport');
+      return hasVm||hasNm;
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.nachname.localeCompare(b.nachname,'de')||a.vorname.localeCompare(b.vorname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
