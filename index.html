@@ -1429,7 +1429,7 @@ function renderDayPlan(){
         <td style="padding:3px 8px;color:var(--red);font-weight:700">${e.abs}</td>
         <td style="padding:3px 8px">
           <input type="checkbox" title="In eCase eingetragen"
-            onchange="setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
+            onchange="this.closest('.ec-drop').style.display='none';setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
         </td></tr>`).join('');
       badge.innerHTML=`<div class="ec-badge-wrap">
         <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -1944,7 +1944,7 @@ function renderMonthly(){
       <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
       <td style="padding:4px 10px;text-align:center">
         <input type="checkbox" title="In eCase eingetragen"
-          onchange="setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
+          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
