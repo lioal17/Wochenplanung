@@ -1222,9 +1222,10 @@ function isActiveOnDay(p, date){
 // Schnuppertag = Absenz SL ohne Schnupperwoche. Keine echte Absenz → kein eCase-Eintrag nötig.
 function isSchnuppertag(pl){ return !!pl && pl.abwesenheit==='SL' && !pl.sw; }
 
-// Zählt, wie oft 'Neophyten' an einem Tag effektiv eingeteilt ist (VM/NM je +1).
-// Exakt dieselbe Logik wie die Monatsübersicht-Zelle: Ganztags-/Halbtags-Absenzen,
-// Schnupperwoche (S.LW/S.EX) und Sperren (Schule/Sport/Praktikum) werden abgezogen.
+// Zählt pro Teilnehmer und Tag MAXIMAL 1: sobald 'Neophyten' im VM ODER NM
+// effektiv eingeteilt ist, zählt der Tag mit 1 (keine Doppelzählung bei VM+NM).
+// Logik der Monatsübersicht-Zelle: Ganz-/Halbtags-Absenzen, S.LW/S.EX und
+// Sperren (Schule/Sport/Praktikum) zählen nicht als Neophyten-Einteilung.
 function neoCountForDay(p, d){
   if(!isActiveOnDay(p,d)) return 0;
   const plan=getPlan(ds(d),p.id);
@@ -1236,10 +1237,9 @@ function neoCountForDay(p, d){
   const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
   if(effAbs) return 0;                              // Ganztags-Absenz
   if(plan.sw==='S.LW'||plan.sw==='S.EX') return 0;  // Schnupperwoche
-  let c=0;
-  if(!(isUAvm||isKRvm||isBAvm) && !blk.vmB && plan.vm==='Neophyten') c++;
-  if(!(isUAnm||isKRnm||isBAnm) && !blk.nmB && plan.nm==='Neophyten') c++;
-  return c;
+  const vmNeo = !(isUAvm||isKRvm||isBAvm) && !blk.vmB && plan.vm==='Neophyten';
+  const nmNeo = !(isUAnm||isKRnm||isBAnm) && !blk.nmB && plan.nm==='Neophyten';
+  return (vmNeo||nmNeo) ? 1 : 0;
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
