@@ -81,6 +81,8 @@ input,select,textarea{font-family:inherit}
 }
 .nav-btn:hover{color:var(--navy);background:var(--g1)}
 .nav-btn.active{color:var(--navy);border-bottom-color:var(--navy);background:#fff}
+.nav-btn.nav-neophyt{margin-left:auto;color:var(--green);font-weight:700}
+.nav-btn.nav-neophyt:hover{color:#fff;background:var(--green)}
 .nav-btn .n-badge{
   background:var(--red);color:#fff;border-radius:10px;
   font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;
@@ -576,6 +578,7 @@ input,select,textarea{font-family:inherit}
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
   <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
+  <button class="nav-btn nav-neophyt" onclick="genNeophytPDF()" title="Neophyten – Anzahl Teilnehmende (mit KW &amp; Datum) als PDF generieren">🌱 Neophyt</button>
 </nav>
 
 <div class="main">
@@ -2693,6 +2696,73 @@ function genWeekPDF(){
 
   doc.save(`Wochenplan_KW${pad(w)}_${y}.pdf`);
   toast('📄 Wochenplan PDF (3 Seiten) wird heruntergeladen…','t-ok');
+}
+
+// ────────────────────────────────────────────
+// NEOPHYT – Anzahl Teilnehmende (ohne Namen) + KW/Datum als PDF
+// ────────────────────────────────────────────
+function genNeophytPDF(){
+  if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
+  const{jsPDF}=jspdf;
+
+  // Stichtag = aktuell gewählter Tag (sonst heute)
+  const dayStr=curDay||ds(new Date());
+  const dayDate=pd(dayStr);
+  const{y,w}=isoWeek(dayDate);
+
+  // Teilnehmende mit Neophyten-Einteilung am Stichtag zählen – ohne Namen
+  let vmCount=0,nmCount=0,total=0;
+  DB.participants.forEach(p=>{
+    if(!isActiveOnDay(p,dayDate)) return;
+    const pl=getPlan(dayStr,p.id);
+    const bl=getBlocks(p,dayDate);
+    const inVm=!bl.vmB && pl.vm==='Neophyten';
+    const inNm=!bl.nmB && pl.nm==='Neophyten';
+    if(inVm) vmCount++;
+    if(inNm) nmCount++;
+    if(inVm||inNm) total++;
+  });
+
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,mg=15;
+  const dateStr=`${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
+
+  // Kopfzeile
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(21,128,61);
+  doc.text('Neophyten',mg,26);
+  doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(90);
+  doc.text('Anzahl Teilnehmende',mg,34);
+  doc.setDrawColor(21,128,61);doc.setLineWidth(0.6);doc.line(mg,39,W-mg,39);
+
+  // KW + genaues Datum
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');doc.setTextColor(40);doc.text('Kalenderwoche:',mg,52);
+  doc.setFont('helvetica','normal');doc.text(`KW ${pad(w)} · ${y}`,mg+42,52);
+  doc.setFont('helvetica','bold');doc.text('Datum:',mg,60);
+  doc.setFont('helvetica','normal');doc.text(`${dateStr}  (${WDL[dayDate.getDay()]})`,mg+42,60);
+
+  // Großer Zähler-Kasten
+  doc.setFillColor(220,252,231);doc.setDrawColor(21,128,61);doc.setLineWidth(0.6);
+  doc.roundedRect(mg,72,W-2*mg,46,3,3,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(52);doc.setTextColor(21,128,61);
+  doc.text(String(total),W/2,102,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(40);
+  doc.text('Teilnehmende in der Werkstatt Neophyten',W/2,112,{align:'center'});
+
+  // VM/NM-Aufschlüsselung
+  doc.setFontSize(12);doc.setTextColor(60);
+  doc.setFont('helvetica','bold');doc.text('Vormittag (VM):',mg,134);
+  doc.setFont('helvetica','normal');doc.text(String(vmCount),mg+42,134);
+  doc.setFont('helvetica','bold');doc.text('Nachmittag (NM):',mg,142);
+  doc.setFont('helvetica','normal');doc.text(String(nmCount),mg+42,142);
+
+  // Fußzeile
+  const now=new Date();
+  doc.setFontSize(8);doc.setTextColor(170);
+  doc.text(`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,285);
+
+  doc.save(`Neophyten_KW${pad(w)}_${pad(dayDate.getDate())}-${pad(dayDate.getMonth()+1)}-${y}.pdf`);
+  toast(`🌱 Neophyten-PDF: ${total} Teilnehmende (KW ${pad(w)})`,'t-ok');
 }
 
 // ────────────────────────────────────────────
