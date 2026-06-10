@@ -2735,74 +2735,96 @@ function genWeekPDF(){
 }
 
 // ────────────────────────────────────────────
-// NEOPHYT – Anzahl Teilnehmende pro Tag (ohne Namen) + KW/Datum als PDF
+// NEOPHYT – Anzahl Teilnehmende pro Tag übers ganze Jahr (ohne Namen) als PDF
 // ────────────────────────────────────────────
 function genNeophytPDF(){
   if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
   const{jsPDF}=jspdf;
 
-  // Aktuelle Woche (Mo–Fr)
-  const{y,w}=curWeek||isoWeek(new Date());
-  const days=weekDays(y,w);
+  // Jahr aus der aktuell gewählten Woche ableiten
+  const Y=(curWeek||isoWeek(new Date())).y;
 
-  // Pro Tag: Anzahl TN mit Neophyten-Einteilung (VM oder NM = 1 TN, ohne Namen)
-  const rows=days.map(d=>{
-    const dStr=ds(d);
+  // Alle Tage des Jahres mit Neophyten-Einteilung sammeln (VM und NM je separat = +1)
+  const dayData=[];
+  Object.keys(DB.plans||{}).forEach(dStr=>{
+    const d=pd(dStr);
+    if(!d||d.getFullYear()!==Y) return;
     let cnt=0;
     DB.participants.forEach(p=>{
       if(!isActiveOnDay(p,d)) return;
       const pl=getPlan(dStr,p.id);
       const bl=getBlocks(p,d);
-      // VM und NM zählen je separat: pro belegtem Neophyten-Slot +1
       if(!bl.vmB && pl.vm==='Neophyten') cnt++;
       if(!bl.nmB && pl.nm==='Neophyten') cnt++;
     });
-    const{w:kw}=isoWeek(d);
-    return{
-      kw:`KW ${kw}`,
-      datum:`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`,
-      wd:WDL[d.getDay()],
-      cnt
-    };
+    if(cnt>0) dayData.push({d,cnt});
   });
-  const wkTotal=rows.reduce((s,r)=>s+r.cnt,0);
+  dayData.sort((a,b)=>a.d-b.d);
+  const yearTotal=dayData.reduce((s,r)=>s+r.cnt,0);
+  const dayCount=dayData.length;
+
+  // Tabellen-Body mit Monats-Zwischensummen aufbauen
+  const body=[];
+  const subRows=new Set();
+  let curM=-1, mSum=0, mDays=0;
+  const pushSub=()=>{ if(curM>=0){ body.push([`Summe ${MON[curM]}`,'',`${mDays} Tag${mDays===1?'':'e'}`,String(mSum)]); subRows.add(body.length-1); } };
+  dayData.forEach(({d,cnt})=>{
+    if(d.getMonth()!==curM){ pushSub(); curM=d.getMonth(); mSum=0; mDays=0; }
+    const{w:kw}=isoWeek(d);
+    body.push([`KW ${pad(kw)}`,`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`,WDL[d.getDay()],String(cnt)]);
+    mSum+=cnt; mDays++;
+  });
+  pushSub();
+  if(!body.length) body.push(['—','—','Keine Neophyten-Einteilungen','0']);
 
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,mg=15;
-  const d0=days[0],d4=days[4];
-  const weekRange=`${pad(d0.getDate())}.${pad(d0.getMonth()+1)} – ${pad(d4.getDate())}.${pad(d4.getMonth()+1)}.${y}`;
 
-  // Kopfzeile
+  // Kopfzeile (Seite 1)
   doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(21,128,61);
   doc.text('Neophyten',mg,26);
   doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(90);
-  doc.text(`Anzahl Teilnehmende · KW ${pad(w)} · ${y}`,mg,34);
+  doc.text(`Anzahl Teilnehmende · Jahr ${Y}`,mg,34);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
-  doc.text(weekRange,W-mg,34,{align:'right'});
+  doc.text(`${yearTotal} Einteilungen an ${dayCount} Tag${dayCount===1?'':'en'}`,W-mg,34,{align:'right'});
   doc.setDrawColor(21,128,61);doc.setLineWidth(0.6);doc.line(mg,39,W-mg,39);
 
-  // Tabelle: KW · Datum · Wochentag · Anz. Teilnehmer
+  // Tabelle: KW · Datum · Wochentag · Anz. Teilnehmer (auto-paginiert)
   doc.autoTable({
-    startY:46,margin:{left:mg,right:mg},
+    startY:46,margin:{left:mg,right:mg,top:18},
     head:[['KW','Datum','Wochentag','Anz. Teilnehmer']],
-    body:rows.map(r=>[r.kw,r.datum,r.wd,String(r.cnt)]),
+    body,
     theme:'grid',
-    styles:{fontSize:12,cellPadding:3,lineColor:[21,128,61],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:12,halign:'left'},
-    alternateRowStyles:{fillColor:[220,252,231]},
-    columnStyles:{0:{cellWidth:25},1:{cellWidth:40},2:{cellWidth:50},3:{cellWidth:'auto',halign:'center',fontStyle:'bold'}},
-    foot:[['','','Total Woche',String(wkTotal)]],
-    footStyles:{fillColor:[240,253,244],textColor:[21,128,61],fontStyle:'bold',fontSize:12,halign:'left',lineColor:[21,128,61],lineWidth:0.3},
-    didParseCell:(data)=>{ if(data.section==='foot'&&data.column.index===3) data.cell.styles.halign='center'; },
+    styles:{fontSize:11,cellPadding:2.5,lineColor:[21,128,61],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:11,halign:'left'},
+    alternateRowStyles:{fillColor:[240,253,244]},
+    columnStyles:{0:{cellWidth:24},1:{cellWidth:40},2:{cellWidth:50},3:{cellWidth:'auto',halign:'center',fontStyle:'bold'}},
+    foot:[[`Total Jahr ${Y}`,'',`${dayCount} Tag${dayCount===1?'':'e'}`,String(yearTotal)]],
+    footStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:12,halign:'left',lineColor:[21,128,61],lineWidth:0.3},
+    showFoot:'lastPage',
+    didParseCell:(data)=>{
+      if(data.column.index===3) data.cell.styles.halign='center';
+      // Monats-Zwischensummen hervorheben
+      if(data.section==='body'&&subRows.has(data.row.index)){
+        data.cell.styles.fillColor=[209,250,229];
+        data.cell.styles.fontStyle='bold';
+        data.cell.styles.textColor=[21,128,61];
+      }
+    },
   });
 
-  // Fußzeile
+  // Fuß- und Seitenzahlen auf allen Seiten
   const now=new Date();
-  doc.setFontSize(8);doc.setTextColor(170);
-  doc.text(`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,285);
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFontSize(8);doc.setTextColor(170);
+    doc.text(`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,290);
+    doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
+  }
 
-  doc.save(`Neophyten_KW${pad(w)}_${y}.pdf`);
-  toast(`🌱 Neophyten-PDF: KW ${pad(w)} · ${wkTotal} TN gesamt`,'t-ok');
+  doc.save(`Neophyten_Jahr_${Y}.pdf`);
+  toast(`🌱 Neophyten ${Y}: ${yearTotal} Einteilungen an ${dayCount} Tagen`,'t-ok');
 }
 
 // ────────────────────────────────────────────
