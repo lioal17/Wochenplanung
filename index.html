@@ -1207,6 +1207,9 @@ function isActiveOnDay(p, date){
   return true;
 }
 
+// Schnuppertag = Absenz SL ohne Schnupperwoche. Keine echte Absenz → kein eCase-Eintrag nötig.
+function isSchnuppertag(pl){ return !!pl && pl.abwesenheit==='SL' && !pl.sw; }
+
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 // ────────────────────────────────────────────
@@ -1364,7 +1367,8 @@ function renderDayPlan(){
     </div>`;
 
     // eCase
-    const needEC=absCode!==''; // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag
+    // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag – ausser Schnuppertag (SL)
+    const needEC=absCode!=='' && !isSchnuppertag(plan);
     const ecDone=plan.ecaseEntered||false;
     let ecCell;
     if(!needEC){
@@ -1418,7 +1422,7 @@ function renderDayPlan(){
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
     const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM'];
-    if(pl.abwesenheit&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)){
+    if(pl.abwesenheit&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
     }
@@ -1893,7 +1897,7 @@ function renderMonthly(){
         dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        if(!plan.ecaseEntered&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
@@ -2063,7 +2067,7 @@ function getRptRows(p,year,month){
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
     if(absTxt) bem=absTxt+(bem&&bem!==absTxt?' · '+bem:'');
     return{tag:d.getDate(),dow:WD[d.getDay()],az,as,ac,bem,
-      ecDone:plan.ecaseEntered||false,dstr,we:false,inactive:false};
+      ecDone:plan.ecaseEntered||false,schnuppertag:isSchnuppertag(plan),dstr,we:false,inactive:false};
   });
 }
 
@@ -2078,7 +2082,7 @@ function buildRpt(){
   const rows=getRptRows(p,y,month);
   const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&r.ac!=='UA').length;
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac==='UA').length;
-  const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone).length;
+  const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone&&!r.schnuppertag).length;
 
   let html='';
   if(openEC>0) html+=`<div class="warn-bar">⚠️ ${openEC} eCase-Einträge noch offen – bitte erst in eCase erfassen, bevor der Rapport generiert wird.</div>`;
@@ -2717,8 +2721,9 @@ function genNeophytPDF(){
       if(!isActiveOnDay(p,d)) return;
       const pl=getPlan(dStr,p.id);
       const bl=getBlocks(p,d);
-      const inNeo=(!bl.vmB && pl.vm==='Neophyten')||(!bl.nmB && pl.nm==='Neophyten');
-      if(inNeo) cnt++;
+      // VM und NM zählen je separat: pro belegtem Neophyten-Slot +1
+      if(!bl.vmB && pl.vm==='Neophyten') cnt++;
+      if(!bl.nmB && pl.nm==='Neophyten') cnt++;
     });
     const{w:kw}=isoWeek(d);
     return{
