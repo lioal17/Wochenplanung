@@ -2786,6 +2786,13 @@ function updateSaveFileLabel(){
 async function manualSave(){
   const now=new Date();
   const data=JSON.stringify(DB,null,2);
+  // Schutz vor versehentlichem Überschreiben einer guten Sicherung mit leeren Daten
+  const pCount=DB.participants.length;
+  const planDays=Object.keys(DB.plans||{}).filter(d=>DB.plans[d]&&Object.keys(DB.plans[d]).length).length;
+  if(pCount===0&&planDays===0){
+    if(!confirm('Achtung: Es sind aktuell keine Teilnehmer und keine Planung vorhanden.\nTrotzdem speichern? (überschreibt ggf. eine vorhandene Sicherung mit leeren Daten)')) return;
+  }
+  const savedMsg=`💾 Gespeichert: ${pCount} Teilnehmer · ${planDays} Plantage`;
   if('showSaveFilePicker' in window){
     try{
       if(!savedFileHandle){
@@ -2798,7 +2805,7 @@ async function manualSave(){
       await w.write(data); await w.close();
       dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
       snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
-      toast(`💾 Gespeichert: ${savedFileHandle.name}`,'t-ok');
+      toast(`${savedMsg} → ${savedFileHandle.name}`,'t-ok');
     }catch(e){
       if(e.name==='AbortError') return;
       savedFileHandle=null; updateSaveFileLabel();
@@ -2812,7 +2819,7 @@ async function manualSave(){
     a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
     a.click(); URL.revokeObjectURL(a.href);
     dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
-    snapshotBackup(); updateSaveInfo(); toast('💾 Datei gespeichert','t-ok');
+    snapshotBackup(); updateSaveInfo(); toast(savedMsg,'t-ok');
   }
 }
 
