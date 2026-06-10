@@ -284,6 +284,17 @@ input,select,textarea{font-family:inherit}
 .plan-summary{
   display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 4px;
 }
+/* Getrennte Zähler VM / NM */
+.plan-summary-split{
+  display:flex;flex-direction:column;gap:8px;
+  margin-top:10px;padding-top:12px;border-top:1px solid var(--g2);
+}
+.sum-slot{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sum-slot-lbl{
+  font-size:11px;font-weight:800;color:var(--navy);
+  min-width:34px;letter-spacing:.5px;
+}
+.sum-empty{font-size:11px;color:var(--g5)}
 .sum-chip{
   background:var(--g1);border:1px solid var(--g3);border-radius:5px;
   padding:4px 10px;font-size:11px;font-weight:600;color:var(--g7);
@@ -1301,6 +1312,8 @@ function renderDayPlan(){
 
   // Build werkstatt count for summary
   const wsCounts={};
+  // Separate Zähler pro Slot (VM / NM)
+  const vmCounts={}, nmCounts={};
 
   let rows='';
   active.forEach(p=>{
@@ -1349,11 +1362,19 @@ function renderDayPlan(){
       ? buildAbsCell(absCode)
       : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',false);
 
-    // Count werkstatten for summary
-    if(!vmAbsent && !blk.vmB && plan.vm) wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
+    // Count werkstatten for summary (gesamt + getrennt nach VM/NM)
+    if(!vmAbsent && !blk.vmB && plan.vm){
+      wsCounts[plan.vm]=(wsCounts[plan.vm]||0)+1;
+      vmCounts[plan.vm]=(vmCounts[plan.vm]||0)+1;
+    }
     if(!nmAbsent){
-      if(blk.nmL==='Sport'||plan.nm==='Sport') wsCounts['Sport']=(wsCounts['Sport']||0)+1;
-      else if(!blk.nmB && plan.nm) wsCounts[plan.nm]=(wsCounts[plan.nm]||0)+1;
+      if(blk.nmL==='Sport'||plan.nm==='Sport'){
+        wsCounts['Sport']=(wsCounts['Sport']||0)+1;
+        nmCounts['Sport']=(nmCounts['Sport']||0)+1;
+      } else if(!blk.nmB && plan.nm){
+        wsCounts[plan.nm]=(wsCounts[plan.nm]||0)+1;
+        nmCounts[plan.nm]=(nmCounts[plan.nm]||0)+1;
+      }
     }
 
     // Absence
@@ -1411,10 +1432,20 @@ function renderDayPlan(){
     </tr>`;
   });
 
-  // Summary chips
+  // Summary chips (gesamt)
   const sumChips=Object.entries(wsCounts).map(([ws,n])=>
     `<div class="sum-chip"><span>${ws}</span><span class="cnt">${n}</span></div>`
   ).join('');
+
+  // Getrennte Zähler VM / NM
+  const chipsFrom=cnts=>Object.entries(cnts)
+    .sort((a,b)=>a[0].localeCompare(b[0],'de'))
+    .map(([ws,n])=>`<div class="sum-chip"><span>${ws}</span><span class="cnt">${n}</span></div>`).join('');
+  const vmChips=chipsFrom(vmCounts), nmChips=chipsFrom(nmCounts);
+  const splitSummary=`<div class="plan-summary-split">
+      <div class="sum-slot"><span class="sum-slot-lbl">VM</span>${vmChips||'<span class="sum-empty">– keine Einteilung –</span>'}</div>
+      <div class="sum-slot"><span class="sum-slot-lbl">NM</span>${nmChips||'<span class="sum-empty">– keine Einteilung –</span>'}</div>
+    </div>`;
 
   // eCase badge (compact, in header)
   let openEC=0;
@@ -1468,6 +1499,7 @@ function renderDayPlan(){
       </table>
     </div>
     ${sumChips?`<div class="plan-summary">${sumChips}</div>`:''}
+    ${splitSummary}
   `;
 }
 
