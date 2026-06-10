@@ -1386,13 +1386,13 @@ function renderDayPlan(){
     // Schnuppern – Dropdown (oben) + Freitext (unten), unabhängig voneinander
     const bem=plan.bemerkung||'';
     const sw=plan.sw||'';
-    const isSchnuppertag=!sw&&(plan.abwesenheit==='SL');
+    const isSchnupTag=isSchnuppertag(plan);
     const bemCell=`<div class="bem-wrap">
       <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
-        <option value=""${(!sw&&!isSchnuppertag)?' selected':''}>–</option>
+        <option value=""${(!sw&&!isSchnupTag)?' selected':''}>–</option>
         <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
         <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperlehre</option>
-        <option value="S.TAG"${isSchnuppertag?' selected':''}>Schnuppertag</option>
+        <option value="S.TAG"${isSchnupTag?' selected':''}>Schnuppertag</option>
       </select>
       <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
         onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
