@@ -393,6 +393,7 @@ input,select,textarea{font-family:inherit}
 .mo-vm-sep{height:1px;background:var(--g2)}
 .mo-slot-lbl{font-size:6.5px;font-weight:700;opacity:.55;margin-right:2px;letter-spacing:.2px}
 .mo-slot-h{font-size:10px;font-weight:700;padding:3px 0;opacity:.85}
+.mo-tbl th.mo-kw{background:var(--navy-light);color:#fff;font-size:11px;letter-spacing:.5px;opacity:1;border-bottom:1px solid rgba(255,255,255,.25)}
 .mo-legend-full{margin-top:12px;padding:8px 4px 4px;border-top:1px solid var(--g2)}
 
 .mo-legend{
@@ -1221,6 +1222,26 @@ function isActiveOnDay(p, date){
 // Schnuppertag = Absenz SL ohne Schnupperwoche. Keine echte Absenz → kein eCase-Eintrag nötig.
 function isSchnuppertag(pl){ return !!pl && pl.abwesenheit==='SL' && !pl.sw; }
 
+// Zählt, wie oft 'Neophyten' an einem Tag effektiv eingeteilt ist (VM/NM je +1).
+// Exakt dieselbe Logik wie die Monatsübersicht-Zelle: Ganztags-/Halbtags-Absenzen,
+// Schnupperwoche (S.LW/S.EX) und Sperren (Schule/Sport/Praktikum) werden abgezogen.
+function neoCountForDay(p, d){
+  if(!isActiveOnDay(p,d)) return 0;
+  const plan=getPlan(ds(d),p.id);
+  const blk=getBlocks(p,d);
+  const rawAbs=plan.abwesenheit||'';
+  const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
+  const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
+  const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
+  const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
+  if(effAbs) return 0;                              // Ganztags-Absenz
+  if(plan.sw==='S.LW'||plan.sw==='S.EX') return 0;  // Schnupperwoche
+  let c=0;
+  if(!(isUAvm||isKRvm||isBAvm) && !blk.vmB && plan.vm==='Neophyten') c++;
+  if(!(isUAnm||isKRnm||isBAnm) && !blk.nmB && plan.nm==='Neophyten') c++;
+  return c;
+}
+
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 // ────────────────────────────────────────────
@@ -1883,18 +1904,30 @@ function renderMonthly(){
 
   // Only weekdays (Sa/So entfernt), Montag = Wochentrennlinie
   const wd=days.filter(d=>!isWE(d));
-  let r1=`<tr><th rowspan="3" class="th-name">Teilnehmer</th>`;
+  // r0 = KW (über jeder Woche zentriert), r1 = Tag, r2 = Wochentag, r3 = VM/NM
+  let r0=`<tr><th rowspan="4" class="th-name">Teilnehmer</th>`;
+  let r1=`<tr>`;
   let r2=`<tr>`;
   let r3=`<tr>`;
+  // KW-Zeile: aufeinanderfolgende Wochentage derselben ISO-Woche zusammenfassen
+  let gi=0;
+  while(gi<wd.length){
+    const{w:kw,y:ky}=isoWeek(wd[gi]);
+    let gj=gi;
+    while(gj<wd.length){ const t=isoWeek(wd[gj]); if(t.w!==kw||t.y!==ky) break; gj++; }
+    const gsep=wd[gi].getDay()===1?' mo-sep':'';
+    r0+=`<th colspan="${(gj-gi)*2}" class="mo-slot-h mo-kw${gsep}">KW ${pad(kw)}</th>`;
+    gi=gj;
+  }
   wd.forEach(d=>{
     const sep=d.getDay()===1?' mo-sep':'';
     r1+=`<th colspan="2" class="${sep}">${pad(d.getDate())}</th>`;
     r2+=`<th colspan="2" class="${sep}" style="font-weight:400;font-size:9px">${WD[d.getDay()]}</th>`;
     r3+=`<th class="${sep} mo-slot-h">VM</th><th class="${sep} mo-slot-h">NM</th>`;
   });
-  const statH=`<th rowspan="3" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
-    `<th rowspan="3" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
-  r1+=statH+`</tr>`;r2+=`</tr>`;r3+=`</tr>`;
+  const statH=`<th rowspan="4" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
+    `<th rowspan="4" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
+  r0+=statH+`</tr>`;r1+=`</tr>`;r2+=`</tr>`;r3+=`</tr>`;
 
   let tbody='';
   persons.forEach(p=>{
@@ -1949,7 +1982,7 @@ function renderMonthly(){
 
   document.getElementById('moArea').innerHTML=`
     <div class="mo-wrap"><table class="mo-tbl">
-      <thead>${r1}${r2}${r3}</thead><tbody>${tbody}</tbody>
+      <thead>${r0}${r1}${r2}${r3}</thead><tbody>${tbody}</tbody>
     </table></div>${legend}`;
 
   if(totalOpen>0){
@@ -2739,19 +2772,7 @@ function genNeophytPDF(){
     const d=pd(dStr);
     if(!d||d.getFullYear()!==Y) return;
     let cnt=0;
-    DB.participants.forEach(p=>{
-      if(!isActiveOnDay(p,d)) return;
-      const pl=getPlan(dStr,p.id);
-      const bl=getBlocks(p,d);
-      // Abwesenheit berücksichtigen – analog zur Tages-/Monatsansicht:
-      // ein abwesender Slot zählt NICHT, auch wenn dort noch Neophyten gespeichert ist
-      const absCode=pl.abwesenheit||'';
-      const absent=!!absCode && !SOFT_ABS.includes(absCode);
-      const vmAbsent=absent||absCode==='UA-VM'||absCode==='KR-VM'||absCode==='BA-VM';
-      const nmAbsent=absent||absCode==='UA-NM'||absCode==='KR-NM'||absCode==='BA-NM';
-      if(!vmAbsent && !bl.vmB && pl.vm==='Neophyten') cnt++;
-      if(!nmAbsent && !bl.nmB && pl.nm==='Neophyten') cnt++;
-    });
+    DB.participants.forEach(p=>{ cnt+=neoCountForDay(p,d); });
     if(cnt>0) dayData.push({d,cnt});
   });
   dayData.sort((a,b)=>a.d-b.d);
