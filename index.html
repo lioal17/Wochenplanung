@@ -2743,8 +2743,14 @@ function genNeophytPDF(){
       if(!isActiveOnDay(p,d)) return;
       const pl=getPlan(dStr,p.id);
       const bl=getBlocks(p,d);
-      if(!bl.vmB && pl.vm==='Neophyten') cnt++;
-      if(!bl.nmB && pl.nm==='Neophyten') cnt++;
+      // Abwesenheit berücksichtigen – analog zur Tages-/Monatsansicht:
+      // ein abwesender Slot zählt NICHT, auch wenn dort noch Neophyten gespeichert ist
+      const absCode=pl.abwesenheit||'';
+      const absent=!!absCode && !SOFT_ABS.includes(absCode);
+      const vmAbsent=absent||absCode==='UA-VM'||absCode==='KR-VM'||absCode==='BA-VM';
+      const nmAbsent=absent||absCode==='UA-NM'||absCode==='KR-NM'||absCode==='BA-NM';
+      if(!vmAbsent && !bl.vmB && pl.vm==='Neophyten') cnt++;
+      if(!nmAbsent && !bl.nmB && pl.nm==='Neophyten') cnt++;
     });
     if(cnt>0) dayData.push({d,cnt});
   });
