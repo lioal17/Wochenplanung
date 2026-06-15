@@ -3320,7 +3320,14 @@ function init(){
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
   // Zuletzt genutzten Speicherort wiederherstellen → spätere Sicherungen laufen ohne Dialog
-  fhLoad().then(h=>{ if(h){ savedFileHandle=h; updateSaveFileLabel(); } });
+  fhLoad().then(async h=>{
+    if(!h) return;
+    savedFileHandle=h; updateSaveFileLabel();
+    // Fragt der Browser beim ersten Speichern noch nach Erlaubnis? Dann kurz Bescheid geben.
+    if(h.queryPermission && await h.queryPermission({mode:'readwrite'})!=='granted'){
+      showBanner('🔒 Beim ersten Speichern fragt der Browser einmalig nach der Erlaubnis, die Datei zu bearbeiten – einfach bestätigen. Danach wird automatisch lautlos am gewohnten Ort gespeichert.','bn-amber');
+    }
+  });
   renderWBAlerts();
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
