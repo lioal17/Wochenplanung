@@ -2965,10 +2965,56 @@ async function doImportFSA(){
   } else { document.getElementById('importFile').click(); }
 }
 
+// Vergleicht die zu ladende Datei mit dem aktuellen Stand und liefert eine
+// lesbare Zusammenfassung – damit man vor dem Überschreiben sieht, was sich ändert.
+function _jsonImportDiff(incoming, incomingPlans){
+  const FIELDS=[
+    ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
+    ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
+    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['aktiviertAm','Aktiviert am'],['bemerkung','Bemerkung'],
+    ['schultage','Schultage'],['sporttermine','Sport'],['fixpraeferenzen','Fixpräferenzen'],
+    ['wb8','WB 8'],['wb10','WB 10'],
+  ];
+  const norm=v=>typeof v==='object'?JSON.stringify(v||null):(v??'');
+  const nameOf=p=>`${p.vorname||''} ${p.nachname||''}`.trim()||'(ohne Name)';
+  const curById={}; (DB.participants||[]).forEach(p=>curById[p.id]=p);
+  const newById={}; (incoming||[]).forEach(p=>newById[p.id]=p);
+
+  const added=[],removed=[],changed=[];
+  (incoming||[]).forEach(np=>{ if(!curById[np.id]) added.push(nameOf(np)); });
+  (DB.participants||[]).forEach(op=>{ if(!newById[op.id]) removed.push(nameOf(op)); });
+  (incoming||[]).forEach(np=>{
+    const op=curById[np.id]; if(!op) return;
+    const diff=FIELDS.filter(([k])=>norm(op[k])!==norm(np[k])).map(([,l])=>l);
+    if(diff.length) changed.push(`${nameOf(np)} (${diff.join(', ')})`);
+  });
+
+  // Planung tageweise vergleichen
+  const curP=DB.plans||{}, newP=incomingPlans||{};
+  const days=new Set([...Object.keys(curP),...Object.keys(newP)]);
+  let pNew=0,pRem=0,pChg=0;
+  days.forEach(d=>{
+    const a=JSON.stringify(curP[d]||{}), b=JSON.stringify(newP[d]||{});
+    if(a===b) return;
+    if(!curP[d]||a==='{}') pNew++; else if(!newP[d]||b==='{}') pRem++; else pChg++;
+  });
+
+  const cap=(arr,n=8)=>arr.length>n?arr.slice(0,n).join(', ')+` … (+${arr.length-n})`:arr.join(', ');
+  let s='Datei laden – folgende Änderungen werden übernommen:\n';
+  s+=`\nTeilnehmer (aktuell ${DB.participants.length} → neu ${(incoming||[]).length}):`;
+  s+=added.length  ?`\n  + ${added.length} neu: ${cap(added)}`       :'\n  + keine neuen';
+  s+=removed.length?`\n  − ${removed.length} entfällt: ${cap(removed)}`:'\n  − keine entfallen';
+  s+=changed.length?`\n  ~ ${changed.length} geändert: ${cap(changed,6)}`:'\n  ~ keine geändert';
+  if(pNew+pRem+pChg>0) s+=`\n\nPlanung: ${pNew+pRem+pChg} Tag(e) betroffen (${pChg} geändert, ${pNew} neu, ${pRem} entfällt).`;
+  else s+='\n\nPlanung: keine Änderungen.';
+  s+='\n\nFortfahren und Datei laden?';
+  return s;
+}
+
 function processImportJSON(text){
   try{
     const d=JSON.parse(text);
-    if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
+    if(!confirm(_jsonImportDiff(d.participants||[], d.plans||{}))) return;
     snapshotBackup();
     DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
     saveDB(); dirty=false; updateSaveInfo();
