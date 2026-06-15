@@ -1,0 +1,250 @@
+# Projektbeschreibung – Lernwerkstatt Einteilungsplan (Wochenplanung)
+
+> **Zweck dieses Dokuments:** Vollständige fachliche und technische Beschreibung der App,
+> sodass das Tool auch ohne den Originalcode rekonstruiert werden könnte. Es ergänzt
+> (ersetzt aber nicht) die Datei `index.html`, welche selbst die zuverlässigste
+> Sicherung ist (reiner Text/HTML, einfach im Browser öffnen).
+>
+> Stand: 2026-06-15 · Branch `claude/peaceful-lamport-nxir68`
+
+---
+
+## 1. Überblick
+
+**Wochenplanungs-Tool für das BASISJOB Motivationssemester** der Lernwerkstatt.
+Verwaltet Teilnehmende, plant deren Wochen (Vormittag/Nachmittag-Einteilung in
+Werkstätten/Schule/Sport), erfasst Abwesenheiten und eCase-Status und erzeugt
+diverse PDF-Auswertungen.
+
+- **Eine einzige Datei:** `index.html` (HTML + CSS + JavaScript inline, kein Build, kein Server).
+- **Start:** Datei im Browser öffnen oder via GitHub Pages.
+- **Daten:** ausschließlich lokal im Browser (`localStorage`). Es gibt **keine** Personendaten
+  im Code. Sicherung der Daten erfolgt manuell per JSON-Export.
+
+### Externe Bibliotheken (per CDN eingebunden)
+- **jsPDF** + **jsPDF-AutoTable** – PDF-Erzeugung.
+- **SheetJS (xlsx)** – Excel-Import.
+- **PDF.js** – PDF-Import (Teilnehmerlisten).
+- **Mammoth.js** – Word-(docx)-Import.
+
+---
+
+## 2. Datenmodell
+
+### 2.1 Globaler State
+```js
+let DB = { participants:[], plans:{}, rptNotes:{} };
+```
+- `participants` – Array von Teilnehmer-Objekten.
+- `plans` – verschachteltes Objekt: `plans["YYYY-MM-DD"][participantId] = planEintrag`.
+- `rptNotes` – freie Notizen pro Teilnehmer/Monat (für den **Monatsrapport**).
+
+### 2.2 Teilnehmer-Objekt (`participant`)
+| Feld | Typ | Bedeutung |
+|------|-----|-----------|
+| `id` | string | Eindeutige ID (`uid()`) |
+| `vorname`, `nachname` | string | Name |
+| `status` | string | `aktiv` (Lernwerkstatt), `schnupper`, `praktikum`, `lehrstelle`, `prklehr` (Praktikum+Lehrstelle) |
+| `jobCoach` | `lio`\|`tom`\|`yvi` | zuständiger Jobcoach |
+| `bewerbenJC` | string | Jobcoach für „Bewerben" (Fallback: `jobCoach`) |
+| `stammwerkstatt` | string | Stammwerkstatt |
+| `einsatzVon` | `YYYY-MM-DD` | **Eintritt** (= Einsatz von) |
+| `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
+| `iiz` | string | IIZ-Feld |
+| `aktiviertAm` | `YYYY-MM-DD` | Aktivierungsdatum (für Wirkungsbericht-Fristen) |
+| `bemerkung` | string | Freitext |
+| `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schul-/Kurstage |
+| `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
+| `fixpraeferenzen` | array | wiederkehrende Werkstatt-Zuweisungen |
+
+`schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM`, `DK`, `IKPC`.
+`wochentag`: 1=Mo … 5=Fr.
+
+### 2.3 Plan-Eintrag (`plans[date][pid]`)
+| Feld | Bedeutung |
+|------|-----------|
+| `vm` | Werkstatt-Einteilung Vormittag (z. B. `Metall`, `Bewerben`, `Sport`, …) |
+| `nm` | Werkstatt-Einteilung Nachmittag |
+| `abwesenheit` | Absenz-Code (siehe unten) oder `''` |
+| `abwesenheitText` | Freitext-Bemerkung zur Absenz |
+| `ecaseEntered` | bool – wurde Absenz in eCase erfasst? |
+| `sw` | Schnupper-Flag: `S.LW` (Schnupperwoche Lernwerkstatt) oder `S.EX` (Schnupperlehre extern, ganze Woche) |
+| `bemerkung` | Freitext |
+
+### 2.4 Persistenz (localStorage-Keys)
+- `lw_db_v3` – Hauptdatenbank (`DB`).
+- `lw_db_backup` – interner Wiederherstellungs-Snapshot (`{ts, data}`).
+- `lw_lastsave` – Zeitstempel der letzten manuellen Sicherung.
+- Optionaler File-System-Access-Handle für „Speichern ohne Dialog".
+
+---
+
+## 3. Konstanten / Codes
+
+### 3.1 Werkstätten (`WS`)
+`Holzwerkstatt, Bewerben, Metall, Metallverpacken, Crea, Lernstück, Loli, Neophyten, Feldeinsatz, Textil, Reinigung` (+ `Sport` nur im NM-Slot, + „Anderes…" Freitext).
+
+**Kürzel (`WS_ABBR`):** Holzwerkstatt=H, Bewerben=BW, Metall=M, Metallverpacken=MV,
+Crea=Crea, Lernstück/Lernstücke=LS, Loli=Loli, Neophyten=NEO, Feldeinsatz=FL,
+Textil=Text, Reinigung=Rein, Sport=Sport.
+
+### 3.2 Schul-Codes
+`S`=Schule (ganzer Tag), `DAZ`=Deutsch als Zweitsprache (½ Tag), `FöA`=Förderatelier (½ Tag),
+`DK`=Deutschkurs Migros (½ Tag), `IKPC`=Informatik/PC (½ Tag).
+
+### 3.3 Absenz-Codes (`ABS`)
+`BA`, `BA-NM`, `BA-VM` (Bezahlte Absenz / -Nachmittag / -Vormittag),
+`FE`, `FE-W` (Ferien / Ferien ganze Woche),
+`KR`, `KR-NM`, `KR-VM`, `KR-W` (Krank / halbtags / ganze Woche),
+`MI` (Militär/Zivilschutz), `PA` (Praktikum), `SL` (Schnupperlehre),
+`UA`, `UA-NM`, `UA-VM` (Unentschuldigte Absenz / halbtags),
+`UN` (Unfall), `ZS` (Zu spät).
+
+- **Halbtags-Absenzen** (`SOFT_ABS`): ZS, UA-VM/NM, KR-VM/NM, BA-VM/NM – Werkstatt-Einteilung
+  des nicht betroffenen Slots bleibt möglich.
+- **Wochencodes** KR-W / FE-W: nur am **Montag** einsteuerbar, füllen automatisch Mo–Fr (5 Tage);
+  Entfernen löscht die ganze Woche.
+
+### 3.4 Jobcoaches
+`lio`→Lio, `tom`→Tom, `yvi`→Yvi (jeweils eigene Farbe).
+
+### 3.5 Feiertage
+`tgHolidays(jahr)` berechnet Feiertage/Brückentage (inkl. Ostern via `easterSunday`).
+An diesen Tagen ist die LW geschlossen → fallen **nicht** in Auswertungen/Rapporte.
+
+---
+
+## 4. Navigation / Views
+
+Top-Navigation (`show(view)`):
+1. **📅 Wochenplan** (`plan`) – Tages-/Wocheneinteilung VM/NM pro Teilnehmer.
+2. **📊 Monatsübersicht** (`monthly`) – Matrix aller TN × Tage des Monats (VM/NM-Zellen).
+3. **📄 Monatsrapport** (`rapport`) – pro Monat, mit Freitext-Notizen, PDF-Export.
+4. **👥 Teilnehmer** (`person`) – Teilnehmer-Verwaltung (anlegen/bearbeiten/löschen).
+5. **📥 Dokument-Import** (`import`) – Teilnehmerlisten aus PDF/Excel/Word einlesen.
+6. **🌱 Neophyt** – direkter PDF-Export (Anzahl Teilnehmende pro Tag mit KW & Datum).
+
+Zusätzlich: **Teilnehmer-Rapport** (Modal, siehe §6) und diverse Speicher-/Import-Knöpfe.
+
+---
+
+## 5. Kernlogik
+
+### 5.1 `getBlocks(p, date)` → `{vmB, nmB, fullB, vmL, nmL}`
+Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar sind:
+- Status `praktikum` → ganztags `PA`; `prklehr` → ganztags `PA+LS`.
+- `sw==='S.EX'` (Schnupperlehre) → ganztags `SL`.
+- Aus `p.schultage` (gefiltert nach Wochentag):
+  - `typ==='S'` → ganzer Tag (`vmB=nmB=fullB=true`, Label `S`).
+  - `typ==='DAZ-NM'` / `FöA-NM` → nur NM-Slot.
+  - sonst (`DAZ`, `FöA`, `DK`, `IKPC`) → VM-Slot.
+- Aus `p.sporttermine` → NM-Slot Label `Sport`.
+
+### 5.2 `isActiveOnDay(p, date)`
+`false`, wenn `date` vor `einsatzVon` oder nach `einsatzBis` liegt.
+
+### 5.3 Slot-Priorität bei der Darstellung
+**Absenz > Block (Schule/Sport) > Werkstatt-Einteilung.** Ganztags-Absenzen sperren beide Slots.
+
+### 5.4 Weitere Helfer
+- `neoCountForDay` – zählt Neophyten-Einteilung max. 1× pro TN/Tag.
+- `copyPrev` – Vorwoche kopieren. `clearCurrentDay` – Tag leeren.
+- `renderWBAlerts` / `sendWB` – **Wirkungsbericht-Erinnerungen** (8/10 Wochen ab `aktiviertAm`)
+  mit Mailto-Link an den Jobcoach.
+
+---
+
+## 6. Teilnehmer-Rapport (zentrale Auswertung)
+
+**Modal** „Teilnehmer-Rapport": Teilnehmer wählen → `genRapportPDF()` erzeugt ein PDF.
+
+- **Ein einziger Gesamtrapport** pro Teilnehmer (keine Monats-/Zeitraumfilter).
+- **Zeitraum:** automatisch von `einsatzVon` (bzw. erstem Plan-Eintrag) **bis und mit heute**
+  (Generierungstag). Zukünftige, nur geplante Tage werden **nicht** mitgezählt.
+- Wochenenden und Feiertage werden ausgeschlossen; Absenzen sperren die betroffenen Slots.
+- Schul-Codes werden sowohl aus **fixen Schultagen** (Blocks) als auch aus **Tages-Einteilungen**
+  (`plan.vm`/`plan.nm`) gezählt – damit stimmt der Rapport mit der Monatsübersicht überein.
+
+### 6.1 Berechnungsregeln (Faktoren)
+
+**SCHULE (Ausgabe in Lektionen):**
+| Position | Regel |
+|----------|-------|
+| Schultage (S) | 1 ganzer Schultag (VM+NM) = **8** Lektionen (VM 4h + NM 4h) |
+| DAZ | je ½-Tag = **4** Lektionen |
+| FöA | je ½-Tag = **4** Lektionen |
+| DK (nur falls vorhanden) | je ½-Tag = **4** Lektionen |
+| **Total Schul-Lektionen** | Summe S + DAZ + FöA (+ DK) |
+
+**LERNWERKSTATT (Ausgabe in Lektionen):**
+| Position | Regel |
+|----------|-------|
+| Sport | je Einsatz = **2** Lektionen |
+| Bewerben (BW) | je Einsatz = **4** Lektionen |
+
+**ABWESENHEITEN (Ausgabe in Tagen bzw. Vorkommnissen):**
+| Code | Regel |
+|------|-------|
+| Unentschuldigte Absenz (UA) | ganzer Tag = 1; VM/NM = 0.5 |
+| Bezahlte Absenz (BA) | ganzer Tag = 1; VM/NM = 0.5 |
+| Krankheit (KR) | ganzer Tag = 1; VM/NM = 0.5; KR-W = 5 (je Wochentag 1) |
+| Zu spät (ZS) | Anzahl Vorkommnisse (×) |
+
+**SCHNUPPERLEHRE (Ausgabe in Tagen):**
+| Position | Regel |
+|----------|-------|
+| Schnuppertag | je `SL`-Tag = 1 Tag |
+| Schnupperlehre (ganze Woche) | je `S.EX`-Tag = 1 (volle Woche = 5 Tage) |
+
+> **Weitere Absenz-Faktoren im Regelwerk** (aktuell **nicht** als eigene Rapport-Zeile):
+> FE-W = 5 Tage, MI = 1 Tag, UN = 1 Tag, SL = 5 Tage. Diese werden im Plan erfasst,
+> erscheinen aber nicht im Abwesenheiten-Block des Rapports (nur UA/BA/KR/ZS).
+> → Offener Entscheid: bei Bedarf als zusätzliche Zeilen ergänzen.
+
+### 6.2 Darstellung
+Zwei-Spalten-Tabelle **Bereich · Total**; pro Abschnitt nur die **Endzahl** mit Einheit
+(z. B. „Schule 168 Lektionen", „Sport 14 Lektionen", „Bewerben 68 Lektionen").
+Halbe Tage als `.5`, ganze Zahlen ohne Dezimalstelle. Kopf: Name, Jobcoach, Zeitraum.
+Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
+
+---
+
+## 7. Weitere PDF-Exporte
+- **`genWeekPDF`** – Wochenplan (Seite 1 Wochenübersicht, Seite 2 Tagesübersicht, Seite 3 Legende).
+- **`genPDF` / `buildRpt`** – Monatsrapport (BASISJOB-Format, inkl. Freitext-Notizen).
+- **`genNeophytPDF`** – Liste „Anzahl Teilnehmende pro Tag" (KW, Datum) übers ganze Jahr.
+
+---
+
+## 8. Speichern, Sicherung, Import
+
+- **Auto-Save** in `localStorage` bei jeder Änderung; `dirty`-Flag warnt beim Schließen.
+- **Manuelles Speichern** (`manualSave`) als JSON-Datei; optional „ohne Dialog" via
+  File System Access API (`fhStore`/`fhLoad`), Dateiname inkl. Datum & Uhrzeit.
+- **Interner Snapshot** (`snapshotBackup`/`restoreBackup`) als Wiederherstellungspunkt.
+- **JSON-Import** (`doImportFSA`/`processImportJSON`): mit **Vorschau der Änderungen**
+  vor dem Überschreiben; schützt bestehende Daten (Abweichungen nur auf Bestätigung).
+- **Dokument-Import** (`handleDocUpload` → `parseDocText`): liest Teilnehmerlisten aus
+  PDF/Excel/Word, erkennt Klassen-Codes (z. B. `FöA-Do-…`, `DMA-Mo-…`), Jobcoach,
+  Eintritt/Ende-ZV; legt fixe Schultage & Sporttermine an. Eintritt/Ende-ZV landen
+  in `einsatzVon`/`einsatzBis` (nicht im Namen).
+
+---
+
+## 9. Wiederherstellung
+
+**Schnellster Weg:** Datei `index.html` zurückspielen (sie ist vollständige Klartext-App).
+**Daten:** separat über den JSON-Export sichern und via „Import" wieder einspielen –
+die App-Datei enthält selbst keine Teilnehmerdaten.
+
+Falls nur dieses Dokument vorliegt: Die App lässt sich anhand der Abschnitte §2–§8
+als einzelne `index.html` (HTML+CSS+JS, CDN-Libs aus §1) neu aufbauen.
+
+---
+
+## 10. Änderungshistorie dieser Session (Teilnehmer-Rapport)
+1. Filter (Zeitraum/Monat) entfernt → Gesamtrapport; Modal-Titel „Teilnehmer-Rapport";
+   BA-Zeile ergänzt; Halbtags-Logik (VM/NM = 0.5); Tabelle auf 2 Spalten vereinfacht.
+2. Schule (FöA/DAZ/DK) auch aus Tages-Einteilung zählen (Abgleich mit Monatsübersicht).
+3. Stichtag „heute": zukünftige Tage ausgenommen; `S` auch als Tages-Einteilung.
+4. BW-Faktor von 4.5 → **4** Lektionen.
