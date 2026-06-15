@@ -735,6 +735,7 @@ input,select,textarea{font-family:inherit}
                 <th>JC / Berater</th>
                 <th>Schultage erkannt</th>
                 <th>Sport erkannt</th>
+                <th>Einsatz (von – bis)</th>
                 <th></th>
               </tr>
             </thead>
@@ -3086,6 +3087,9 @@ function impJC(str){
 function parseDocText(text){
   const KLASSE_RE=/\b(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-\d{2}-\d{2}-\d{2}-\d{2}\b/g;
   const BERATER_RE=/(Br[üu]ggl[ae]r\s+Yvonne|Ioannou\s+Lucas|Schildknecht\s+Thomas)/i;
+  // Eintritt / Ende ZV → Einsatz von / bis (Format TT.MM.JJJJ, in ISO umwandeln)
+  const DATE_RE=/\b(\d{2})\.(\d{2})\.(\d{4})\b/g;
+  const toISO=(d,m,y)=>`${y}-${m}-${d}`;
   const map={};
   const lines=text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l.length>3);
 
@@ -3105,7 +3109,17 @@ function parseDocText(text){
     const ktyp=cm?cm[1]:null;
     const kwd=cm?IMP_DAY[cm[2]]||0:0;
 
-    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[]};
+    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[],von:'',bis:''};
+
+    // Eintritt (= Einsatz von) und Ende ZV (= Einsatz bis) aus der Zeile lesen.
+    // Die Klassen-Codes (z.B. FöA-Do-30-10-25-01) enthalten keine TT.MM.JJJJ-Daten,
+    // daher kollidiert das Datumsmuster nicht mit ihnen.
+    DATE_RE.lastIndex=0;
+    const dates=[]; let dm;
+    while((dm=DATE_RE.exec(line))) dates.push(toISO(dm[1],dm[2],dm[3]));
+    if(dates.length>=1 && !map[rawName].von) map[rawName].von=dates[0];
+    if(dates.length>=2 && !map[rawName].bis) map[rawName].bis=dates[1];
+
     if(ktyp&&kwd){
       if(ktyp==='Spo'){
         if(!map[rawName].spt.includes(kwd)) map[rawName].spt.push(kwd);
@@ -3143,6 +3157,7 @@ function renderImpTable(){
       DB.participants.some(e=>e.nachname.toLowerCase()===nn.toLowerCase());
     const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${s.typ}`).join(', ')||'–';
     const sptStr=p.spt.map(d=>WD[d]).join(', ')||'–';
+    const einsatzStr=(p.von||p.bis)?`${p.von?fd(p.von):'?'} – ${p.bis?fd(p.bis):'?'}`:'–';
     return`<tr class="${exists?'imp-exists':''}">
       <td><input type="checkbox" class="imp-cb" data-i="${i}" ${exists?'':'checked'}></td>
       <td><input class="imp-inp" id="imp-nn-${i}" value="${esc(nn)}" placeholder="Nachname"></td>
@@ -3150,6 +3165,7 @@ function renderImpTable(){
       <td><span class="jc ${JC_CSS[p.jc]||''}">${JC_LBL[p.jc]||p.jc}</span></td>
       <td style="font-size:11px;color:var(--g6)">${schStr}</td>
       <td style="font-size:11px;color:var(--g6)">${sptStr}</td>
+      <td style="font-size:11px;color:var(--g6)">${einsatzStr}</td>
       <td>${exists?'<span class="st-chip chip-prak">✓ vorhanden</span>':''}</td>
     </tr>`;
   }).join('');
@@ -3279,6 +3295,8 @@ function doImportDoc(){
       if(!existing.jobCoach&&p.jc) existing.jobCoach=p.jc;
       if((!existing.schultage||!existing.schultage.length)&&p.sch.length) existing.schultage=p.sch;
       if((!existing.sporttermine||!existing.sporttermine.length)&&p.spt.length) existing.sporttermine=p.spt;
+      if(!existing.einsatzVon&&p.von) existing.einsatzVon=p.von;
+      if(!existing.einsatzBis&&p.bis) existing.einsatzBis=p.bis;
       updated++;
     }else{
       DB.participants.push({
@@ -3288,7 +3306,7 @@ function doImportDoc(){
         status:'aktiv',
         jobCoach:p.jc||'',
         iiz:'nein',
-        einsatzVon:'',einsatzBis:'',
+        einsatzVon:p.von||'',einsatzBis:p.bis||'',
         aktiviertAm:new Date().toISOString().split('T')[0],
         schultage:p.sch,
         sporttermine:p.spt,
