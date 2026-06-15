@@ -2908,6 +2908,15 @@ function updateSaveFileLabel(){
   if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
 }
 
+// Download-Fallback (kein File-System-Zugriff bzw. noch kein fester Speicherort)
+function _downloadSave(data,now){
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
 async function manualSave(){
   const now=new Date();
   const data=JSON.stringify(DB,null,2);
@@ -2918,39 +2927,35 @@ async function manualSave(){
     if(!confirm('Achtung: Es sind aktuell keine Teilnehmer und keine Planung vorhanden.\nTrotzdem speichern? (überschreibt ggf. eine vorhandene Sicherung mit leeren Daten)')) return;
   }
   const savedMsg=`💾 Gespeichert: ${pCount} Teilnehmer · ${planDays} Plantage`;
+  const finish=label=>{ dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+    snapshotBackup(); updateSaveInfo(); updateSaveFileLabel(); toast(label,'t-ok'); };
+
   if('showSaveFilePicker' in window){
-    try{
-      // Bekannten Speicherort wiederverwenden (auch nach Reload aus IndexedDB) –
-      // es geht KEIN «Speichern unter»-Fenster auf, es wird direkt überschrieben.
-      if(!savedFileHandle) savedFileHandle=await fhLoad();
-      if(savedFileHandle && !await _fhPerm(savedFileHandle,true)) savedFileHandle=null;
-      if(!savedFileHandle){
-        // Nur beim allerersten Mal (noch nie ein Speicherort gewählt): einmalig festlegen.
-        savedFileHandle=await window.showSaveFilePicker({
-          suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
-          types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
-        });
+    // Beim «Speichern» geht NIE ein Datei-Fenster auf – es wird direkt in den
+    // vorgegebenen Speicherort geschrieben. Den Ort legt/ändert man ausschliesslich
+    // über den 📁-Knopf «Speicherort ändern».
+    if(!savedFileHandle) savedFileHandle=await fhLoad();
+    if(savedFileHandle && !await _fhPerm(savedFileHandle,true)) savedFileHandle=null;
+    if(savedFileHandle){
+      try{
+        const w=await savedFileHandle.createWritable();
+        await w.write(data); await w.close();
+        await fhStore(savedFileHandle);
+        finish(`${savedMsg} → ${savedFileHandle.name}`);
+      }catch(e){
+        savedFileHandle=null; updateSaveFileLabel();
+        toast('Speichern fehlgeschlagen – Speicherort über 📁 neu wählen','t-err');
       }
-      const w=await savedFileHandle.createWritable();
-      await w.write(data); await w.close();
-      await fhStore(savedFileHandle);
-      dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
-      snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
-      toast(`${savedMsg} → ${savedFileHandle.name}`,'t-ok');
-    }catch(e){
-      if(e.name==='AbortError') return;
-      savedFileHandle=null; updateSaveFileLabel();
-      toast('Speichern fehlgeschlagen – Speicherort neu wählen','t-err');
+      return;
     }
+    // Noch kein fester Speicherort gewählt → ohne Fenster als Download sichern und Hinweis geben.
+    _downloadSave(data,now);
+    finish(savedMsg);
+    toast('ℹ️ Noch kein fester Speicherort – über 📁 «Speicherort ändern» festlegen, dann wird automatisch dorthin gespeichert.','t-err');
   } else {
     // Fallback für Firefox / ältere Browser
-    const blob=new Blob([data],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
-    a.click(); URL.revokeObjectURL(a.href);
-    dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
-    snapshotBackup(); updateSaveInfo(); toast(savedMsg,'t-ok');
+    _downloadSave(data,now);
+    finish(savedMsg);
   }
 }
 
@@ -2963,7 +2968,13 @@ async function changeSaveLocation(){
         types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
       });
       await fhStore(savedFileHandle);
-      updateSaveFileLabel(); toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
+      // Aktuellen Stand sofort in die gewählte Datei schreiben, damit sie existiert
+      // und künftige «Speichern»-Klicks ohne Fenster direkt hierher gehen.
+      const w=await savedFileHandle.createWritable();
+      await w.write(JSON.stringify(DB,null,2)); await w.close();
+      dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
+      snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
+      toast(`📁 Speicherort gesetzt & gespeichert → ${savedFileHandle.name}`,'t-ok');
     }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
   } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
 }
