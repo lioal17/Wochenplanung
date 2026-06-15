@@ -21,11 +21,19 @@ diverse PDF-Auswertungen.
 - **Daten:** ausschließlich lokal im Browser (`localStorage`). Es gibt **keine** Personendaten
   im Code. Sicherung der Daten erfolgt manuell per JSON-Export.
 
-### Externe Bibliotheken (per CDN eingebunden)
-- **jsPDF** + **jsPDF-AutoTable** – PDF-Erzeugung.
-- **SheetJS (xlsx)** – Excel-Import.
-- **PDF.js** – PDF-Import (Teilnehmerlisten).
-- **Mammoth.js** – Word-(docx)-Import.
+### Bibliotheken
+**Lokal in die Datei eingebettet (funktionieren ohne Internet):**
+- **jsPDF 2.5.1** + **jsPDF-AutoTable 3.8.2** – PDF-Erzeugung (Wochenplan, Teilnehmer-Rapport, Monatsrapport, Neophyt).
+- **SheetJS (xlsx) 0.18.5** – Excel-Import.
+
+**Weiterhin per CDN (nur für Dokument-Import nötig, brauchen Internet):**
+- **PDF.js 3.11.174** – PDF-Import (Teilnehmerlisten).
+- **Mammoth.js 1.6.0** – Word-(docx)-Import.
+
+> **Offline-Betrieb:** App öffnen, planen, speichern, JSON Export/Import und **alle
+> PDF-Exporte** laufen ohne Internet. Nur der PDF-/Word-Import (pdf.js/mammoth) benötigt
+> eine Internetverbindung. Damit ist die Datei für die Weitergabe als eigenständige
+> Offline-Anwendung geeignet.
 
 ---
 
