@@ -2386,6 +2386,16 @@ function genRapportPDF(){
       if(!blk.vmB&&!vmAbs&&plan.vm==='Bewerben') stats.bw++;
       if(!blk.nmB&&!nmAbs&&plan.nm==='Bewerben') stats.bw++;
 
+      // Schule auch zählen, wenn sie als Tages-Einteilung (plan.vm/nm) statt als
+      // fixer Schultag-Block erfasst wurde – sonst fehlen diese im Rapport,
+      // obwohl sie in der Monatsübersicht erscheinen.
+      if(!blk.vmB&&!vmAbs&&plan.vm==='DAZ') stats.daz++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='DAZ') stats.daz++;
+      if(!blk.vmB&&!vmAbs&&plan.vm==='FöA') stats.foa++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='FöA') stats.foa++;
+      if(!blk.vmB&&!vmAbs&&plan.vm==='DK')  stats.dk++;
+      if(!blk.nmB&&!nmAbs&&plan.nm==='DK')  stats.dk++;
+
       // Schnuppern
       if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
       if(rawAbs==='SL'&&!plan.sw)   stats.schnuppertag++;
