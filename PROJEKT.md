@@ -196,10 +196,11 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 | Schnuppertag | je `SL`-Tag = 1 Tag |
 | Schnupperlehre (ganze Woche) | je `S.EX`-Tag = 1 (volle Woche = 5 Tage) |
 
-> **Weitere Absenz-Faktoren im Regelwerk** (aktuell **nicht** als eigene Rapport-Zeile):
-> FE-W = 5 Tage, MI = 1 Tag, UN = 1 Tag, SL = 5 Tage. Diese werden im Plan erfasst,
-> erscheinen aber nicht im Abwesenheiten-Block des Rapports (nur UA/BA/KR/ZS).
-> → Offener Entscheid: bei Bedarf als zusätzliche Zeilen ergänzen.
+> **Weitere Absenz-Faktoren im Regelwerk** (im Teilnehmer-Rapport **bewusst nicht**
+> als eigene Zeile, da dort nicht benötigt): FE-W = 5 Tage, MI = 1 Tag, UN = 1 Tag,
+> SL = 5 Tage. Diese Codes werden im Plan erfasst und erscheinen in der
+> **Monatsübersicht** (als Tageszelle) sowie im **Monatsrapport** (als Tageszeile),
+> jedoch **nicht** im Abwesenheiten-Block des Teilnehmer-Rapports (nur UA/BA/KR/ZS).
 
 ### 6.2 Darstellung
 Zwei-Spalten-Tabelle **Bereich · Total**; pro Abschnitt nur die **Endzahl** mit Einheit
