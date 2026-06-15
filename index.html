@@ -716,7 +716,9 @@ input,select,textarea{font-family:inherit}
           <div>
             <span class="card-title" id="impTitle">Erkannte Teilnehmende</span>
             <div style="font-size:12px;color:var(--g6);margin-top:3px">
-              Vor-/Nachname prüfen und bei Bedarf anpassen. Grüne Zeilen sind bereits im System vorhanden.
+              Vor-/Nachname prüfen und bei Bedarf anpassen. Grüne Zeilen sind bereits im System vorhanden.<br>
+              <strong>Bestehende Einträge werden nicht überschrieben</strong> – nur leere Felder (z.&nbsp;B. Einsatz von/bis) werden ergänzt.
+              Weicht die Liste von vorhandenen Daten ab, wird das ⚠️ angezeigt; die Änderung greift nur, wenn du sie gezielt ankreuzt.
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -3144,29 +3146,68 @@ function impSplitName(raw){
   return{nn:parts.slice(0,-1).join(' '),vn:parts[parts.length-1]};
 }
 
+// Bestehenden Teilnehmer zur Importzeile finden (gleiche Logik wie beim Import).
+function _impFindExisting(nn,vn){
+  return DB.participants.find(e=>
+    e.nachname.toLowerCase()===nn.toLowerCase() &&
+    (e.vorname||'').toLowerCase()===(vn||'').toLowerCase()
+  )||DB.participants.find(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+}
+// Abweichungen zwischen bestehendem TN und der Liste – NUR wenn bereits ein Wert da ist
+// und dieser sich vom Listenwert unterscheidet (sonst wird ohnehin nur ergänzt).
+function _impConflicts(existing,p){
+  const c=[];
+  const schKey=a=>(a||[]).map(s=>`${s.wochentag}:${s.typ}`).sort().join(',');
+  const sptKey=a=>(a||[]).map(Number).sort((x,y)=>x-y).join(',');
+  if(p.jc && existing.jobCoach && existing.jobCoach!==p.jc)
+    c.push({field:'jobCoach',label:'JC',old:JC_LBL[existing.jobCoach]||existing.jobCoach,neu:JC_LBL[p.jc]||p.jc});
+  if(p.sch.length && existing.schultage&&existing.schultage.length && schKey(existing.schultage)!==schKey(p.sch))
+    c.push({field:'schultage',label:'Schultage',
+      old:existing.schultage.map(s=>`${WD[s.wochentag]}:${s.typ}`).join(', '),
+      neu:p.sch.map(s=>`${WD[s.wochentag]}:${s.typ}`).join(', ')});
+  if(p.spt.length && existing.sporttermine&&existing.sporttermine.length && sptKey(existing.sporttermine)!==sptKey(p.spt))
+    c.push({field:'sporttermine',label:'Sport',
+      old:existing.sporttermine.map(d=>WD[d]).join(', '),neu:p.spt.map(d=>WD[d]).join(', ')});
+  if(p.von && existing.einsatzVon && existing.einsatzVon!==p.von)
+    c.push({field:'einsatzVon',label:'Einsatz von',old:fd(existing.einsatzVon),neu:fd(p.von)});
+  if(p.bis && existing.einsatzBis && existing.einsatzBis!==p.bis)
+    c.push({field:'einsatzBis',label:'Einsatz bis',old:fd(existing.einsatzBis),neu:fd(p.bis)});
+  return c;
+}
+
 function renderImpTable(){
   const tbody=document.getElementById('impTBody');
   document.getElementById('impTitle').textContent=`${_impData.length} Teilnehmende erkannt`;
-  const existSet=new Set(DB.participants.map(p=>
-    (p.nachname+' '+p.vorname).toLowerCase().trim()
-  ));
 
   tbody.innerHTML=_impData.map((p,i)=>{
     const{nn,vn}=impSplitName(p.rawName);
-    const exists=existSet.has((nn+' '+vn).toLowerCase().trim())||
-      DB.participants.some(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+    const existing=_impFindExisting(nn,vn);
+    const exists=!!existing;
     const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${s.typ}`).join(', ')||'–';
     const sptStr=p.spt.map(d=>WD[d]).join(', ')||'–';
     const einsatzStr=(p.von||p.bis)?`${p.von?fd(p.von):'?'} – ${p.bis?fd(p.bis):'?'}`:'–';
+    const conflicts=exists?_impConflicts(existing,p):[];
+    let statusCell='';
+    if(exists){
+      statusCell=`<span class="st-chip chip-prak">✓ vorhanden</span>`;
+      if(conflicts.length){
+        statusCell+=`<div style="font-size:11px;margin-top:4px">
+          <div style="color:var(--amber);font-weight:700;margin-bottom:2px">⚠️ Abweichung – nur bei Anwahl übernehmen:</div>`
+          +conflicts.map(cf=>`<label style="display:block;cursor:pointer;color:var(--g6);margin:1px 0">
+            <input type="checkbox" class="imp-cf-cb" data-i="${i}" data-field="${cf.field}" style="vertical-align:middle">
+            ${cf.label}: «${esc(cf.old)}» → «${esc(cf.neu)}»</label>`).join('')
+          +`</div>`;
+      }
+    }
     return`<tr class="${exists?'imp-exists':''}">
-      <td><input type="checkbox" class="imp-cb" data-i="${i}" ${exists?'':'checked'}></td>
+      <td><input type="checkbox" class="imp-cb" data-i="${i}" checked></td>
       <td><input class="imp-inp" id="imp-nn-${i}" value="${esc(nn)}" placeholder="Nachname"></td>
       <td><input class="imp-inp" id="imp-vn-${i}" value="${esc(vn)}" placeholder="Vorname"></td>
       <td><span class="jc ${JC_CSS[p.jc]||''}">${JC_LBL[p.jc]||p.jc}</span></td>
       <td style="font-size:11px;color:var(--g6)">${schStr}</td>
       <td style="font-size:11px;color:var(--g6)">${sptStr}</td>
       <td style="font-size:11px;color:var(--g6)">${einsatzStr}</td>
-      <td>${exists?'<span class="st-chip chip-prak">✓ vorhanden</span>':''}</td>
+      <td>${statusCell}</td>
     </tr>`;
   }).join('');
 }
@@ -3279,24 +3320,32 @@ function doImportDoc(){
   const cbs=document.querySelectorAll('.imp-cb');
   let added=0,updated=0;
 
-  cbs.forEach((cb,i)=>{
+  // Gezielt bestätigte Abweichungen einsammeln (Index → Set der zu überschreibenden Felder)
+  const overrides={};
+  document.querySelectorAll('.imp-cf-cb:checked').forEach(cb=>{
+    const idx=+cb.dataset.i;
+    (overrides[idx]=overrides[idx]||new Set()).add(cb.dataset.field);
+  });
+
+  cbs.forEach(cb=>{
     if(!cb.checked) return;
+    const i=+cb.dataset.i;
     const p=_impData[i];
     const nn=(document.getElementById(`imp-nn-${i}`)?.value||'').trim();
     const vn=(document.getElementById(`imp-vn-${i}`)?.value||'').trim();
     if(!nn) return;
 
-    const existing=DB.participants.find(e=>
-      e.nachname.toLowerCase()===nn.toLowerCase()&&
-      (e.vorname||'').toLowerCase()===(vn||'').toLowerCase()
-    )||DB.participants.find(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+    const existing=_impFindExisting(nn,vn);
 
     if(existing){
-      if(!existing.jobCoach&&p.jc) existing.jobCoach=p.jc;
-      if((!existing.schultage||!existing.schultage.length)&&p.sch.length) existing.schultage=p.sch;
-      if((!existing.sporttermine||!existing.sporttermine.length)&&p.spt.length) existing.sporttermine=p.spt;
-      if(!existing.einsatzVon&&p.von) existing.einsatzVon=p.von;
-      if(!existing.einsatzBis&&p.bis) existing.einsatzBis=p.bis;
+      // Bestehende Daten NICHT überschreiben – nur leere Felder ergänzen.
+      // Abweichende Werte nur übernehmen, wenn die Abweichung gezielt angekreuzt wurde.
+      const ovr=overrides[i]||new Set();
+      if(p.jc && (!existing.jobCoach || ovr.has('jobCoach'))) existing.jobCoach=p.jc;
+      if(p.sch.length && (!(existing.schultage&&existing.schultage.length) || ovr.has('schultage'))) existing.schultage=p.sch;
+      if(p.spt.length && (!(existing.sporttermine&&existing.sporttermine.length) || ovr.has('sporttermine'))) existing.sporttermine=p.spt;
+      if(p.von && (!existing.einsatzVon || ovr.has('einsatzVon'))) existing.einsatzVon=p.von;
+      if(p.bis && (!existing.einsatzBis || ovr.has('einsatzBis'))) existing.einsatzBis=p.bis;
       updated++;
     }else{
       DB.participants.push({
