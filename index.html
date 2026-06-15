@@ -970,7 +970,7 @@ input,select,textarea{font-family:inherit}
 <div class="overlay" id="rapportOverlay">
 <div class="modal" style="max-width:480px">
   <div class="modal-head">
-    <div class="modal-title">Lernbericht (Rapport) exportieren</div>
+    <div class="modal-title">Teilnehmer-Rapport</div>
     <button class="modal-x" onclick="closeRapportModal()">&times;</button>
   </div>
   <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:4px">
@@ -978,19 +978,9 @@ input,select,textarea{font-family:inherit}
       <label>Teilnehmer</label>
       <select class="fi" id="rptRP" style="width:100%"></select>
     </div>
-    <div class="fg">
-      <label>Zeitraum</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-          <input type="radio" name="rptRange" value="all" checked onchange="toggleRapportMonth()"> Ganze Laufzeit
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-          <input type="radio" name="rptRange" value="month" onchange="toggleRapportMonth()"> Monat wählen
-        </label>
-      </div>
-      <div id="rptMonthWrap" style="display:none;margin-top:8px">
-        <input type="month" class="fi" id="rptRM" style="width:160px">
-      </div>
+    <div style="font-size:12px;color:#667;line-height:1.5">
+      Der Rapport wird automatisch über die gesamte Teilnahmedauer
+      (vom ersten bis zum letzten Einsatztag) erstellt.
     </div>
   </div>
   <div class="modal-foot">
@@ -2317,53 +2307,36 @@ function openRapportModal(){
   const sel=document.getElementById('rptRP');
   const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
   sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
-  const now=new Date();
-  document.getElementById('rptRM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
-  document.querySelector('input[name="rptRange"][value="all"]').checked=true;
-  document.getElementById('rptMonthWrap').style.display='none';
   document.getElementById('rapportOverlay').classList.add('open');
 }
 function closeRapportModal(){
   document.getElementById('rapportOverlay').classList.remove('open');
 }
-function toggleRapportMonth(){
-  const isMonth=document.querySelector('input[name="rptRange"]:checked').value==='month';
-  document.getElementById('rptMonthWrap').style.display=isMonth?'block':'none';
-}
 
 function genRapportPDF(){
   const pid=document.getElementById('rptRP').value; if(!pid) return;
   const p=DB.participants.find(x=>x.id===pid); if(!p) return;
-  const rangeVal=document.querySelector('input[name="rptRange"]:checked').value;
 
   const fmtD=d=>`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
+  // Gesamtrapport: immer über die gesamte Teilnahmedauer
+  // (vom ersten Log-Eintrag "Einsatz von" bis zum letzten "Einsatz bis").
   let startDate, endDate, rangeLabel;
-  if(rangeVal==='month'){
-    const mv=document.getElementById('rptRM').value; if(!mv) return;
-    const[ry,rm]=mv.split('-').map(Number);
-    startDate=new Date(ry,rm-1,1); endDate=new Date(ry,rm,0);
-    const kwFirst=isoWeek(startDate).w;
-    const kwLast=isoWeek(endDate).w;
-    const kwStr=kwFirst===kwLast?`KW ${pad(kwFirst)}`:`KW ${pad(kwFirst)}–${pad(kwLast)}`;
-    rangeLabel=`${MON[rm-1]} ${ry} · ${kwStr}`;
-  } else {
-    // Ganze Laufzeit: Einsatz-Daten verwenden, sonst aus den vorhandenen Planungsdaten ableiten
-    let planMin=null, planMax=null;
-    Object.keys(DB.plans).forEach(dstr=>{
-      if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
-        const dt=pd(dstr);
-        if(!planMin||dt<planMin) planMin=dt;
-        if(!planMax||dt>planMax) planMax=dt;
-      }
-    });
-    startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
-    endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
-    rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
-  }
+  let planMin=null, planMax=null;
+  Object.keys(DB.plans).forEach(dstr=>{
+    if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
+      const dt=pd(dstr);
+      if(!planMin||dt<planMin) planMin=dt;
+      if(!planMax||dt>planMax) planMax=dt;
+    }
+  });
+  startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
+  endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
+  rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
 
   // Collect all weekdays in range where TN is active
+  // Abwesenheiten in Tagen: ganzer Tag = 1, VM/NM = 0.5, Wochencodes (KR-W) je Tag = 1.
   const stats={
-    ua:0, kr:0, zs:0,
+    ua:0, ba:0, kr:0, zs:0,
     s_days:0, daz:0, foa:0, dk:0,
     sport:0, bw:0,
     schnuppertag:0, schnupperwoche:0,
@@ -2380,9 +2353,14 @@ function genRapportPDF(){
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
 
-      // Abwesenheiten
-      if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua++;
-      if(rawAbs==='KR'||rawAbs==='KR-VM'||rawAbs==='KR-NM'||rawAbs==='KR-W') stats.kr++;
+      // Abwesenheiten (in Tagen): ganzer Tag = 1, Vormittag/Nachmittag = 0.5
+      if(rawAbs==='UA') stats.ua+=1;
+      else if(rawAbs==='UA-VM'||rawAbs==='UA-NM') stats.ua+=0.5;
+      if(rawAbs==='BA') stats.ba+=1;
+      else if(rawAbs==='BA-VM'||rawAbs==='BA-NM') stats.ba+=0.5;
+      // KR-W (Krank ganze Woche) ist je Wochentag gespeichert → je Tag = 1
+      if(rawAbs==='KR'||rawAbs==='KR-W') stats.kr+=1;
+      else if(rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr+=0.5;
       if(rawAbs==='ZS') stats.zs++;
 
       // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
@@ -2449,60 +2427,62 @@ function genRapportPDF(){
   doc.setDrawColor(200,210,230);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
   yp+=7;
 
-  // Stats table – every value on one line
-  const n=(v,sfx)=>`${v} ${sfx}`;        // count helper
+  // Zahl hübsch: ganze Zahlen ohne Dezimalstelle, halbe Tage mit .5
+  const fmtN=v=>Number.isInteger(v)?`${v}`:v.toFixed(1);
+  const tg=v=>`${fmtN(v)} ${v===1?'Tag':'Tage'}`;     // Tage
+  const lk=v=>`${fmtN(v)} Lektionen`;                 // Lektionen
+  // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
   const rows=[
-    ['ABWESENHEITEN','','',''],
-    ['Unentschuldigte Absenz (UA)', n(stats.ua,stats.ua===1?'Tag':'Tage'), '', ''],
-    ['Krankheit (KR)',              n(stats.kr,stats.kr===1?'Tag':'Tage'), '', ''],
-    ['Zu spät (ZS)',               `${stats.zs}×`,                         '', ''],
-    ['','','',''],
-    ['SCHULE','','',''],
-    ['Schultag (S)',                n(stats.s_days,stats.s_days===1?'Tag':'Tage'), '× 8', `${s_lek}`],
-    ['DAZ – Deutsch als Zweitsprache', n(stats.daz,stats.daz===1?'Einheit':'Einheiten'), '× 4', `${daz_lek}`],
-    ['FöA – Förderatelier',         n(stats.foa,stats.foa===1?'Einheit':'Einheiten'), '× 4', `${foa_lek}`],
-    ...(stats.dk>0?[['DK – Deutschkurs Migros', n(stats.dk,stats.dk===1?'Einheit':'Einheiten'), '× 4', `${dk_lek}`]]:[]),
-    ['TOTAL Schul-Lektionen', '', '', `${total_sch}`],
-    ['','','',''],
-    ['WERKSTATT','','',''],
-    ['Sport',        n(stats.sport,stats.sport===1?'Einheit':'Einheiten'), '× 2',   `${sport_lek}`],
-    ['Bewerben (BW)',n(stats.bw,stats.bw===1?'Einheit':'Einheiten'),       '× 4.5', bw_lek.toFixed(1)],
-    ['','','',''],
-    ['SCHNUPPERN','','',''],
-    ['Schnuppertag',              n(stats.schnuppertag,stats.schnuppertag===1?'Tag':'Tage'),   '', ''],
-    ['Schnupperlehre (ganze Woche)', n(stats.schnupperwoche,stats.schnupperwoche===1?'Tag':'Tage'), '', ''],
+    ['ABWESENHEITEN',''],
+    ['Unentschuldigte Absenz (UA)', tg(stats.ua)],
+    ['Bezahlte Absenz (BA)',        tg(stats.ba)],
+    ['Krankheit (KR)',              tg(stats.kr)],
+    ['Zu spät (ZS)',               `${stats.zs}×`],
+    ['',''],
+    ['SCHULE',''],
+    ['Schultage (S)',               lk(s_lek)],
+    ['DAZ – Deutsch als Zweitsprache', lk(daz_lek)],
+    ['FöA – Förderatelier',         lk(foa_lek)],
+    ...(stats.dk>0?[['DK – Deutschkurs Migros', lk(dk_lek)]]:[]),
+    ['Total Schul-Lektionen',       lk(total_sch)],
+    ['',''],
+    ['LERNWERKSTATT',''],
+    ['Sport',                       lk(sport_lek)],
+    ['Bewerben (BW)',               lk(bw_lek)],
+    ['',''],
+    ['SCHNUPPERLEHRE',''],
+    ['Schnuppertag',                tg(stats.schnuppertag)],
+    ['Schnupperlehre (ganze Woche)',tg(stats.schnupperwoche)],
   ];
 
   doc.autoTable({
     startY:yp,
-    head:[['Bereich / Betreff', 'Anzahl', 'Faktor', 'Lektionen']],
+    head:[['Bereich', 'Total']],
     body:rows,
     styles:{
-      fontSize:9,cellPadding:{top:2.5,right:5,bottom:2.5,left:5},
+      fontSize:9.5,cellPadding:{top:2.8,right:6,bottom:2.8,left:6},
       lineColor:[230,235,245],lineWidth:.25,overflow:'linebreak',
     },
     headStyles:{
       fillColor:[50,80,120],textColor:255,fontStyle:'bold',fontSize:8.5,
-      cellPadding:{top:3,right:5,bottom:3,left:5},
+      cellPadding:{top:3,right:6,bottom:3,left:6},
     },
     columnStyles:{
-      0:{cellWidth:84},
-      1:{cellWidth:46,halign:'left'},
-      2:{cellWidth:22,halign:'center',textColor:[140,140,140]},
-      3:{cellWidth:26,halign:'right'},
+      0:{cellWidth:122},
+      1:{cellWidth:56,halign:'right',fontStyle:'bold'},
     },
     didParseCell:(d)=>{
-      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='center';return;}
+      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='right';return;}
       if(d.section!=='body') return;
       const txt=d.row.raw[0];
-      const isSec=['ABWESENHEITEN','SCHULE','WERKSTATT','SCHNUPPERN'].includes(txt);
+      const isSec=['ABWESENHEITEN','SCHULE','LERNWERKSTATT','SCHNUPPERLEHRE'].includes(txt);
       if(isSec){
         d.cell.styles.fillColor=[30,58,95];d.cell.styles.textColor=[255,255,255];
         d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=8.5;
-        d.cell.styles.cellPadding={top:3,right:5,bottom:3,left:5};
-      } else if(txt==='TOTAL Schul-Lektionen'){
+        d.cell.styles.cellPadding={top:3,right:6,bottom:3,left:6};
+      } else if(txt==='Total Schul-Lektionen'){
         d.cell.styles.fillColor=[219,234,254];d.cell.styles.fontStyle='bold';
-        d.cell.styles.textColor=d.column.index===3?[30,58,95]:[60,60,60];
+        d.cell.styles.textColor=[30,58,95];
       } else if(txt===''){
         d.cell.styles.minCellHeight=1.5;d.cell.styles.fillColor=[245,247,252];
         d.cell.styles.cellPadding={top:0,right:0,bottom:0,left:0};
@@ -2520,9 +2500,7 @@ function genRapportPDF(){
   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,58,95);
   doc.text('BASISJOB',W-mg,287,{align:'right'});
 
-  const fn=rangeVal==='month'
-    ?`Rapport_${p.nachname}_${p.vorname}_${document.getElementById('rptRM').value}.pdf`
-    :`Rapport_${p.nachname}_${p.vorname}_Laufzeit.pdf`;
+  const fn=`Rapport_${p.nachname}_${p.vorname}_Laufzeit.pdf`;
   doc.save(fn);
   closeRapportModal();
   toast('📊 Rapport wird heruntergeladen…','t-ok');
