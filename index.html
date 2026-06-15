@@ -1000,6 +1000,21 @@ input,select,textarea{font-family:inherit}
 </div>
 </div>
 
+<!-- IMPORT-VORSCHAU (JSON laden) -->
+<div class="overlay" id="impPreviewOverlay">
+<div class="modal" style="max-width:560px">
+  <div class="modal-head">
+    <div class="modal-title">📂 Datei laden – Vorschau der Änderungen</div>
+    <button class="modal-x" onclick="closeImportPreview()">&times;</button>
+  </div>
+  <div id="impPreviewBody"></div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="closeImportPreview()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="confirmImportPreview()">✓ Datei laden</button>
+  </div>
+</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
@@ -2965,8 +2980,8 @@ async function doImportFSA(){
   } else { document.getElementById('importFile').click(); }
 }
 
-// Vergleicht die zu ladende Datei mit dem aktuellen Stand und liefert eine
-// lesbare Zusammenfassung – damit man vor dem Überschreiben sieht, was sich ändert.
+// Vergleicht die zu ladende Datei mit dem aktuellen Stand und liefert ein
+// strukturiertes Änderungs-Objekt – damit man vor dem Überschreiben sieht, was sich ändert.
 function _jsonImportDiff(incoming, incomingPlans){
   const FIELDS=[
     ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
@@ -2985,8 +3000,8 @@ function _jsonImportDiff(incoming, incomingPlans){
   (DB.participants||[]).forEach(op=>{ if(!newById[op.id]) removed.push(nameOf(op)); });
   (incoming||[]).forEach(np=>{
     const op=curById[np.id]; if(!op) return;
-    const diff=FIELDS.filter(([k])=>norm(op[k])!==norm(np[k])).map(([,l])=>l);
-    if(diff.length) changed.push(`${nameOf(np)} (${diff.join(', ')})`);
+    const fields=FIELDS.filter(([k])=>norm(op[k])!==norm(np[k])).map(([,l])=>l);
+    if(fields.length) changed.push({name:nameOf(np),fields});
   });
 
   // Planung tageweise vergleichen
@@ -2999,29 +3014,62 @@ function _jsonImportDiff(incoming, incomingPlans){
     if(!curP[d]||a==='{}') pNew++; else if(!newP[d]||b==='{}') pRem++; else pChg++;
   });
 
-  const cap=(arr,n=8)=>arr.length>n?arr.slice(0,n).join(', ')+` … (+${arr.length-n})`:arr.join(', ');
-  let s='Datei laden – folgende Änderungen werden übernommen:\n';
-  s+=`\nTeilnehmer (aktuell ${DB.participants.length} → neu ${(incoming||[]).length}):`;
-  s+=added.length  ?`\n  + ${added.length} neu: ${cap(added)}`       :'\n  + keine neuen';
-  s+=removed.length?`\n  − ${removed.length} entfällt: ${cap(removed)}`:'\n  − keine entfallen';
-  s+=changed.length?`\n  ~ ${changed.length} geändert: ${cap(changed,6)}`:'\n  ~ keine geändert';
-  if(pNew+pRem+pChg>0) s+=`\n\nPlanung: ${pNew+pRem+pChg} Tag(e) betroffen (${pChg} geändert, ${pNew} neu, ${pRem} entfällt).`;
-  else s+='\n\nPlanung: keine Änderungen.';
-  s+='\n\nFortfahren und Datei laden?';
-  return s;
+  return {added,removed,changed,pNew,pRem,pChg,curCount:DB.participants.length,newCount:(incoming||[]).length};
 }
+
+let _pendingImport=null;
 
 function processImportJSON(text){
   try{
     const d=JSON.parse(text);
-    if(!confirm(_jsonImportDiff(d.participants||[], d.plans||{}))) return;
-    snapshotBackup();
-    DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
-    saveDB(); dirty=false; updateSaveInfo();
-    toast('📂 Daten erfolgreich importiert','t-ok');
-    const active=document.querySelector('.nav-btn.active');
-    if(active) show(active.dataset.v);
+    const diff=_jsonImportDiff(d.participants||[], d.plans||{});
+    _pendingImport=d;
+    openImportPreview(diff);
   }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
+}
+
+function openImportPreview(diff){
+  const sec=(title,color,items)=>{
+    if(!items.length) return `<div style="margin:2px 0;color:var(--g5)">${title}: <span style="color:var(--g6)">keine</span></div>`;
+    const rows=items.map(it=>typeof it==='string'
+      ? `<div style="padding:2px 0">${esc(it)}</div>`
+      : `<div style="padding:2px 0">${esc(it.name)} <span style="color:var(--g6);font-size:12px">– ${esc(it.fields.join(', '))}</span></div>`
+    ).join('');
+    return `<div style="margin:8px 0">
+      <div style="font-weight:700;color:${color};margin-bottom:2px">${title} (${items.length})</div>
+      <div style="max-height:160px;overflow:auto;border:1px solid var(--g2);border-radius:6px;padding:6px 10px;font-size:13px">${rows}</div>
+    </div>`;
+  };
+  const planTxt=(diff.pNew+diff.pRem+diff.pChg>0)
+    ? `${diff.pNew+diff.pRem+diff.pChg} Tag(e) betroffen – ${diff.pChg} geändert, ${diff.pNew} neu, ${diff.pRem} entfällt`
+    : 'keine Änderungen';
+  document.getElementById('impPreviewBody').innerHTML=`
+    <div style="font-size:13px;color:var(--g6);margin-bottom:6px">
+      Teilnehmer aktuell <strong>${diff.curCount}</strong> → in der Datei <strong>${diff.newCount}</strong>.
+      Beim Laden wird der gesamte Stand durch die Datei ersetzt.
+    </div>
+    ${sec('➕ Neu',     'var(--green)', diff.added)}
+    ${sec('➖ Entfällt', 'var(--red)',   diff.removed)}
+    ${sec('〜 Geändert', 'var(--amber)', diff.changed)}
+    <div style="margin-top:10px;font-size:13px"><strong>Planung:</strong> ${planTxt}</div>`;
+  document.getElementById('impPreviewOverlay').classList.add('open');
+}
+
+function closeImportPreview(){
+  document.getElementById('impPreviewOverlay').classList.remove('open');
+  _pendingImport=null;
+}
+
+function confirmImportPreview(){
+  const d=_pendingImport;
+  closeImportPreview();
+  if(!d) return;
+  snapshotBackup();
+  DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
+  saveDB(); dirty=false; updateSaveInfo();
+  toast('📂 Daten erfolgreich importiert','t-ok');
+  const active=document.querySelector('.nav-btn.active');
+  if(active) show(active.dataset.v);
 }
 
 function updateSaveInfo(){
@@ -3106,6 +3154,9 @@ document.getElementById('pmOverlay').addEventListener('click',e=>{
 });
 document.getElementById('rapportOverlay').addEventListener('click',e=>{
   if(e.target===e.currentTarget) closeRapportModal();
+});
+document.getElementById('impPreviewOverlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) closeImportPreview();
 });
 
 // ────────────────────────────────────────────
