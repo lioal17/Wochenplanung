@@ -716,7 +716,9 @@ input,select,textarea{font-family:inherit}
           <div>
             <span class="card-title" id="impTitle">Erkannte Teilnehmende</span>
             <div style="font-size:12px;color:var(--g6);margin-top:3px">
-              Vor-/Nachname prüfen und bei Bedarf anpassen. Grüne Zeilen sind bereits im System vorhanden.
+              Vor-/Nachname prüfen und bei Bedarf anpassen. Grüne Zeilen sind bereits im System vorhanden.<br>
+              <strong>Bestehende Einträge werden nicht überschrieben</strong> – nur leere Felder (z.&nbsp;B. Einsatz von/bis) werden ergänzt.
+              Weicht die Liste von vorhandenen Daten ab, wird das ⚠️ angezeigt; die Änderung greift nur, wenn du sie gezielt ankreuzt.
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -735,6 +737,7 @@ input,select,textarea{font-family:inherit}
                 <th>JC / Berater</th>
                 <th>Schultage erkannt</th>
                 <th>Sport erkannt</th>
+                <th>Einsatz (von – bis)</th>
                 <th></th>
               </tr>
             </thead>
@@ -993,6 +996,21 @@ input,select,textarea{font-family:inherit}
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closeRapportModal()">Abbrechen</button>
     <button class="btn btn-primary" onclick="genRapportPDF()">📊 PDF exportieren</button>
+  </div>
+</div>
+</div>
+
+<!-- IMPORT-VORSCHAU (JSON laden) -->
+<div class="overlay" id="impPreviewOverlay">
+<div class="modal" style="max-width:560px">
+  <div class="modal-head">
+    <div class="modal-title">📂 Datei laden – Vorschau der Änderungen</div>
+    <button class="modal-x" onclick="closeImportPreview()">&times;</button>
+  </div>
+  <div id="impPreviewBody"></div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="closeImportPreview()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="confirmImportPreview()">✓ Datei laden</button>
   </div>
 </div>
 </div>
@@ -2850,6 +2868,41 @@ function genNeophytPDF(){
 // ────────────────────────────────────────────
 let savedFileHandle = null;
 
+// Persistenter Speicherort: das gewählte File-Handle wird in IndexedDB abgelegt,
+// damit auch nach einem Reload weiter still an denselben Ort gespeichert wird –
+// ohne dass erneut ein «Speichern unter»-Fenster aufgeht.
+const FH_DB='lw_fh', FH_STORE='handles', FH_KEY='saveFile';
+function _fhOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(FH_DB,1);
+    r.onupgradeneeded=()=>r.result.createObjectStore(FH_STORE);
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function fhStore(handle){
+  try{ const db=await _fhOpen(); await new Promise((res,rej)=>{
+    const tx=db.transaction(FH_STORE,'readwrite');
+    tx.objectStore(FH_STORE).put(handle,FH_KEY);
+    tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+  }); }catch(e){/* IndexedDB nicht verfügbar – Handle bleibt nur im Speicher */}
+}
+async function fhLoad(){
+  try{ const db=await _fhOpen(); return await new Promise((res,rej)=>{
+    const tx=db.transaction(FH_STORE,'readonly');
+    const g=tx.objectStore(FH_STORE).get(FH_KEY);
+    g.onsuccess=()=>res(g.result||null); g.onerror=()=>rej(g.error);
+  }); }catch(e){ return null; }
+}
+// Schreibrechte prüfen (und bei Bedarf einmalig anfragen) – kein Datei-Dialog.
+async function _fhPerm(handle, request){
+  if(!handle || !handle.queryPermission) return true;
+  const opts={mode:'readwrite'};
+  if(await handle.queryPermission(opts)==='granted') return true;
+  if(request && await handle.requestPermission(opts)==='granted') return true;
+  return false;
+}
+
 function updateSaveFileLabel(){
   const el=document.getElementById('saveFileLabel');
   if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
@@ -2867,7 +2920,12 @@ async function manualSave(){
   const savedMsg=`💾 Gespeichert: ${pCount} Teilnehmer · ${planDays} Plantage`;
   if('showSaveFilePicker' in window){
     try{
+      // Bekannten Speicherort wiederverwenden (auch nach Reload aus IndexedDB) –
+      // es geht KEIN «Speichern unter»-Fenster auf, es wird direkt überschrieben.
+      if(!savedFileHandle) savedFileHandle=await fhLoad();
+      if(savedFileHandle && !await _fhPerm(savedFileHandle,true)) savedFileHandle=null;
       if(!savedFileHandle){
+        // Nur beim allerersten Mal (noch nie ein Speicherort gewählt): einmalig festlegen.
         savedFileHandle=await window.showSaveFilePicker({
           suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
           types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
@@ -2875,6 +2933,7 @@ async function manualSave(){
       }
       const w=await savedFileHandle.createWritable();
       await w.write(data); await w.close();
+      await fhStore(savedFileHandle);
       dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
       snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
       toast(`${savedMsg} → ${savedFileHandle.name}`,'t-ok');
@@ -2903,6 +2962,7 @@ async function changeSaveLocation(){
         suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
         types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
       });
+      await fhStore(savedFileHandle);
       updateSaveFileLabel(); toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
     }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
   } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
@@ -2920,17 +2980,96 @@ async function doImportFSA(){
   } else { document.getElementById('importFile').click(); }
 }
 
+// Vergleicht die zu ladende Datei mit dem aktuellen Stand und liefert ein
+// strukturiertes Änderungs-Objekt – damit man vor dem Überschreiben sieht, was sich ändert.
+function _jsonImportDiff(incoming, incomingPlans){
+  const FIELDS=[
+    ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
+    ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
+    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['aktiviertAm','Aktiviert am'],['bemerkung','Bemerkung'],
+    ['schultage','Schultage'],['sporttermine','Sport'],['fixpraeferenzen','Fixpräferenzen'],
+    ['wb8','WB 8'],['wb10','WB 10'],
+  ];
+  const norm=v=>typeof v==='object'?JSON.stringify(v||null):(v??'');
+  const nameOf=p=>`${p.vorname||''} ${p.nachname||''}`.trim()||'(ohne Name)';
+  const curById={}; (DB.participants||[]).forEach(p=>curById[p.id]=p);
+  const newById={}; (incoming||[]).forEach(p=>newById[p.id]=p);
+
+  const added=[],removed=[],changed=[];
+  (incoming||[]).forEach(np=>{ if(!curById[np.id]) added.push(nameOf(np)); });
+  (DB.participants||[]).forEach(op=>{ if(!newById[op.id]) removed.push(nameOf(op)); });
+  (incoming||[]).forEach(np=>{
+    const op=curById[np.id]; if(!op) return;
+    const fields=FIELDS.filter(([k])=>norm(op[k])!==norm(np[k])).map(([,l])=>l);
+    if(fields.length) changed.push({name:nameOf(np),fields});
+  });
+
+  // Planung tageweise vergleichen
+  const curP=DB.plans||{}, newP=incomingPlans||{};
+  const days=new Set([...Object.keys(curP),...Object.keys(newP)]);
+  let pNew=0,pRem=0,pChg=0;
+  days.forEach(d=>{
+    const a=JSON.stringify(curP[d]||{}), b=JSON.stringify(newP[d]||{});
+    if(a===b) return;
+    if(!curP[d]||a==='{}') pNew++; else if(!newP[d]||b==='{}') pRem++; else pChg++;
+  });
+
+  return {added,removed,changed,pNew,pRem,pChg,curCount:DB.participants.length,newCount:(incoming||[]).length};
+}
+
+let _pendingImport=null;
+
 function processImportJSON(text){
   try{
     const d=JSON.parse(text);
-    if(!confirm('Vorhandene Daten werden überschrieben. Fortfahren?')) return;
-    snapshotBackup();
-    DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
-    saveDB(); dirty=false; updateSaveInfo();
-    toast('📂 Daten erfolgreich importiert','t-ok');
-    const active=document.querySelector('.nav-btn.active');
-    if(active) show(active.dataset.v);
+    const diff=_jsonImportDiff(d.participants||[], d.plans||{});
+    _pendingImport=d;
+    openImportPreview(diff);
   }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
+}
+
+function openImportPreview(diff){
+  const sec=(title,color,items)=>{
+    if(!items.length) return `<div style="margin:2px 0;color:var(--g5)">${title}: <span style="color:var(--g6)">keine</span></div>`;
+    const rows=items.map(it=>typeof it==='string'
+      ? `<div style="padding:2px 0">${esc(it)}</div>`
+      : `<div style="padding:2px 0">${esc(it.name)} <span style="color:var(--g6);font-size:12px">– ${esc(it.fields.join(', '))}</span></div>`
+    ).join('');
+    return `<div style="margin:8px 0">
+      <div style="font-weight:700;color:${color};margin-bottom:2px">${title} (${items.length})</div>
+      <div style="max-height:160px;overflow:auto;border:1px solid var(--g2);border-radius:6px;padding:6px 10px;font-size:13px">${rows}</div>
+    </div>`;
+  };
+  const planTxt=(diff.pNew+diff.pRem+diff.pChg>0)
+    ? `${diff.pNew+diff.pRem+diff.pChg} Tag(e) betroffen – ${diff.pChg} geändert, ${diff.pNew} neu, ${diff.pRem} entfällt`
+    : 'keine Änderungen';
+  document.getElementById('impPreviewBody').innerHTML=`
+    <div style="font-size:13px;color:var(--g6);margin-bottom:6px">
+      Teilnehmer aktuell <strong>${diff.curCount}</strong> → in der Datei <strong>${diff.newCount}</strong>.
+      Beim Laden wird der gesamte Stand durch die Datei ersetzt.
+    </div>
+    ${sec('➕ Neu',     'var(--green)', diff.added)}
+    ${sec('➖ Entfällt', 'var(--red)',   diff.removed)}
+    ${sec('〜 Geändert', 'var(--amber)', diff.changed)}
+    <div style="margin-top:10px;font-size:13px"><strong>Planung:</strong> ${planTxt}</div>`;
+  document.getElementById('impPreviewOverlay').classList.add('open');
+}
+
+function closeImportPreview(){
+  document.getElementById('impPreviewOverlay').classList.remove('open');
+  _pendingImport=null;
+}
+
+function confirmImportPreview(){
+  const d=_pendingImport;
+  closeImportPreview();
+  if(!d) return;
+  snapshotBackup();
+  DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
+  saveDB(); dirty=false; updateSaveInfo();
+  toast('📂 Daten erfolgreich importiert','t-ok');
+  const active=document.querySelector('.nav-btn.active');
+  if(active) show(active.dataset.v);
 }
 
 function updateSaveInfo(){
@@ -3016,6 +3155,9 @@ document.getElementById('pmOverlay').addEventListener('click',e=>{
 document.getElementById('rapportOverlay').addEventListener('click',e=>{
   if(e.target===e.currentTarget) closeRapportModal();
 });
+document.getElementById('impPreviewOverlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) closeImportPreview();
+});
 
 // ────────────────────────────────────────────
 // DOKUMENT-IMPORT
@@ -3044,6 +3186,9 @@ function impJC(str){
 function parseDocText(text){
   const KLASSE_RE=/\b(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-\d{2}-\d{2}-\d{2}-\d{2}\b/g;
   const BERATER_RE=/(Br[üu]ggl[ae]r\s+Yvonne|Ioannou\s+Lucas|Schildknecht\s+Thomas)/i;
+  // Eintritt / Ende ZV → Einsatz von / bis (Format TT.MM.JJJJ, in ISO umwandeln)
+  const DATE_RE=/\b(\d{2})\.(\d{2})\.(\d{4})\b/g;
+  const toISO=(d,m,y)=>`${y}-${m}-${d}`;
   const map={};
   const lines=text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l.length>3);
 
@@ -3063,7 +3208,17 @@ function parseDocText(text){
     const ktyp=cm?cm[1]:null;
     const kwd=cm?IMP_DAY[cm[2]]||0:0;
 
-    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[]};
+    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[],von:'',bis:''};
+
+    // Eintritt (= Einsatz von) und Ende ZV (= Einsatz bis) aus der Zeile lesen.
+    // Die Klassen-Codes (z.B. FöA-Do-30-10-25-01) enthalten keine TT.MM.JJJJ-Daten,
+    // daher kollidiert das Datumsmuster nicht mit ihnen.
+    DATE_RE.lastIndex=0;
+    const dates=[]; let dm;
+    while((dm=DATE_RE.exec(line))) dates.push(toISO(dm[1],dm[2],dm[3]));
+    if(dates.length>=1 && !map[rawName].von) map[rawName].von=dates[0];
+    if(dates.length>=2 && !map[rawName].bis) map[rawName].bis=dates[1];
+
     if(ktyp&&kwd){
       if(ktyp==='Spo'){
         if(!map[rawName].spt.includes(kwd)) map[rawName].spt.push(kwd);
@@ -3088,27 +3243,68 @@ function impSplitName(raw){
   return{nn:parts.slice(0,-1).join(' '),vn:parts[parts.length-1]};
 }
 
+// Bestehenden Teilnehmer zur Importzeile finden (gleiche Logik wie beim Import).
+function _impFindExisting(nn,vn){
+  return DB.participants.find(e=>
+    e.nachname.toLowerCase()===nn.toLowerCase() &&
+    (e.vorname||'').toLowerCase()===(vn||'').toLowerCase()
+  )||DB.participants.find(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+}
+// Abweichungen zwischen bestehendem TN und der Liste – NUR wenn bereits ein Wert da ist
+// und dieser sich vom Listenwert unterscheidet (sonst wird ohnehin nur ergänzt).
+function _impConflicts(existing,p){
+  const c=[];
+  const schKey=a=>(a||[]).map(s=>`${s.wochentag}:${s.typ}`).sort().join(',');
+  const sptKey=a=>(a||[]).map(Number).sort((x,y)=>x-y).join(',');
+  if(p.jc && existing.jobCoach && existing.jobCoach!==p.jc)
+    c.push({field:'jobCoach',label:'JC',old:JC_LBL[existing.jobCoach]||existing.jobCoach,neu:JC_LBL[p.jc]||p.jc});
+  if(p.sch.length && existing.schultage&&existing.schultage.length && schKey(existing.schultage)!==schKey(p.sch))
+    c.push({field:'schultage',label:'Schultage',
+      old:existing.schultage.map(s=>`${WD[s.wochentag]}:${s.typ}`).join(', '),
+      neu:p.sch.map(s=>`${WD[s.wochentag]}:${s.typ}`).join(', ')});
+  if(p.spt.length && existing.sporttermine&&existing.sporttermine.length && sptKey(existing.sporttermine)!==sptKey(p.spt))
+    c.push({field:'sporttermine',label:'Sport',
+      old:existing.sporttermine.map(d=>WD[d]).join(', '),neu:p.spt.map(d=>WD[d]).join(', ')});
+  if(p.von && existing.einsatzVon && existing.einsatzVon!==p.von)
+    c.push({field:'einsatzVon',label:'Einsatz von',old:fd(existing.einsatzVon),neu:fd(p.von)});
+  if(p.bis && existing.einsatzBis && existing.einsatzBis!==p.bis)
+    c.push({field:'einsatzBis',label:'Einsatz bis',old:fd(existing.einsatzBis),neu:fd(p.bis)});
+  return c;
+}
+
 function renderImpTable(){
   const tbody=document.getElementById('impTBody');
   document.getElementById('impTitle').textContent=`${_impData.length} Teilnehmende erkannt`;
-  const existSet=new Set(DB.participants.map(p=>
-    (p.nachname+' '+p.vorname).toLowerCase().trim()
-  ));
 
   tbody.innerHTML=_impData.map((p,i)=>{
     const{nn,vn}=impSplitName(p.rawName);
-    const exists=existSet.has((nn+' '+vn).toLowerCase().trim())||
-      DB.participants.some(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+    const existing=_impFindExisting(nn,vn);
+    const exists=!!existing;
     const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${s.typ}`).join(', ')||'–';
     const sptStr=p.spt.map(d=>WD[d]).join(', ')||'–';
+    const einsatzStr=(p.von||p.bis)?`${p.von?fd(p.von):'?'} – ${p.bis?fd(p.bis):'?'}`:'–';
+    const conflicts=exists?_impConflicts(existing,p):[];
+    let statusCell='';
+    if(exists){
+      statusCell=`<span class="st-chip chip-prak">✓ vorhanden</span>`;
+      if(conflicts.length){
+        statusCell+=`<div style="font-size:11px;margin-top:4px">
+          <div style="color:var(--amber);font-weight:700;margin-bottom:2px">⚠️ Abweichung – nur bei Anwahl übernehmen:</div>`
+          +conflicts.map(cf=>`<label style="display:block;cursor:pointer;color:var(--g6);margin:1px 0">
+            <input type="checkbox" class="imp-cf-cb" data-i="${i}" data-field="${cf.field}" style="vertical-align:middle">
+            ${cf.label}: «${esc(cf.old)}» → «${esc(cf.neu)}»</label>`).join('')
+          +`</div>`;
+      }
+    }
     return`<tr class="${exists?'imp-exists':''}">
-      <td><input type="checkbox" class="imp-cb" data-i="${i}" ${exists?'':'checked'}></td>
+      <td><input type="checkbox" class="imp-cb" data-i="${i}" checked></td>
       <td><input class="imp-inp" id="imp-nn-${i}" value="${esc(nn)}" placeholder="Nachname"></td>
       <td><input class="imp-inp" id="imp-vn-${i}" value="${esc(vn)}" placeholder="Vorname"></td>
       <td><span class="jc ${JC_CSS[p.jc]||''}">${JC_LBL[p.jc]||p.jc}</span></td>
       <td style="font-size:11px;color:var(--g6)">${schStr}</td>
       <td style="font-size:11px;color:var(--g6)">${sptStr}</td>
-      <td>${exists?'<span class="st-chip chip-prak">✓ vorhanden</span>':''}</td>
+      <td style="font-size:11px;color:var(--g6)">${einsatzStr}</td>
+      <td>${statusCell}</td>
     </tr>`;
   }).join('');
 }
@@ -3221,22 +3417,32 @@ function doImportDoc(){
   const cbs=document.querySelectorAll('.imp-cb');
   let added=0,updated=0;
 
-  cbs.forEach((cb,i)=>{
+  // Gezielt bestätigte Abweichungen einsammeln (Index → Set der zu überschreibenden Felder)
+  const overrides={};
+  document.querySelectorAll('.imp-cf-cb:checked').forEach(cb=>{
+    const idx=+cb.dataset.i;
+    (overrides[idx]=overrides[idx]||new Set()).add(cb.dataset.field);
+  });
+
+  cbs.forEach(cb=>{
     if(!cb.checked) return;
+    const i=+cb.dataset.i;
     const p=_impData[i];
     const nn=(document.getElementById(`imp-nn-${i}`)?.value||'').trim();
     const vn=(document.getElementById(`imp-vn-${i}`)?.value||'').trim();
     if(!nn) return;
 
-    const existing=DB.participants.find(e=>
-      e.nachname.toLowerCase()===nn.toLowerCase()&&
-      (e.vorname||'').toLowerCase()===(vn||'').toLowerCase()
-    )||DB.participants.find(e=>e.nachname.toLowerCase()===nn.toLowerCase());
+    const existing=_impFindExisting(nn,vn);
 
     if(existing){
-      if(!existing.jobCoach&&p.jc) existing.jobCoach=p.jc;
-      if((!existing.schultage||!existing.schultage.length)&&p.sch.length) existing.schultage=p.sch;
-      if((!existing.sporttermine||!existing.sporttermine.length)&&p.spt.length) existing.sporttermine=p.spt;
+      // Bestehende Daten NICHT überschreiben – nur leere Felder ergänzen.
+      // Abweichende Werte nur übernehmen, wenn die Abweichung gezielt angekreuzt wurde.
+      const ovr=overrides[i]||new Set();
+      if(p.jc && (!existing.jobCoach || ovr.has('jobCoach'))) existing.jobCoach=p.jc;
+      if(p.sch.length && (!(existing.schultage&&existing.schultage.length) || ovr.has('schultage'))) existing.schultage=p.sch;
+      if(p.spt.length && (!(existing.sporttermine&&existing.sporttermine.length) || ovr.has('sporttermine'))) existing.sporttermine=p.spt;
+      if(p.von && (!existing.einsatzVon || ovr.has('einsatzVon'))) existing.einsatzVon=p.von;
+      if(p.bis && (!existing.einsatzBis || ovr.has('einsatzBis'))) existing.einsatzBis=p.bis;
       updated++;
     }else{
       DB.participants.push({
@@ -3246,7 +3452,7 @@ function doImportDoc(){
         status:'aktiv',
         jobCoach:p.jc||'',
         iiz:'nein',
-        einsatzVon:'',einsatzBis:'',
+        einsatzVon:p.von||'',einsatzBis:p.bis||'',
         aktiviertAm:new Date().toISOString().split('T')[0],
         schultage:p.sch,
         sporttermine:p.spt,
@@ -3277,6 +3483,15 @@ function init(){
   curDay  =ds(now);
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
+  // Zuletzt genutzten Speicherort wiederherstellen → spätere Sicherungen laufen ohne Dialog
+  fhLoad().then(async h=>{
+    if(!h) return;
+    savedFileHandle=h; updateSaveFileLabel();
+    // Fragt der Browser beim ersten Speichern noch nach Erlaubnis? Dann kurz Bescheid geben.
+    if(h.queryPermission && await h.queryPermission({mode:'readwrite'})!=='granted'){
+      showBanner('🔒 Beim ersten Speichern fragt der Browser einmalig nach der Erlaubnis, die Datei zu bearbeiten – einfach bestätigen. Danach wird automatisch lautlos am gewohnten Ort gespeichert.','bn-amber');
+    }
+  });
   renderWBAlerts();
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
