@@ -574,6 +574,7 @@ input,select,textarea{font-family:inherit}
       <div class="save-info" id="saveInfo"></div>
       <div id="saveFileLabel" style="font-size:9px;color:rgba(255,255,255,.45);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
     </div>
+    <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren – speichert automatisch">📄 Wochenplan generieren</button>
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
@@ -612,9 +613,6 @@ input,select,textarea{font-family:inherit}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren">
-              📄 Wochenplan generieren
-            </button>
             <button class="btn btn-secondary" onclick="copyPrev()" title="Alle Einträge der Vorwoche in die aktuelle Woche kopieren">
               📋 Vorwoche kopieren
             </button>
@@ -850,7 +848,8 @@ input,select,textarea{font-family:inherit}
             <option value="DAZ">DAZ – halber Tag (VM)</option>
             <option value="DAZ-NM">DAZ – halber Tag (NM)</option>
             <option value="S">S – Schule Ganztag</option>
-            <option value="FöA">FöA – Förderatelier (½ Tag)</option>
+            <option value="FöA">FöA – Förderatelier (½ Tag, VM)</option>
+            <option value="FöA-NM">FöA – Förderatelier (½ Tag, NM)</option>
             <option value="DK">DK – Deutschkurs Migros (½ Tag)</option>
             <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
           </select>
@@ -1205,6 +1204,7 @@ function getBlocks(p, date){
     if(+s.wochentag!==dow) continue;
     if(s.typ==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; }
     else if(s.typ==='DAZ-NM'){ nmB=true; if(!nmL) nmL='DAZ'; }
+    else if(s.typ==='FöA-NM'){ nmB=true; if(!nmL) nmL='FöA'; }
     else { vmB=true; if(!vmL) vmL=s.typ; }
   }
   for(const sp of (p.sporttermine||[])){
@@ -1404,8 +1404,8 @@ function renderDayPlan(){
     </div>`;
 
     // eCase
-    // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag – ausser Schnuppertag (SL)
-    const needEC=absCode!=='' && !isSchnuppertag(plan);
+    // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag – ausser SL (Schnupperlehre/-tag): kein eCase
+    const needEC=absCode!=='' && absCode!=='SL' && !isSchnuppertag(plan);
     const ecDone=plan.ecaseEntered||false;
     let ecCell;
     if(!needEC){
@@ -1464,7 +1464,7 @@ function renderDayPlan(){
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
     const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM'];
-    if(pl.abwesenheit&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
+    if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
     }
@@ -1951,7 +1951,7 @@ function renderMonthly(){
         dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        if(!plan.ecaseEntered&&effAbs!=='SL'&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
@@ -2515,6 +2515,8 @@ function genRapportPDF(){
 // ────────────────────────────────────────────
 function genWeekPDF(){
   if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
+  // Beim Generieren automatisch sichern – gleiche Funktion wie der «💾 Speichern»-Knopf.
+  manualSave();
   const{jsPDF}=jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,mg=10;
@@ -3066,7 +3068,10 @@ function parseDocText(text){
       if(ktyp==='Spo'){
         if(!map[rawName].spt.includes(kwd)) map[rawName].spt.push(kwd);
       } else {
-        const typ=IMP_KTYP[ktyp]||ktyp;
+        let typ=IMP_KTYP[ktyp]||ktyp;
+        // Halbtags-Kurse (FöA, DAZ) können am Vormittag ODER Nachmittag stattfinden –
+        // anhand des Stichworts «Nachmittag» in der Zeile automatisch dem NM-Slot zuordnen.
+        if(/nachmittag/i.test(line)&&(typ==='FöA'||typ==='DAZ')) typ=typ+'-NM';
         if(!map[rawName].sch.find(s=>s.typ===typ&&s.wochentag===kwd))
           map[rawName].sch.push({typ,wochentag:kwd});
       }
