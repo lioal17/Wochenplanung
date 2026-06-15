@@ -3209,17 +3209,28 @@ function parseDocText(text){
     if(!km) continue;
     const bm=BERATER_RE.exec(line);
     if(!bm) continue;
-    const rawName=line.substring(0,km.index).trim();
-    if(!rawName||rawName.length<3||!/^[A-ZÄÖÜ]/.test(rawName)) continue;
+    // Namensbereich = alles vor dem Klassen-Code. In der Liste stehen dort auch
+    // die Spalten «Eintritt» und «Ende ZV» – diese Daten dürfen NICHT in den
+    // Namen geraten (sonst landet «Nachname Vorname Einsatz-von» im Nachnamen).
+    const nameRegion=line.substring(0,km.index).trim();
+    const rawName=nameRegion.replace(/\b\d{2}\.\d{2}\.\d{4}\b/g,' ').replace(/\s+/g,' ').trim();
+    // Steht im Namensbereich Text, muss er mit einem Buchstaben beginnen.
+    // Leer (z. B. geschwärzter Name) ist erlaubt – dann manuell ergänzen.
+    if(rawName && !/^[A-ZÄÖÜ]/.test(rawName)) continue;
     const jc=impJC(bm[1]);
     if(!jc) continue;
+
+    // Gruppierungs-Schlüssel: Name, sonst der Roh-Bereich inkl. Daten
+    // (bleibt bei geschwärzten Namen pro Zeile eindeutig).
+    const key=rawName||nameRegion;
+    if(!key) continue;
 
     // Parse klasse code
     const cm=km[0].match(/^(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-/);
     const ktyp=cm?cm[1]:null;
     const kwd=cm?IMP_DAY[cm[2]]||0:0;
 
-    if(!map[rawName]) map[rawName]={rawName,jc,sch:[],spt:[],von:'',bis:''};
+    if(!map[key]) map[key]={rawName,jc,sch:[],spt:[],von:'',bis:''};
 
     // Eintritt (= Einsatz von) und Ende ZV (= Einsatz bis) aus der Zeile lesen.
     // Die Klassen-Codes (z.B. FöA-Do-30-10-25-01) enthalten keine TT.MM.JJJJ-Daten,
@@ -3227,19 +3238,19 @@ function parseDocText(text){
     DATE_RE.lastIndex=0;
     const dates=[]; let dm;
     while((dm=DATE_RE.exec(line))) dates.push(toISO(dm[1],dm[2],dm[3]));
-    if(dates.length>=1 && !map[rawName].von) map[rawName].von=dates[0];
-    if(dates.length>=2 && !map[rawName].bis) map[rawName].bis=dates[1];
+    if(dates.length>=1 && !map[key].von) map[key].von=dates[0];
+    if(dates.length>=2 && !map[key].bis) map[key].bis=dates[1];
 
     if(ktyp&&kwd){
       if(ktyp==='Spo'){
-        if(!map[rawName].spt.includes(kwd)) map[rawName].spt.push(kwd);
+        if(!map[key].spt.includes(kwd)) map[key].spt.push(kwd);
       } else {
         let typ=IMP_KTYP[ktyp]||ktyp;
         // Halbtags-Kurse (FöA, DAZ) können am Vormittag ODER Nachmittag stattfinden –
         // anhand des Stichworts «Nachmittag» in der Zeile automatisch dem NM-Slot zuordnen.
         if(/nachmittag/i.test(line)&&(typ==='FöA'||typ==='DAZ')) typ=typ+'-NM';
-        if(!map[rawName].sch.find(s=>s.typ===typ&&s.wochentag===kwd))
-          map[rawName].sch.push({typ,wochentag:kwd});
+        if(!map[key].sch.find(s=>s.typ===typ&&s.wochentag===kwd))
+          map[key].sch.push({typ,wochentag:kwd});
       }
     }
   }
