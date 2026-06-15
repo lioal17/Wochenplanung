@@ -2414,7 +2414,7 @@ function genRapportPDF(){
   const dk_lek  = stats.dk * 4;
   const total_sch = s_lek + daz_lek + foa_lek + dk_lek;
   const sport_lek = stats.sport * 2;
-  const bw_lek    = stats.bw * 4.5;
+  const bw_lek    = stats.bw * 4;
 
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
