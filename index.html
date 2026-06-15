@@ -2850,6 +2850,41 @@ function genNeophytPDF(){
 // ────────────────────────────────────────────
 let savedFileHandle = null;
 
+// Persistenter Speicherort: das gewählte File-Handle wird in IndexedDB abgelegt,
+// damit auch nach einem Reload weiter still an denselben Ort gespeichert wird –
+// ohne dass erneut ein «Speichern unter»-Fenster aufgeht.
+const FH_DB='lw_fh', FH_STORE='handles', FH_KEY='saveFile';
+function _fhOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(FH_DB,1);
+    r.onupgradeneeded=()=>r.result.createObjectStore(FH_STORE);
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function fhStore(handle){
+  try{ const db=await _fhOpen(); await new Promise((res,rej)=>{
+    const tx=db.transaction(FH_STORE,'readwrite');
+    tx.objectStore(FH_STORE).put(handle,FH_KEY);
+    tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+  }); }catch(e){/* IndexedDB nicht verfügbar – Handle bleibt nur im Speicher */}
+}
+async function fhLoad(){
+  try{ const db=await _fhOpen(); return await new Promise((res,rej)=>{
+    const tx=db.transaction(FH_STORE,'readonly');
+    const g=tx.objectStore(FH_STORE).get(FH_KEY);
+    g.onsuccess=()=>res(g.result||null); g.onerror=()=>rej(g.error);
+  }); }catch(e){ return null; }
+}
+// Schreibrechte prüfen (und bei Bedarf einmalig anfragen) – kein Datei-Dialog.
+async function _fhPerm(handle, request){
+  if(!handle || !handle.queryPermission) return true;
+  const opts={mode:'readwrite'};
+  if(await handle.queryPermission(opts)==='granted') return true;
+  if(request && await handle.requestPermission(opts)==='granted') return true;
+  return false;
+}
+
 function updateSaveFileLabel(){
   const el=document.getElementById('saveFileLabel');
   if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
@@ -2867,7 +2902,12 @@ async function manualSave(){
   const savedMsg=`💾 Gespeichert: ${pCount} Teilnehmer · ${planDays} Plantage`;
   if('showSaveFilePicker' in window){
     try{
+      // Bekannten Speicherort wiederverwenden (auch nach Reload aus IndexedDB) –
+      // es geht KEIN «Speichern unter»-Fenster auf, es wird direkt überschrieben.
+      if(!savedFileHandle) savedFileHandle=await fhLoad();
+      if(savedFileHandle && !await _fhPerm(savedFileHandle,true)) savedFileHandle=null;
       if(!savedFileHandle){
+        // Nur beim allerersten Mal (noch nie ein Speicherort gewählt): einmalig festlegen.
         savedFileHandle=await window.showSaveFilePicker({
           suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
           types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
@@ -2875,6 +2915,7 @@ async function manualSave(){
       }
       const w=await savedFileHandle.createWritable();
       await w.write(data); await w.close();
+      await fhStore(savedFileHandle);
       dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
       snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
       toast(`${savedMsg} → ${savedFileHandle.name}`,'t-ok');
@@ -2903,6 +2944,7 @@ async function changeSaveLocation(){
         suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
         types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
       });
+      await fhStore(savedFileHandle);
       updateSaveFileLabel(); toast(`📁 Speicherort: ${savedFileHandle.name}`,'t-ok');
     }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
   } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
@@ -3277,6 +3319,8 @@ function init(){
   curDay  =ds(now);
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
+  // Zuletzt genutzten Speicherort wiederherstellen → spätere Sicherungen laufen ohne Dialog
+  fhLoad().then(h=>{ if(h){ savedFileHandle=h; updateSaveFileLabel(); } });
   renderWBAlerts();
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
