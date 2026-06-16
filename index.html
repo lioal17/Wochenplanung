@@ -840,11 +840,13 @@ input,select,textarea{font-family:inherit}
         <div class="fg" style="flex:1;min-width:140px">
           <label>Typ</label>
           <select class="fi" id="s_typ">
-            <option value="DAZ">DAZ – halber Tag (VM)</option>
-            <option value="DAZ-NM">DAZ – halber Tag (NM)</option>
-            <option value="S">S – Schule Ganztag</option>
-            <option value="FöA">FöA – Förderatelier (½ Tag, VM)</option>
-            <option value="FöA-NM">FöA – Förderatelier (½ Tag, NM)</option>
+            <option value="DAZ">DAZ – Deutsch als Zweitsprache (ganzer Tag)</option>
+            <option value="DAZ-VM">DAZ-VM – Deutsch als Zweitsprache (Vormittag)</option>
+            <option value="DAZ-NM">DAZ-NM – Deutsch als Zweitsprache (Nachmittag)</option>
+            <option value="FöA">FöA – Förderatelier (ganzer Tag)</option>
+            <option value="FöA-VM">FöA-VM – Förderatelier (Vormittag)</option>
+            <option value="FöA-NM">FöA-NM – Förderatelier (Nachmittag)</option>
+            <option value="S">S – Schule (ganzer Tag)</option>
           </select>
         </div>
         <div class="fg" style="flex:1;min-width:110px">
@@ -866,10 +868,12 @@ input,select,textarea{font-family:inherit}
         <div class="fg" style="flex:1;min-width:140px">
           <label>Typ</label>
           <select class="fi" id="k_typ">
-            <option value="DK-VM">DK VM – Deutschkurs Migros</option>
-            <option value="DK-NM">DK NM – Deutschkurs Migros</option>
-            <option value="DK">DK – Deutschkurs Migros</option>
-            <option value="IKPC">IKPC – Informatik/PC</option>
+            <option value="DK">DK – Deutschkurs Migros (ganzer Tag)</option>
+            <option value="DK-VM">DK-VM – Deutschkurs Migros (Vormittag)</option>
+            <option value="DK-NM">DK-NM – Deutschkurs Migros (Nachmittag)</option>
+            <option value="IKPC">IKPC – Informatik/PC (ganzer Tag)</option>
+            <option value="IKPC-VM">IKPC-VM – Informatik/PC (Vormittag)</option>
+            <option value="IKPC-NM">IKPC-NM – Informatik/PC (Nachmittag)</option>
           </select>
         </div>
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addKurs()">+ Hinzufügen</button>
@@ -1486,13 +1490,16 @@ const AUTO_BEM = {
 
 // Schule-Code – zentrale Quelle für Bildschirm + PDF
 const LEGEND_BLOCK = [
-  ['DAZ','Deutsch als Zweitsprache (½ Tag)'],['DK','Deutschkurs Migros (½ Tag)'],
-  ['FöA','Förderatelier (½ Tag)'],['IKPC','Informatik/PC (½ Tag)'],['S','Schule (ganzer Tag)'],
+  ['DAZ','Deutsch als Zweitsprache (ganzer Tag)'],['DAZ-VM','Deutsch als Zweitsprache (Vormittag)'],['DAZ-NM','Deutsch als Zweitsprache (Nachmittag)'],
+  ['DK','Deutschkurs Migros (ganzer Tag)'],['DK-VM','Deutschkurs Migros (Vormittag)'],['DK-NM','Deutschkurs Migros (Nachmittag)'],
+  ['FöA','Förderatelier (ganzer Tag)'],['FöA-VM','Förderatelier (Vormittag)'],['FöA-NM','Förderatelier (Nachmittag)'],
+  ['IKPC','Informatik/PC (ganzer Tag)'],['IKPC-VM','Informatik/PC (Vormittag)'],['IKPC-NM','Informatik/PC (Nachmittag)'],
+  ['S','Schule (ganzer Tag)'],
 ];
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
-  'S':'Schule','DAZ':'DAZ','FöA':'FöA','DK':'Deutschkurs Migros',
-  'IKPC':'Informatik/PC','Sport':'Sport','PA':'Praktikum',
+  'S':'Schule','DAZ':'DAZ','FöA':'FöA','DK':'DK',
+  'IKPC':'IKPC','Sport':'Sport','PA':'Praktikum',
   'PA+LS':'Praktikum + Lehrstelle','SL':'Schnupperlehre','S.LW':'S.LW',
 };
 // Werkstatt-Kürzel für Legende
@@ -1539,6 +1546,7 @@ function loadDB(){
     if(raw){ const d=JSON.parse(raw); DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{}; }
   }catch(e){ console.warn('Load error',e); }
   migrateSchnupper();
+  migrateSchulCodes();
 }
 
 // Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW'.
@@ -1549,6 +1557,27 @@ function migrateSchnupper(){
   Object.values(DB.plans||{}).forEach(day=>{
     Object.values(day||{}).forEach(pl=>{
       if(pl && pl.bemerkung==='S.LW'){ pl.sw='S.LW'; pl.bemerkung=''; changed=true; }
+    });
+  });
+  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
+}
+
+// Alt-Daten: bisher bedeutete der Basis-Code DAZ/FöA/DK/IKPC „½ Tag VM".
+// Neues Schema: Basis-Code = ganzer Tag. Damit bestehende Pläne NICHT kippen,
+// werden alte Basis-Einträge einmalig auf ihre bisherige VM-Bedeutung umgeschrieben.
+// Idempotent: bereits migrierte (-VM/-NM) und Ganztags-DK (Kurse) bleiben unangetastet.
+function migrateSchulCodes(){
+  const hasSuf=t=>/-(VM|NM)$/.test(t);
+  let changed=false;
+  (DB.participants||[]).forEach(p=>{
+    // Schultage: bisher war alles außer 'S' (und bereits suffigierte Codes) ½ Tag VM.
+    (p.schultage||[]).forEach(s=>{
+      if(s && s.typ && s.typ!=='S' && !hasSuf(s.typ)){ s.typ=s.typ+'-VM'; changed=true; }
+    });
+    // Kurse: 'DK' (Basis) war bereits Ganztag = neue Basis-Bedeutung → bleibt unverändert.
+    // Alles andere ohne Suffix (z. B. IKPC) war ½ Tag VM.
+    (p.kurse||[]).forEach(k=>{
+      if(k && k.typ && k.typ!=='DK' && !hasSuf(k.typ)){ k.typ=k.typ+'-VM'; changed=true; }
     });
   });
   if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
@@ -1629,23 +1658,30 @@ function getBlocks(p, date){
     return {vmB:true,nmB:true,fullB:true,vmL:'SL',nmL:'SL'};
   const dow=date.getDay();
   let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
-  // Schultage – unverändert (inkl. importierte/Alt-DK & IKPC als ½ Tag VM via else).
+  // Einheitliches Schema für Schul-/Kurs-Codes:
+  //   Basis-Code (z. B. DAZ, FöA, DK, IKPC) = ganzer Tag (sperrt VM+NM)
+  //   -VM = Vormittag, -NM = Nachmittag; 'S' = Schule ganzer Tag.
+  // Das Label (vmL/nmL) ist immer der Basis-Code → Statistik/Anzeige unverändert.
+  const applyBlk=(typ)=>{
+    if(!typ) return;
+    const i=typ.lastIndexOf('-'), suf=(i>0?typ.slice(i+1):''), hasSuf=(suf==='VM'||suf==='NM');
+    const base=hasSuf?typ.slice(0,i):typ;
+    if(base==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; return; }
+    if(suf==='NM'){ nmB=true; if(!nmL) nmL=base; }
+    else if(suf==='VM'){ vmB=true; if(!vmL) vmL=base; }
+    else { vmB=nmB=true; if(!vmL) vmL=base; if(!nmL) nmL=base; }   // Basis = ganzer Tag
+  };
+  // Schultage – wochentagbasiert (DAZ/FöA/S).
   for(const s of (p.schultage||[])){
     if(+s.wochentag!==dow) continue;
-    if(s.typ==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; }
-    else if(s.typ==='DAZ-NM'){ nmB=true; if(!nmL) nmL='DAZ'; }
-    else if(s.typ==='FöA-NM'){ nmB=true; if(!nmL) nmL='FöA'; }
-    else { vmB=true; if(!vmL) vmL=s.typ; }
+    applyBlk(s.typ);
   }
-  // Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC); nur innerhalb ihrer Zeiträume
+  // Kurse – manuell erfasst (DK/IKPC) mit Zeiträumen; nur innerhalb ihrer Zeiträume
   // (bzw. ab Erfassungsdatum) aktiv. Importe schreiben hier nie → keine Rückwirkung.
   for(const k of (p.kurse||[])){
     // Kein Wochentag mehr – Kurs gilt an jedem (Werk-)Tag innerhalb seiner Zeiträume.
     if(!schultagAktiv(k,date)) continue;
-    if(k.typ==='DK-NM'){ nmB=true; if(!nmL) nmL='DK'; }
-    else if(k.typ==='DK-VM'){ vmB=true; if(!vmL) vmL='DK'; }
-    else if(k.typ==='DK'){ vmB=true; nmB=true; if(!vmL) vmL='DK'; if(!nmL) nmL='DK'; }
-    else { vmB=true; if(!vmL) vmL=k.typ; }   // IKPC → ½ Tag VM
+    applyBlk(k.typ);
   }
   for(const sp of (p.sporttermine||[])){
     if(+sp===dow){ nmB=true; if(!nmL) nmL='Sport'; }
@@ -2230,7 +2266,8 @@ function addKurs(){
   renderTags();
 }
 
-const SCH_LABELS={'DK-VM':'DK VM','DK-NM':'DK NM'};
+// Kurs-/Schultage-Tags zeigen einheitlich den Code (Kürzel) selbst – kein Sonder-Mapping nötig.
+const SCH_LABELS={};
 function schDateFmt(s){ const x=pd(s); return x?`${pad(x.getDate())}.${pad(x.getMonth()+1)}.${x.getFullYear()}`:''; }
 function schPeriodStr(k){
   const zs=(k.zeit||[]).filter(z=>z&&(z.von||z.bis));
@@ -3719,9 +3756,12 @@ function parseDocText(text){
         if(!map[key].spt.includes(kwd)) map[key].spt.push(kwd);
       } else {
         let typ=IMP_KTYP[ktyp]||ktyp;
-        // Halbtags-Kurse (FöA, DAZ) können am Vormittag ODER Nachmittag stattfinden –
-        // anhand des Stichworts «Nachmittag» in der Zeile automatisch dem NM-Slot zuordnen.
-        if(/nachmittag/i.test(line)&&(typ==='FöA'||typ==='DAZ')) typ=typ+'-NM';
+        // Importierte Schul-Codes wie bisher als Halbtag behandeln: Standard = Vormittag (-VM).
+        // Stichwort «Nachmittag» in der Zeile (FöA/DAZ) → Nachmittag (-NM). 'S' (DMA) = Ganztag.
+        if(typ!=='S'){
+          if((typ==='FöA'||typ==='DAZ')&&/nachmittag/i.test(line)) typ=typ+'-NM';
+          else typ=typ+'-VM';
+        }
         if(!map[key].sch.find(s=>s.typ===typ&&s.wochentag===kwd))
           map[key].sch.push({typ,wochentag:kwd});
       }
