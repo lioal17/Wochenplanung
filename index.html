@@ -845,10 +845,6 @@ input,select,textarea{font-family:inherit}
             <option value="S">S – Schule Ganztag</option>
             <option value="FöA">FöA – Förderatelier (½ Tag, VM)</option>
             <option value="FöA-NM">FöA – Förderatelier (½ Tag, NM)</option>
-            <option value="DK-VM">DK VM – Deutschkurs Migros (½ Tag, VM · 4 Lekt.)</option>
-            <option value="DK-NM">DK NM – Deutschkurs Migros (½ Tag, NM · 4 Lekt.)</option>
-            <option value="DK">DK – Deutschkurs Migros (ganzer Tag · 8 Lekt.)</option>
-            <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
           </select>
         </div>
         <div class="fg" style="flex:1;min-width:110px">
@@ -861,20 +857,40 @@ input,select,textarea{font-family:inherit}
         </div>
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addSch()">+ Hinzufügen</button>
       </div>
-      <div style="margin-top:6px;color:#64748b;font-size:12px;line-height:1.4">
-        Zeitraum optional (gilt nur für manuell erfasste Schultage – Importe bleiben unverändert):
-        leer = ab Erfassungsdatum (heute) unbefristet · nur «Von» = ab Datum unbefristet ·
-        «Von»+«Bis» = nur in diesem Zeitraum. Bis zu 3 unabhängige Zeiträume.
+      <div class="tag-row" id="schTags"></div>
+    </div>
+
+    <div class="fsec">
+      <div class="fsec-title">Kurse – manuell, mit Zeiträumen</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="flex:1;min-width:140px">
+          <label>Typ</label>
+          <select class="fi" id="k_typ">
+            <option value="DK-VM">DK VM – Deutschkurs Migros (½ Tag, VM · 4 Lekt.)</option>
+            <option value="DK-NM">DK NM – Deutschkurs Migros (½ Tag, NM · 4 Lekt.)</option>
+            <option value="DK">DK – Deutschkurs Migros (ganzer Tag · 8 Lekt.)</option>
+            <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
+          </select>
+        </div>
+        <div class="fg" style="flex:1;min-width:110px">
+          <label>Wochentag</label>
+          <select class="fi" id="k_wd">
+            <option value="1">Montag</option><option value="2">Dienstag</option>
+            <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+            <option value="5">Freitag</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addKurs()">+ Hinzufügen</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
-        <div class="fg"><label>Zeitraum 1 – Von</label><input type="date" class="fi" id="z1_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 1 – Bis</label><input type="date" class="fi" id="z1_bis" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Von</label><input type="date" class="fi" id="z2_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Bis</label><input type="date" class="fi" id="z2_bis" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 3 – Von</label><input type="date" class="fi" id="z3_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 3 – Bis</label><input type="date" class="fi" id="z3_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 1 – Von</label><input type="date" class="fi" id="kz1_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 1 – Bis</label><input type="date" class="fi" id="kz1_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 2 – Von</label><input type="date" class="fi" id="kz2_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 2 – Bis</label><input type="date" class="fi" id="kz2_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 3 – Von</label><input type="date" class="fi" id="kz3_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 3 – Bis</label><input type="date" class="fi" id="kz3_bis" style="width:150px"></div>
       </div>
-      <div class="tag-row" id="schTags"></div>
+      <div class="tag-row" id="kursTags"></div>
     </div>
 
     <div class="fsec">
@@ -1516,7 +1532,7 @@ let _pSortDay=null, _pSortList=null;
 
 // Modal temp state
 let editId = null;
-let tSch=[], tSpt=[];
+let tSch=[], tSpt=[], tKurse=[];
 
 // ────────────────────────────────────────────
 // PERSISTENCE
@@ -1621,20 +1637,23 @@ function getBlocks(p, date){
     return {vmB:true,nmB:true,fullB:true,vmL:'SL',nmL:'SL'};
   const dow=date.getDay();
   let vmB=false,nmB=false,fullB=false,vmL='',nmL='';
+  // Schultage – unverändert (inkl. importierte/Alt-DK & IKPC als ½ Tag VM via else).
   for(const s of (p.schultage||[])){
     if(+s.wochentag!==dow) continue;
-    // Manuell erfasste Schultage gelten nur innerhalb ihrer Zeiträume (bzw. ab Erfassungsdatum).
-    // Importierte Einträge haben kein manuell-Flag → wirken wie bisher (rückwirkend/unbefristet).
-    if(s.manuell && !schultagAktiv(s,date)) continue;
     if(s.typ==='S'){ vmB=nmB=fullB=true; vmL=nmL='S'; }
     else if(s.typ==='DAZ-NM'){ nmB=true; if(!nmL) nmL='DAZ'; }
     else if(s.typ==='FöA-NM'){ nmB=true; if(!nmL) nmL='FöA'; }
-    else if(s.typ==='DK-NM'){ nmB=true; if(!nmL) nmL='DK'; }
-    else if(s.typ==='DK-VM'){ vmB=true; if(!vmL) vmL='DK'; }
-    // Manuelles «DK» (ohne VM/NM-Zusatz) = ganzer Tag (8 Lekt. = DK VM + DK NM).
-    // Importiertes «DK» bleibt ½ Tag VM (else-Zweig unten), da ohne manuell-Flag.
-    else if(s.typ==='DK' && s.manuell){ vmB=true; nmB=true; if(!vmL) vmL='DK'; if(!nmL) nmL='DK'; }
     else { vmB=true; if(!vmL) vmL=s.typ; }
+  }
+  // Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC); nur innerhalb ihrer Zeiträume
+  // (bzw. ab Erfassungsdatum) aktiv. Importe schreiben hier nie → keine Rückwirkung.
+  for(const k of (p.kurse||[])){
+    if(+k.wochentag!==dow) continue;
+    if(!schultagAktiv(k,date)) continue;
+    if(k.typ==='DK-NM'){ nmB=true; if(!nmL) nmL='DK'; }
+    else if(k.typ==='DK-VM'){ vmB=true; if(!vmL) vmL='DK'; }
+    else if(k.typ==='DK'){ vmB=true; nmB=true; if(!vmL) vmL='DK'; if(!nmL) nmL='DK'; }
+    else { vmB=true; if(!vmL) vmL=k.typ; }   // IKPC → ½ Tag VM
   }
   for(const sp of (p.sporttermine||[])){
     if(+sp===dow){ nmB=true; if(!nmL) nmL='Sport'; }
@@ -2106,6 +2125,7 @@ function renderPersons(){
   const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
   el.innerHTML=sorted.map(p=>{
     const sch=(p.schultage||[]).map(s=>`${SCH_LABELS[s.typ]||s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
+    const krs=(p.kurse||[]).map(k=>`${SCH_LABELS[k.typ]||k.typ} ${WD[+k.wochentag]}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
     const wb=wbBadge(p);
     const wbBtns=wbActionBtns(p);
@@ -2119,6 +2139,7 @@ function renderPersons(){
           ${p.einsatzVon?`<span>▶ ${fd(p.einsatzVon)}</span>`:''}
           ${p.einsatzBis?`<span>⏹ ${fd(p.einsatzBis)}</span>`:''}
           ${p.status!=='schnupper'?`<span>📚 ${sch}</span>`:''}
+          ${p.status!=='schnupper'&&krs?`<span>🎓 Kurse: ${krs}</span>`:''}
           ${p.status!=='schnupper'&&p.sporttermine?.length?`<span>🏃 Sport: ${spt}</span>`:''}
           ${p.aktiviertAm?`<span>✅ Aktiv seit ${fd(p.aktiviertAm)}</span>`:''}
         </div>
@@ -2150,7 +2171,7 @@ function wbActionBtns(p){
 }
 
 function openPM(id=null){
-  editId=id; tSch=[]; tSpt=[];
+  editId=id; tSch=[]; tSpt=[]; tKurse=[];
   document.getElementById('pmTitle').textContent=id?'Teilnehmer bearbeiten':'Teilnehmer hinzufügen';
   const p=id?DB.participants.find(x=>x.id===id):null;
   const g=id=>document.getElementById(id);
@@ -2164,9 +2185,9 @@ function openPM(id=null){
   g('f_bis').value=p?.einsatzBis||'';
   g('f_iiz').value=p?.iiz||'nein';
   g('f_aktiv').value=p?.aktiviertAm||'';
-  if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; }
+  if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tKurse=[...(p.kurse||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
-  ['z1_von','z1_bis','z2_von','z2_bis','z3_von','z3_bis'].forEach(id=>{const el=g(id); if(el) el.value='';});
+  Z_FIELDS.forEach(id=>{const el=g(id); if(el) el.value='';});
   onSt(); renderTags();
   document.getElementById('pmOverlay').classList.add('open');
 }
@@ -2181,28 +2202,9 @@ function onSt(){
   document.getElementById('f_sw_g').style.display='none';
 }
 
-// Schultage
-const Z_FIELDS=['z1_von','z1_bis','z2_von','z2_bis','z3_von','z3_bis'];
+// Schultage – unverändert (keine Zeiträume, kein manuell-Flag)
 function addSch(){
-  const g=id=>document.getElementById(id);
-  // Bis zu 3 Zeiträume; leere Felder werden verworfen.
-  const zeit=[
-    {von:g('z1_von').value,bis:g('z1_bis').value},
-    {von:g('z2_von').value,bis:g('z2_bis').value},
-    {von:g('z3_von').value,bis:g('z3_bis').value},
-  ].filter(z=>z.von||z.bis);
-  if(zeit.some(z=>z.von&&z.bis&&pd(z.bis)<pd(z.von))){
-    toast('Zeitraum ungültig: «Bis» liegt vor «Von»','t-err'); return;
-  }
-  // manuell:true + erfasstAm sind das Kennzeichen für die neue Zeitraum-Logik.
-  tSch.push({
-    typ:g('s_typ').value,
-    wochentag:g('s_wd').value,
-    manuell:true,
-    erfasstAm:ds(new Date()),
-    zeit
-  });
-  Z_FIELDS.forEach(id=>g(id).value='');
+  tSch.push({typ:document.getElementById('s_typ').value, wochentag:document.getElementById('s_wd').value});
   renderTags();
 }
 // Sport
@@ -2213,12 +2215,35 @@ function addSpt(){
   tSpt.push(t); renderTags();
 }
 
+// Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC) mit bis zu 3 Zeiträumen.
+const Z_FIELDS=['kz1_von','kz1_bis','kz2_von','kz2_bis','kz3_von','kz3_bis'];
+function addKurs(){
+  const g=id=>document.getElementById(id);
+  // Bis zu 3 Zeiträume; leere Felder werden verworfen.
+  const zeit=[
+    {von:g('kz1_von').value,bis:g('kz1_bis').value},
+    {von:g('kz2_von').value,bis:g('kz2_bis').value},
+    {von:g('kz3_von').value,bis:g('kz3_bis').value},
+  ].filter(z=>z.von||z.bis);
+  if(zeit.some(z=>z.von&&z.bis&&pd(z.bis)<pd(z.von))){
+    toast('Zeitraum ungültig: «Bis» liegt vor «Von»','t-err'); return;
+  }
+  // erfasstAm = Standard-Startdatum, wenn kein Zeitraum gesetzt ist.
+  tKurse.push({
+    typ:g('k_typ').value,
+    wochentag:g('k_wd').value,
+    erfasstAm:ds(new Date()),
+    zeit
+  });
+  Z_FIELDS.forEach(id=>g(id).value='');
+  renderTags();
+}
+
 const SCH_LABELS={'DK-VM':'DK VM','DK-NM':'DK NM'};
 function schDateFmt(s){ const x=pd(s); return x?`${pad(x.getDate())}.${pad(x.getMonth()+1)}.${x.getFullYear()}`:''; }
-function schPeriodStr(s){
-  if(!s.manuell) return '';
-  const zs=(s.zeit||[]).filter(z=>z&&(z.von||z.bis));
-  if(!zs.length) return s.erfasstAm?` · ab ${schDateFmt(s.erfasstAm)}`:'';
+function schPeriodStr(k){
+  const zs=(k.zeit||[]).filter(z=>z&&(z.von||z.bis));
+  if(!zs.length) return k.erfasstAm?` · ab ${schDateFmt(k.erfasstAm)}`:'';
   return ' · '+zs.map(z=>{
     if(z.von&&z.bis) return `${schDateFmt(z.von)}–${schDateFmt(z.bis)}`;
     if(z.von) return `ab ${schDateFmt(z.von)}`;
@@ -2227,7 +2252,10 @@ function schPeriodStr(s){
 }
 function renderTags(){
   document.getElementById('schTags').innerHTML=tSch.map((s,i)=>
-    `<span class="tag tag-sch">${SCH_LABELS[s.typ]||s.typ} ${WD[+s.wochentag]}${schPeriodStr(s)}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${s.typ} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
+  ).join('');
+  document.getElementById('kursTags').innerHTML=tKurse.map((k,i)=>
+    `<span class="tag tag-sch">${SCH_LABELS[k.typ]||k.typ} ${WD[+k.wochentag]}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('sptTags').innerHTML=tSpt.map((t,i)=>
     `<span class="tag tag-spt">SP ${WD[+t]}<span class="tag-x" onclick="tSpt.splice(${i},1);renderTags()">×</span></span>`
@@ -2265,7 +2293,7 @@ function savePM(){
     iiz:document.getElementById('f_iiz').value,
     aktiviertAm:document.getElementById('f_aktiv').value,
     bemerkung:document.getElementById('f_pbm').value,
-    schultage:[...tSch],sporttermine:[...tSpt],
+    schultage:[...tSch],sporttermine:[...tSpt],kurse:[...tKurse],
   };
   if(editId){
     const idx=DB.participants.findIndex(p=>p.id===editId);
