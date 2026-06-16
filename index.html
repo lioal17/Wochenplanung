@@ -866,18 +866,10 @@ input,select,textarea{font-family:inherit}
         <div class="fg" style="flex:1;min-width:140px">
           <label>Typ</label>
           <select class="fi" id="k_typ">
-            <option value="DK-VM">DK VM – Deutschkurs Migros (½ Tag, VM · 4 Lekt.)</option>
-            <option value="DK-NM">DK NM – Deutschkurs Migros (½ Tag, NM · 4 Lekt.)</option>
-            <option value="DK">DK – Deutschkurs Migros (ganzer Tag · 8 Lekt.)</option>
-            <option value="IKPC">IKPC – Informatik/PC (½ Tag)</option>
-          </select>
-        </div>
-        <div class="fg" style="flex:1;min-width:110px">
-          <label>Wochentag</label>
-          <select class="fi" id="k_wd">
-            <option value="1">Montag</option><option value="2">Dienstag</option>
-            <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
-            <option value="5">Freitag</option>
+            <option value="DK-VM">DK VM – Deutschkurs Migros</option>
+            <option value="DK-NM">DK NM – Deutschkurs Migros</option>
+            <option value="DK">DK – Deutschkurs Migros</option>
+            <option value="IKPC">IKPC – Informatik/PC</option>
           </select>
         </div>
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addKurs()">+ Hinzufügen</button>
@@ -1648,7 +1640,7 @@ function getBlocks(p, date){
   // Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC); nur innerhalb ihrer Zeiträume
   // (bzw. ab Erfassungsdatum) aktiv. Importe schreiben hier nie → keine Rückwirkung.
   for(const k of (p.kurse||[])){
-    if(+k.wochentag!==dow) continue;
+    // Kein Wochentag mehr – Kurs gilt an jedem (Werk-)Tag innerhalb seiner Zeiträume.
     if(!schultagAktiv(k,date)) continue;
     if(k.typ==='DK-NM'){ nmB=true; if(!nmL) nmL='DK'; }
     else if(k.typ==='DK-VM'){ vmB=true; if(!vmL) vmL='DK'; }
@@ -2125,7 +2117,7 @@ function renderPersons(){
   const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
   el.innerHTML=sorted.map(p=>{
     const sch=(p.schultage||[]).map(s=>`${SCH_LABELS[s.typ]||s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
-    const krs=(p.kurse||[]).map(k=>`${SCH_LABELS[k.typ]||k.typ} ${WD[+k.wochentag]}`).join(' · ');
+    const krs=(p.kurse||[]).map(k=>`${SCH_LABELS[k.typ]||k.typ}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
     const wb=wbBadge(p);
     const wbBtns=wbActionBtns(p);
@@ -2231,7 +2223,6 @@ function addKurs(){
   // erfasstAm = Standard-Startdatum, wenn kein Zeitraum gesetzt ist.
   tKurse.push({
     typ:g('k_typ').value,
-    wochentag:g('k_wd').value,
     erfasstAm:ds(new Date()),
     zeit
   });
@@ -2255,7 +2246,7 @@ function renderTags(){
     `<span class="tag tag-sch">${s.typ} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('kursTags').innerHTML=tKurse.map((k,i)=>
-    `<span class="tag tag-sch">${SCH_LABELS[k.typ]||k.typ} ${WD[+k.wochentag]}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${SCH_LABELS[k.typ]||k.typ}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('sptTags').innerHTML=tSpt.map((t,i)=>
     `<span class="tag tag-spt">SP ${WD[+t]}<span class="tag-x" onclick="tSpt.splice(${i},1);renderTags()">×</span></span>`
