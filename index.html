@@ -3284,9 +3284,9 @@ function updateSaveFileLabel(){
   if(el) el.textContent=saveDirHandle?`📁 ${saveDirHandle.name}`:'';
 }
 
-// Dateiname einer Sicherung – Datum mit Zeitstempel
+// Dateiname einer Sicherung – Datum mit Zeitstempel (inkl. Sekunden, damit jede Speicherung eindeutig ist)
 function _saveFileName(now){
-  return `Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
+  return `Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}.json`;
 }
 
 // Download-Fallback (kein File-System-Zugriff bzw. noch kein fester Speicherort)
