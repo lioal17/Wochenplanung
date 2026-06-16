@@ -62,7 +62,7 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `aktiviertAm` | `YYYY-MM-DD` | Aktivierungsdatum (für Wirkungsbericht-Fristen) |
 | `bemerkung` | string | Freitext |
 | `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schultage (unverändert) |
-| `kurse` | array | `[{typ, wochentag, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen |
+| `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen (kein Wochentag) |
 | `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
 
 `schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM` (manuell wählbar). Importe können
@@ -73,7 +73,8 @@ zusätzlich `DK` und `IKPC` in `schultage` schreiben (½ Tag VM, unverändert). 
 
 **Kurse** (`kurse`) sind ein **eigener Bereich** im Fenster „Teilnehmer bearbeiten"
 (analog Sporttermine), ausschließlich **manuell** erfasst. `kurse[].typ` ∈ `DK-VM`, `DK-NM`,
-`DK`, `IKPC`. Jeder Eintrag trägt:
+`DK`, `IKPC`. **Kein Wochentag** – der Kurs gilt an jedem Werktag (Mo–Fr) innerhalb seiner
+aktiven Zeiträume; der Rapport zählt die DK-Lektionen entsprechend pro Werktag. Jeder Eintrag trägt:
 - `erfasstAm: 'YYYY-MM-DD'` – Erfassungsdatum (= Standard-Startdatum).
 - `zeit: [{von, bis}, …]` – bis zu **3** unabhängige Zeiträume (Von/Bis je `YYYY-MM-DD`).
 
@@ -177,8 +178,8 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
   - `typ==='S'` → ganzer Tag (`vmB=nmB=fullB=true`, Label `S`).
   - `typ==='DAZ-NM'` / `FöA-NM` → nur NM-Slot.
   - sonst (`DAZ`, `FöA`, importiertes `DK`, `IKPC`) → VM-Slot.
-- Aus `p.kurse` (gefiltert nach Wochentag **und** `schultagAktiv(k,date)`; außerhalb
-  gültiger Zeiträume zählt der Kurs **nicht**):
+- Aus `p.kurse` (gefiltert nur über `schultagAktiv(k,date)` – kein Wochentag; gilt an
+  jedem Werktag im Zeitraum; außerhalb gültiger Zeiträume zählt der Kurs **nicht**):
   - `typ==='DK-NM'` → nur NM-Slot (Label `DK`).
   - `typ==='DK-VM'` → nur VM-Slot (Label `DK`).
   - `typ==='DK'` → VM **und** NM (ganzer Tag, Label `DK`; `fullB` bleibt `false`).
