@@ -65,15 +65,18 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen (kein Wochentag) |
 | `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
 
-`schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM` (manuell wählbar). Importe können
-zusätzlich `DK` und `IKPC` in `schultage` schreiben (½ Tag VM, unverändert). `wochentag`: 1=Mo … 5=Fr.
+`schultage[].typ` ∈ `S`, `DAZ`, `DAZ-VM`, `DAZ-NM`, `FöA`, `FöA-VM`, `FöA-NM` (manuell wählbar).
+Einheitliches Schema: **Basis-Code = ganzer Tag**, `-VM` = Vormittag, `-NM` = Nachmittag.
+Importe schreiben zusätzlich `DK-VM`/`IKPC-VM` (bzw. `-NM`) in `schultage` (½ Tag, unverändertes
+Verhalten). `wochentag`: 1=Mo … 5=Fr.
 
 **Schultage** verhalten sich wie bisher: wöchentlich wiederkehrend, ohne Datumsgrenze
 (außer `einsatzVon`/`einsatzBis`), inkl. rückwirkend.
 
 **Kurse** (`kurse`) sind ein **eigener Bereich** im Fenster „Teilnehmer bearbeiten"
-(analog Sporttermine), ausschließlich **manuell** erfasst. `kurse[].typ` ∈ `DK-VM`, `DK-NM`,
-`DK`, `IKPC`. **Kein Wochentag** – der Kurs gilt an jedem Werktag (Mo–Fr) innerhalb seiner
+(analog Sporttermine), ausschließlich **manuell** erfasst. `kurse[].typ` ∈ `DK`, `DK-VM`, `DK-NM`,
+`IKPC`, `IKPC-VM`, `IKPC-NM` (Basis = ganzer Tag, `-VM`/`-NM` = halber Tag). **Kein Wochentag** –
+der Kurs gilt an jedem Werktag (Mo–Fr) innerhalb seiner
 aktiven Zeiträume; der Rapport zählt die DK-Lektionen entsprechend pro Werktag. Jeder Eintrag trägt:
 - `erfasstAm: 'YYYY-MM-DD'` – Erfassungsdatum (= Standard-Startdatum).
 - `zeit: [{von, bis}, …]` – bis zu **3** unabhängige Zeiträume (Von/Bis je `YYYY-MM-DD`).
@@ -84,7 +87,7 @@ Gültigkeit eines Kurses an einem Datum (`schultagAktiv`):
 - Aktiv, sobald das Datum in **einen** der Zeiträume fällt; sonst ist der Slot frei planbar.
 
 > **Importe** schreiben nie in `kurse`. Damit bleibt das gesamte Import-Verhalten
-> (inkl. importiertem DK/IKPC in `schultage`) unverändert; die Zeitraum-Logik gilt
+> (inkl. importiertem `DK-VM`/`IKPC-VM` in `schultage`) unverändert; die Zeitraum-Logik gilt
 > ausschließlich für manuell erfasste Kurse.
 
 ### 2.3 Plan-Eintrag (`plans[date][pid]`)
@@ -116,18 +119,25 @@ Crea=Crea, Lernstück/Lernstücke=LS, Loli=Loli, Neophyten=NEO, Feldeinsatz=FL,
 Textil=Text, Reinigung=Rein, Lernen=Lernen, Sport=Sport.
 
 ### 3.2 Schul-Codes (Bereich „Schultage")
-`S`=Schule (ganzer Tag), `DAZ`=Deutsch als Zweitsprache (½ Tag), `FöA`=Förderatelier (½ Tag).
-Verhalten unverändert (wöchentlich, rückwirkend).
+Einheitliches Schema (wie Absenz-Codes): **Basis = ganzer Tag**, `-VM` = Vormittag, `-NM` = Nachmittag.
+- `S` = Schule (ganzer Tag).
+- `DAZ` / `DAZ-VM` / `DAZ-NM` = Deutsch als Zweitsprache (ganzer Tag / Vormittag / Nachmittag).
+- `FöA` / `FöA-VM` / `FöA-NM` = Förderatelier (ganzer Tag / Vormittag / Nachmittag).
 
 ### 3.2a Kurs-Codes (Bereich „Kurse", manuell, mit Zeiträumen)
-- `DK-VM` = Deutschkurs Migros ½ Tag VM, blockiert VM, **4 Lektionen**.
-- `DK-NM` = Deutschkurs Migros ½ Tag NM, blockiert NM, **4 Lektionen**.
-- `DK` = Deutschkurs Migros ganzer Tag (= DK VM + DK NM), blockiert VM **und** NM, **8 Lektionen**.
-- `IKPC` = Informatik/PC, ½ Tag VM (keine eigene Rapport-Zeile).
+- `DK` = Deutschkurs Migros **ganzer Tag** (blockiert VM **und** NM), **8 Lektionen**.
+- `DK-VM` = ½ Tag VM, blockiert VM, **4 Lektionen**. `DK-NM` = ½ Tag NM, blockiert NM, **4 Lektionen**.
+- `IKPC` / `IKPC-VM` / `IKPC-NM` = Informatik/PC (ganzer Tag / Vormittag / Nachmittag),
+  keine eigene Rapport-/Lektionen-Zeile.
 
-> Beim **Import** entstehen `DK`/`IKPC` weiterhin als ½-Tag-VM im Feld `schultage`
-> (unverändert, 4 Lekt.). Die Kurs-Varianten (inkl. DK-Ganztag = 8 Lekt.) und die
-> Zeitraum-Logik gelten **nur** für den manuell befüllten Bereich „Kurse" (`kurse`).
+> Beim **Import** entstehen Schul-Codes weiterhin als Halbtag im Feld `schultage`
+> (Standard `-VM`, „Nachmittag" → `-NM`; `DMA` → `S` Ganztag). Verhalten unverändert.
+> Die Zeitraum-Logik gilt **nur** für den manuell befüllten Bereich „Kurse" (`kurse`).
+>
+> **Migration (einmalig, automatisch beim Laden):** Bisher bedeutete der Basis-Code
+> `DAZ`/`FöA`/`DK`/`IKPC` „½ Tag VM". Alte Einträge werden auf `…-VM` umgeschrieben und
+> behalten so exakt ihre bisherige Wirkung (`DK` in `kurse` war bereits Ganztag → bleibt).
+> Neue Einträge nutzen das einheitliche Schema (Basis = ganzer Tag).
 
 ### 3.3 Absenz-Codes (`ABS`)
 `BA`, `BA-NM`, `BA-VM` (Bezahlte Absenz / -Nachmittag / -Vormittag),
@@ -174,16 +184,14 @@ Zusätzlich: **Teilnehmer-Rapport** (Modal, siehe §6) und diverse Speicher-/Imp
 Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar sind:
 - Status `praktikum` → ganztags `PA`; `prklehr` → ganztags `PA+LS`.
 - `sw==='S.EX'` (Schnupperlehre) → ganztags `SL`.
-- Aus `p.schultage` (gefiltert nach Wochentag, **unverändert**, ohne Datums-/Zeitraum-Filter):
+- Einheitliche Auflösung über Helfer `applyBlk(typ)` (für Schultage **und** Kurse):
   - `typ==='S'` → ganzer Tag (`vmB=nmB=fullB=true`, Label `S`).
-  - `typ==='DAZ-NM'` / `FöA-NM` → nur NM-Slot.
-  - sonst (`DAZ`, `FöA`, importiertes `DK`, `IKPC`) → VM-Slot.
-- Aus `p.kurse` (gefiltert nur über `schultagAktiv(k,date)` – kein Wochentag; gilt an
-  jedem Werktag im Zeitraum; außerhalb gültiger Zeiträume zählt der Kurs **nicht**):
-  - `typ==='DK-NM'` → nur NM-Slot (Label `DK`).
-  - `typ==='DK-VM'` → nur VM-Slot (Label `DK`).
-  - `typ==='DK'` → VM **und** NM (ganzer Tag, Label `DK`; `fullB` bleibt `false`).
-  - `typ==='IKPC'` → VM-Slot.
+  - Suffix `-VM` → nur VM-Slot · Suffix `-NM` → nur NM-Slot (Label = Basis-Code).
+  - **Basis-Code ohne Suffix** (z. B. `DAZ`, `DK`, `IKPC`) → VM **und** NM (ganzer Tag,
+    Label = Basis-Code; `fullB` bleibt `false`, nur `S` setzt `fullB`).
+- Aus `p.schultage` (gefiltert nach Wochentag, ohne Datums-/Zeitraum-Filter): `applyBlk(s.typ)`.
+- Aus `p.kurse` (gefiltert nur über `schultagAktiv(k,date)` – kein Wochentag; gilt an jedem
+  Werktag im Zeitraum; außerhalb gültiger Zeiträume zählt der Kurs **nicht**): `applyBlk(k.typ)`.
 - Aus `p.sporttermine` → NM-Slot Label `Sport`.
 
 ### 5.2 `isActiveOnDay(p, date)`
@@ -217,11 +225,14 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 | Position | Regel |
 |----------|-------|
 | Schultage (S) | 1 ganzer Schultag (VM+NM) = **8** Lektionen (VM 4h + NM 4h) |
-| DAZ | je ½-Tag = **4** Lektionen |
-| FöA | je ½-Tag = **4** Lektionen |
-| DK VM / DK NM | je ½-Tag = **4** Lektionen |
-| DK (ganzer Tag, manuell) | = DK VM + DK NM = **8** Lektionen |
+| DAZ / DAZ-VM / DAZ-NM | je ½-Tag (VM oder NM) = **4** Lektionen; ganzer Tag = 2× = **8** |
+| FöA / FöA-VM / FöA-NM | je ½-Tag (VM oder NM) = **4** Lektionen; ganzer Tag = 2× = **8** |
+| DK-VM / DK-NM | je ½-Tag = **4** Lektionen |
+| DK (ganzer Tag, manuell) | = DK-VM + DK-NM = **8** Lektionen |
 | **Total Schul-Lektionen** | Summe S + DAZ + FöA (+ DK) |
+
+> Die Lektionen-Zählung läuft über das **Label** (`vmL`/`nmL` = Basis-Code) je Slot: ein
+> Ganztags-Code zählt automatisch beide Halbtage (2× 4 = 8). `IKPC` hat keine eigene Lektionen-Zeile.
 
 **LERNWERKSTATT (Ausgabe in Lektionen):**
 | Position | Regel |
