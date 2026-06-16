@@ -61,11 +61,26 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `iiz` | string | IIZ-Feld |
 | `aktiviertAm` | `YYYY-MM-DD` | Aktivierungsdatum (für Wirkungsbericht-Fristen) |
 | `bemerkung` | string | Freitext |
-| `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schul-/Kurstage |
+| `schultage` | array | `[{typ, wochentag, manuell?, erfasstAm?, zeit?}]` – fixe wöchentliche Schul-/Kurstage |
 | `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
 
-`schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM`, `DK`, `IKPC`.
+`schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM`, `DK-VM`, `DK-NM`, `DK`, `IKPC`.
 `wochentag`: 1=Mo … 5=Fr.
+
+**Manuell erfasste Schultage** (im Fenster „Teilnehmer bearbeiten" über „+ Hinzufügen")
+tragen zusätzlich:
+- `manuell: true` – Kennzeichen für die Zeitraum-Logik.
+- `erfasstAm: 'YYYY-MM-DD'` – Erfassungsdatum (= Standard-Startdatum).
+- `zeit: [{von, bis}, …]` – bis zu **3** unabhängige Zeiträume (Von/Bis je `YYYY-MM-DD`).
+
+Gültigkeit eines manuellen Schultags an einem Datum (`schultagAktiv`):
+- **Kein Zeitraum gesetzt** → gilt ab `erfasstAm` unbefristet (Vergangenheit bleibt unberührt).
+- **Nur „Von"** → ab diesem Datum unbefristet. **„Von"+„Bis"** → nur in diesem Zeitraum.
+- Aktiv, sobald das Datum in **einen** der Zeiträume fällt; sonst ist der Slot frei planbar.
+
+> **Importierte** Schultage haben **kein** `manuell`-Flag und werden unverändert wie bisher
+> behandelt (wöchentlich, ohne Datumsgrenze außer `einsatzVon`/`einsatzBis`). Die neue
+> Zeitraum-Logik gilt ausschließlich für manuell erfasste Einträge.
 
 ### 2.3 Plan-Eintrag (`plans[date][pid]`)
 | Feld | Bedeutung |
@@ -97,7 +112,16 @@ Textil=Text, Reinigung=Rein, Lernen=Lernen, Sport=Sport.
 
 ### 3.2 Schul-Codes
 `S`=Schule (ganzer Tag), `DAZ`=Deutsch als Zweitsprache (½ Tag), `FöA`=Förderatelier (½ Tag),
-`DK`=Deutschkurs Migros (½ Tag), `IKPC`=Informatik/PC (½ Tag).
+`IKPC`=Informatik/PC (½ Tag).
+
+**Deutschkurs Migros (DK)** – manuell wählbar in drei Varianten:
+- `DK-VM` = ½ Tag Vormittag, blockiert VM, **4 Lektionen**.
+- `DK-NM` = ½ Tag Nachmittag, blockiert NM, **4 Lektionen**.
+- `DK` = ganzer Tag (= DK VM + DK NM), blockiert VM **und** NM, **8 Lektionen**.
+
+> Beim **Import** entsteht weiterhin nur das alte `DK` (½ Tag, VM, 4 Lekt.). Da importierte
+> Einträge kein `manuell`-Flag tragen, bleibt deren `DK` der ½-Tag-VM (unverändert). Nur ein
+> **manuell** gewähltes `DK` wird als Ganztag (8 Lekt.) interpretiert.
 
 ### 3.3 Absenz-Codes (`ABS`)
 `BA`, `BA-NM`, `BA-VM` (Bezahlte Absenz / -Nachmittag / -Vormittag),
@@ -145,9 +169,13 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 - Status `praktikum` → ganztags `PA`; `prklehr` → ganztags `PA+LS`.
 - `sw==='S.EX'` (Schnupperlehre) → ganztags `SL`.
 - Aus `p.schultage` (gefiltert nach Wochentag):
+  - **Manuelle** Einträge werden über `schultagAktiv(s,date)` zusätzlich nach Zeitraum/
+    Erfassungsdatum gefiltert; außerhalb gültiger Zeiträume zählt der Schultag **nicht**.
   - `typ==='S'` → ganzer Tag (`vmB=nmB=fullB=true`, Label `S`).
-  - `typ==='DAZ-NM'` / `FöA-NM` → nur NM-Slot.
-  - sonst (`DAZ`, `FöA`, `DK`, `IKPC`) → VM-Slot.
+  - `typ==='DAZ-NM'` / `FöA-NM` / `DK-NM` → nur NM-Slot.
+  - `typ==='DK-VM'` → nur VM-Slot.
+  - manuelles `typ==='DK'` → VM **und** NM (ganzer Tag, Label `DK`).
+  - sonst (`DAZ`, `FöA`, importiertes `DK`, `IKPC`) → VM-Slot.
 - Aus `p.sporttermine` → NM-Slot Label `Sport`.
 
 ### 5.2 `isActiveOnDay(p, date)`
@@ -183,7 +211,8 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 | Schultage (S) | 1 ganzer Schultag (VM+NM) = **8** Lektionen (VM 4h + NM 4h) |
 | DAZ | je ½-Tag = **4** Lektionen |
 | FöA | je ½-Tag = **4** Lektionen |
-| DK (nur falls vorhanden) | je ½-Tag = **4** Lektionen |
+| DK VM / DK NM | je ½-Tag = **4** Lektionen |
+| DK (ganzer Tag, manuell) | = DK VM + DK NM = **8** Lektionen |
 | **Total Schul-Lektionen** | Summe S + DAZ + FöA (+ DK) |
 
 **LERNWERKSTATT (Ausgabe in Lektionen):**
