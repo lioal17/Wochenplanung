@@ -569,7 +569,7 @@ input,select,textarea{font-family:inherit}
     <button class="btn btn-secondary btn-sm" onclick="genWeekPDF()" title="Wochenplan als PDF (Querformat) exportieren – speichert automatisch">📄 Wochenplan generieren</button>
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
-    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort ändern" style="padding:0 8px">📁</button>
+    <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort (Ordner) wählen/ändern – 1× einstellen, danach automatisch dorthin" style="padding:0 8px">📁</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -3241,12 +3241,13 @@ function genNeophytPDF(){
 // ────────────────────────────────────────────
 // SAVE / EXPORT / IMPORT (File System Access API)
 // ────────────────────────────────────────────
-let savedFileHandle = null;
+let saveDirHandle = null;
 
-// Persistenter Speicherort: das gewählte File-Handle wird in IndexedDB abgelegt,
-// damit auch nach einem Reload weiter still an denselben Ort gespeichert wird –
-// ohne dass erneut ein «Speichern unter»-Fenster aufgeht.
-const FH_DB='lw_fh', FH_STORE='handles', FH_KEY='saveFile';
+// Persistenter Speicherort: das gewählte ORDNER-Handle wird in IndexedDB abgelegt,
+// damit auch nach einem Reload weiter still in denselben Ordner gespeichert wird –
+// ohne dass erneut ein «Ordner wählen»-Fenster aufgeht. Jede Sicherung ist eine
+// eigene Datei mit Datum/Zeitstempel im gewählten Ordner.
+const FH_DB='lw_fh', FH_STORE='handles', FH_KEY='saveDir';
 function _fhOpen(){
   return new Promise((res,rej)=>{
     const r=indexedDB.open(FH_DB,1);
@@ -3280,7 +3281,12 @@ async function _fhPerm(handle, request){
 
 function updateSaveFileLabel(){
   const el=document.getElementById('saveFileLabel');
-  if(el) el.textContent=savedFileHandle?`📄 ${savedFileHandle.name}`:'';
+  if(el) el.textContent=saveDirHandle?`📁 ${saveDirHandle.name}`:'';
+}
+
+// Dateiname einer Sicherung – Datum mit Zeitstempel (inkl. Sekunden, damit jede Speicherung eindeutig ist)
+function _saveFileName(now){
+  return `Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}.json`;
 }
 
 // Download-Fallback (kein File-System-Zugriff bzw. noch kein fester Speicherort)
@@ -3288,7 +3294,7 @@ function _downloadSave(data,now){
   const blob=new Blob([data],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`;
+  a.download=_saveFileName(now);
   a.click(); URL.revokeObjectURL(a.href);
 }
 
@@ -3305,28 +3311,29 @@ async function manualSave(){
   const finish=label=>{ dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
     snapshotBackup(); updateSaveInfo(); updateSaveFileLabel(); toast(label,'t-ok'); };
 
-  if('showSaveFilePicker' in window){
-    // Beim «Speichern» geht NIE ein Datei-Fenster auf – es wird direkt in den
-    // vorgegebenen Speicherort geschrieben. Den Ort legt/ändert man ausschliesslich
-    // über den 📁-Knopf «Speicherort ändern».
-    if(!savedFileHandle) savedFileHandle=await fhLoad();
-    if(savedFileHandle && !await _fhPerm(savedFileHandle,true)) savedFileHandle=null;
-    if(savedFileHandle){
+  if('showDirectoryPicker' in window){
+    // Beim «Speichern» geht NIE ein Ordner-Fenster auf – es wird direkt eine neue
+    // Sicherungsdatei (Datum/Zeitstempel) in den vorgegebenen Ordner geschrieben.
+    // Den Ordner legt/ändert man ausschliesslich über den 📁-Knopf «Speicherort ändern».
+    if(!saveDirHandle) saveDirHandle=await fhLoad();
+    if(saveDirHandle && !await _fhPerm(saveDirHandle,true)) saveDirHandle=null;
+    if(saveDirHandle){
       try{
-        const w=await savedFileHandle.createWritable();
+        const fh=await saveDirHandle.getFileHandle(_saveFileName(now),{create:true});
+        const w=await fh.createWritable();
         await w.write(data); await w.close();
-        await fhStore(savedFileHandle);
-        finish(`${savedMsg} → ${savedFileHandle.name}`);
+        await fhStore(saveDirHandle);
+        finish(`${savedMsg} → ${saveDirHandle.name}`);
       }catch(e){
-        savedFileHandle=null; updateSaveFileLabel();
-        toast('Speichern fehlgeschlagen – Speicherort über 📁 neu wählen','t-err');
+        saveDirHandle=null; updateSaveFileLabel();
+        toast('Speichern fehlgeschlagen – Ordner über 📁 neu wählen','t-err');
       }
       return;
     }
-    // Noch kein fester Speicherort gewählt → ohne Fenster als Download sichern und Hinweis geben.
+    // Noch kein fester Ordner gewählt → ohne Fenster als Download sichern und Hinweis geben.
     _downloadSave(data,now);
     finish(savedMsg);
-    toast('ℹ️ Noch kein fester Speicherort – über 📁 «Speicherort ändern» festlegen, dann wird automatisch dorthin gespeichert.','t-err');
+    toast('ℹ️ Noch kein fester Ordner – über 📁 «Speicherort ändern» festlegen, dann wird automatisch dorthin gespeichert.','t-err');
   } else {
     // Fallback für Firefox / ältere Browser
     _downloadSave(data,now);
@@ -3336,20 +3343,18 @@ async function manualSave(){
 
 async function changeSaveLocation(){
   const now=new Date();
-  if('showSaveFilePicker' in window){
+  if('showDirectoryPicker' in window){
     try{
-      savedFileHandle=await window.showSaveFilePicker({
-        suggestedName:`Lernwerkstatt ${WD[now.getDay()]} ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} · ${pad(now.getHours())}.${pad(now.getMinutes())}.json`,
-        types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],
-      });
-      await fhStore(savedFileHandle);
-      // Aktuellen Stand sofort in die gewählte Datei schreiben, damit sie existiert
-      // und künftige «Speichern»-Klicks ohne Fenster direkt hierher gehen.
-      const w=await savedFileHandle.createWritable();
+      saveDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+      await fhStore(saveDirHandle);
+      // Aktuellen Stand sofort als erste Sicherung in den Ordner schreiben –
+      // künftige «Speichern»-Klicks legen ohne Fenster weitere Zeitstempel-Dateien hier ab.
+      const fh=await saveDirHandle.getFileHandle(_saveFileName(now),{create:true});
+      const w=await fh.createWritable();
       await w.write(JSON.stringify(DB,null,2)); await w.close();
       dirty=false; localStorage.setItem(SAVEKEY,now.toISOString());
       snapshotBackup(); updateSaveInfo(); updateSaveFileLabel();
-      toast(`📁 Speicherort gesetzt & gespeichert → ${savedFileHandle.name}`,'t-ok');
+      toast(`📁 Speicherort gesetzt & gespeichert → ${saveDirHandle.name}`,'t-ok');
     }catch(e){ if(e.name!=='AbortError') toast('Abgebrochen',''); }
   } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
 }
@@ -3880,9 +3885,9 @@ function init(){
   curMonth={y:now.getFullYear(),m:now.getMonth()};
   updateSaveInfo();
   // Zuletzt genutzten Speicherort wiederherstellen → spätere Sicherungen laufen ohne Dialog
-  fhLoad().then(async h=>{
+  fhLoad().then(h=>{
     if(!h) return;
-    savedFileHandle=h; updateSaveFileLabel();
+    saveDirHandle=h; updateSaveFileLabel();
   });
   renderWBAlerts();
   window.addEventListener('beforeunload',e=>{

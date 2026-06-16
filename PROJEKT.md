@@ -230,8 +230,14 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
 ## 8. Speichern, Sicherung, Import
 
 - **Auto-Save** in `localStorage` bei jeder Änderung; `dirty`-Flag warnt beim Schließen.
-- **Manuelles Speichern** (`manualSave`) als JSON-Datei; optional „ohne Dialog" via
-  File System Access API (`fhStore`/`fhLoad`), Dateiname inkl. Datum & Uhrzeit.
+- **Manuelles Speichern** (`manualSave`) als JSON-Datei mit Datum/Zeitstempel im Namen.
+  Via **File System Access API** (`showDirectoryPicker`) wird **einmalig ein Ordner**
+  gewählt (`changeSaveLocation`, 📁-Knopf); das Ordner-Handle wird in IndexedDB
+  abgelegt (`fhStore`/`fhLoad`). Danach legt jede Sicherung **ohne Fenster** eine neue
+  Zeitstempel-Datei in diesem Ordner ab. Der Browser fragt aus Sicherheitsgründen nach
+  jedem Neuladen der Seite **einmalig** nach der Schreib-Erlaubnis (nicht abschaltbar);
+  innerhalb der Sitzung danach stumm. **Wochenplan generieren** (`genWeekPDF`) erzeugt
+  das PDF und löst zugleich diese Sicherung aus.
 - **Interner Snapshot** (`snapshotBackup`/`restoreBackup`) als Wiederherstellungspunkt.
 - **JSON-Import** (`doImportFSA`/`processImportJSON`): mit **Vorschau der Änderungen**
   vor dem Überschreiben; schützt bestehende Daten (Abweichungen nur auf Bestätigung).
