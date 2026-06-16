@@ -482,14 +482,6 @@ input,select,textarea{font-family:inherit}
 .tag-fix{background:var(--green-bg);color:var(--green)}
 .tag-x{cursor:pointer;opacity:.6;font-size:14px;line-height:1}
 .tag-x:hover{opacity:1}
-.fix-item{
-  display:flex;align-items:center;gap:8px;background:#fff;
-  border:1px solid var(--g3);border-radius:6px;padding:7px 12px;font-size:12px;margin-top:5px;
-}
-.fix-item .fi-ws{font-weight:600}
-.fix-item .fi-info{color:var(--g6);font-size:11px}
-.fix-item button{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--g4);font-size:18px;line-height:1}
-.fix-item button:hover{color:var(--red)}
 
 /* ═══════════════════════════════════════════
    BANNER / TOAST
@@ -815,7 +807,7 @@ input,select,textarea{font-family:inherit}
         <option>Holzwerkstatt</option><option>Bewerben</option><option>Metall</option>
         <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
         <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
-        <option>Textil</option><option>Reinigung</option>
+        <option>Textil</option><option>Reinigung</option><option>Lernen</option>
       </select>
     </div>
     <div class="fg">
@@ -884,37 +876,6 @@ input,select,textarea{font-family:inherit}
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addSpt()">+ Hinzufügen</button>
       </div>
       <div class="tag-row" id="sptTags"></div>
-    </div>
-
-    <div class="fsec">
-      <div class="fsec-title">Fixpräferenzen – wiederkehrende Werkstatt-Zuweisung</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div class="fg" style="flex:1;min-width:140px">
-          <label>Werkstatt</label>
-          <select class="fi" id="fp_ws">
-            <option value="">– Werkstatt wählen –</option>
-            <option>Holzwerkstatt</option><option>Bewerben</option><option>Metall</option>
-            <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
-            <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
-            <option>Textil</option><option>Reinigung</option>
-          </select>
-        </div>
-        <div class="fg" style="flex:1;min-width:110px">
-          <label>Wochentag</label>
-          <select class="fi" id="fp_wd">
-            <option value="0">Täglich (Mo–Fr)</option>
-            <option value="1">Montag</option><option value="2">Dienstag</option>
-            <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
-            <option value="5">Freitag</option>
-          </select>
-        </div>
-        <div class="fg" style="flex:0;white-space:nowrap">
-          <label>Ganztag</label>
-          <input type="checkbox" id="fp_gt" style="width:20px;height:20px;margin-top:8px;accent-color:var(--navy)">
-        </div>
-        <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addFP()">+ Hinzufügen</button>
-      </div>
-      <div id="fpList"></div>
     </div>
 
   </div><!-- /pmExtra -->
@@ -1459,12 +1420,12 @@ const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','Se
 
 const WS = [
   'Holzwerkstatt','Bewerben','Metall','Metallverpacken','Crea',
-  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung',
+  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung','Lernen',
 ];
 const WS_ABBR={
   'Holzwerkstatt':'H','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
   'Crea':'Crea','Lernstück':'LS','Lernstücke':'LS','Loli':'Loli','Neophyten':'NEO',
-  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'Sport',
+  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'Sport','Lernen':'Lernen',
 };
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
@@ -1514,7 +1475,7 @@ const BLK_LABEL = {
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
   ['BW','Bewerben'],['Crea','Crea'],['FL','Feldeinsatz'],['H','Holzwerkstatt'],
-  ['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
+  ['Lernen','Lernen'],['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
   ['NEO','Neophyten'],['Sport','Sport'],
 ];
 // Absenz-Codes: Basis aus ABS-Array
@@ -1524,7 +1485,6 @@ function legendAbsCombined(){ return [['PA+LS','Praktikum + Lehrstelle'],...lege
 
 const JC_CSS = {lio:'jc-lio',tom:'jc-tom',yvi:'jc-yvi'};
 const JC_LBL = {lio:'Lio',tom:'Tom',yvi:'Yvi'};
-const FP_WD  = {'0':'täglich','1':'Mo','2':'Di','3':'Mi','4':'Do','5':'Fr'};
 
 // ────────────────────────────────────────────
 // STATE
@@ -1541,7 +1501,7 @@ let _pSortDay=null, _pSortList=null;
 
 // Modal temp state
 let editId = null;
-let tSch=[], tSpt=[], tFP=[];
+let tSch=[], tSpt=[];
 
 // ────────────────────────────────────────────
 // PERSISTENCE
@@ -1850,8 +1810,8 @@ function renderDayPlan(){
     </div>`;
 
     // eCase
-    // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag – ausser SL (Schnupperlehre/-tag): kein eCase
-    const needEC=absCode!=='' && absCode!=='SL' && !isSchnuppertag(plan);
+    // jede Abwesenheit (inkl. ZS) braucht eCase-Eintrag – ausser SL (Schnupperlehre/-tag) und PA (Praktikum): kein eCase
+    const needEC=absCode!=='' && absCode!=='SL' && absCode!=='PA' && !isSchnuppertag(plan);
     const ecDone=plan.ecaseEntered||false;
     let ecCell;
     if(!needEC){
@@ -1909,7 +1869,7 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
-    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM'];
+    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','PA'];
     if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
@@ -2148,7 +2108,7 @@ function wbActionBtns(p){
 }
 
 function openPM(id=null){
-  editId=id; tSch=[]; tSpt=[]; tFP=[];
+  editId=id; tSch=[]; tSpt=[];
   document.getElementById('pmTitle').textContent=id?'Teilnehmer bearbeiten':'Teilnehmer hinzufügen';
   const p=id?DB.participants.find(x=>x.id===id):null;
   const g=id=>document.getElementById(id);
@@ -2162,9 +2122,9 @@ function openPM(id=null){
   g('f_bis').value=p?.einsatzBis||'';
   g('f_iiz').value=p?.iiz||'nein';
   g('f_aktiv').value=p?.aktiviertAm||'';
-  if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tFP=[...(p.fixpraeferenzen||[])]; }
+  if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
-  onSt(); renderTags(); renderFPs();
+  onSt(); renderTags();
   document.getElementById('pmOverlay').classList.add('open');
 }
 
@@ -2190,13 +2150,6 @@ function addSpt(){
   if(tSpt.includes(t)){toast('Tag bereits vorhanden');return;}
   tSpt.push(t); renderTags();
 }
-// Fix pref
-function addFP(){
-  const ws=document.getElementById('fp_ws').value;
-  if(!ws){toast('Werkstatt auswählen','t-err');return;}
-  tFP.push({werkstatt:ws,wochentag:document.getElementById('fp_wd').value,ganztag:document.getElementById('fp_gt').checked});
-  renderFPs();
-}
 
 function renderTags(){
   document.getElementById('schTags').innerHTML=tSch.map((s,i)=>
@@ -2205,15 +2158,6 @@ function renderTags(){
   document.getElementById('sptTags').innerHTML=tSpt.map((t,i)=>
     `<span class="tag tag-spt">SP ${WD[+t]}<span class="tag-x" onclick="tSpt.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
-}
-
-function renderFPs(){
-  document.getElementById('fpList').innerHTML=tFP.map((fp,i)=>`
-    <div class="fix-item">
-      <span class="fi-ws">${fp.werkstatt}</span>
-      <span class="fi-info">${FP_WD[fp.wochentag]||''}${fp.ganztag?' · Ganztag':' · VM'}</span>
-      <button onclick="tFP.splice(${i},1);renderFPs()">×</button>
-    </div>`).join('');
 }
 
 
@@ -2247,7 +2191,7 @@ function savePM(){
     iiz:document.getElementById('f_iiz').value,
     aktiviertAm:document.getElementById('f_aktiv').value,
     bemerkung:document.getElementById('f_pbm').value,
-    schultage:[...tSch],sporttermine:[...tSpt],fixpraeferenzen:[...tFP],
+    schultage:[...tSch],sporttermine:[...tSpt],
   };
   if(editId){
     const idx=DB.participants.findIndex(p=>p.id===editId);
@@ -2397,7 +2341,7 @@ function renderMonthly(){
         dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered&&effAbs!=='SL'&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        if(!plan.ecaseEntered&&effAbs!=='SL'&&effAbs!=='PA'&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
           dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
@@ -3429,7 +3373,7 @@ function _jsonImportDiff(incoming, incomingPlans){
     ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
     ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
     ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['aktiviertAm','Aktiviert am'],['bemerkung','Bemerkung'],
-    ['schultage','Schultage'],['sporttermine','Sport'],['fixpraeferenzen','Fixpräferenzen'],
+    ['schultage','Schultage'],['sporttermine','Sport'],
     ['wb8','WB 8'],['wb10','WB 10'],
   ];
   const norm=v=>typeof v==='object'?JSON.stringify(v||null):(v??'');
@@ -3909,7 +3853,6 @@ function doImportDoc(){
         aktiviertAm:new Date().toISOString().split('T')[0],
         schultage:p.sch,
         sporttermine:p.spt,
-        fixpraeferenzen:[],
         wb8:false,wb10:false,
         bemerkung:'',
       });

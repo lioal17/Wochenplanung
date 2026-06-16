@@ -63,7 +63,6 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `bemerkung` | string | Freitext |
 | `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schul-/Kurstage |
 | `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
-| `fixpraeferenzen` | array | wiederkehrende Werkstatt-Zuweisungen |
 
 `schultage[].typ` ∈ `S`, `DAZ`, `DAZ-NM`, `FöA`, `FöA-NM`, `DK`, `IKPC`.
 `wochentag`: 1=Mo … 5=Fr.
@@ -90,11 +89,11 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 ## 3. Konstanten / Codes
 
 ### 3.1 Werkstätten (`WS`)
-`Holzwerkstatt, Bewerben, Metall, Metallverpacken, Crea, Lernstück, Loli, Neophyten, Feldeinsatz, Textil, Reinigung` (+ `Sport` nur im NM-Slot, + „Anderes…" Freitext).
+`Holzwerkstatt, Bewerben, Metall, Metallverpacken, Crea, Lernstück, Loli, Neophyten, Feldeinsatz, Textil, Reinigung, Lernen` (+ `Sport` nur im NM-Slot, + „Anderes…" Freitext).
 
 **Kürzel (`WS_ABBR`):** Holzwerkstatt=H, Bewerben=BW, Metall=M, Metallverpacken=MV,
 Crea=Crea, Lernstück/Lernstücke=LS, Loli=Loli, Neophyten=NEO, Feldeinsatz=FL,
-Textil=Text, Reinigung=Rein, Sport=Sport.
+Textil=Text, Reinigung=Rein, Lernen=Lernen, Sport=Sport.
 
 ### 3.2 Schul-Codes
 `S`=Schule (ganzer Tag), `DAZ`=Deutsch als Zweitsprache (½ Tag), `FöA`=Förderatelier (½ Tag),
@@ -107,6 +106,9 @@ Textil=Text, Reinigung=Rein, Sport=Sport.
 `MI` (Militär/Zivilschutz), `PA` (Praktikum), `SL` (Schnupperlehre),
 `UA`, `UA-NM`, `UA-VM` (Unentschuldigte Absenz / halbtags),
 `UN` (Unfall), `ZS` (Zu spät).
+
+- **Kein eCase-Auftrag:** `SL` (Schnupperlehre/-tag) und `PA` (Praktikum) erzeugen
+  **keinen** offenen eCase-Eintrag (weder im Tages-/Wochenplan, im Badge noch im Monatsplan).
 
 - **Halbtags-Absenzen** (`SOFT_ABS`): ZS, UA-VM/NM, KR-VM/NM, BA-VM/NM – Werkstatt-Einteilung
   des nicht betroffenen Slots bleibt möglich.
