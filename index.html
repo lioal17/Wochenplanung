@@ -2714,8 +2714,11 @@ function buildRpt(){
   const p=DB.participants.find(x=>x.id===pid); if(!p)return;
 
   const rows=getRptRows(p,y,month);
-  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&r.ac!=='UA').length;
-  const uaDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac==='UA').length;
+  // Unbezahlt = nur UA. Alle übrigen Absenz-Codes (BA, KR, UN/Unfall, FE, MI …)
+  // gelten als bezahlte Absenz → UN wird wie BA als „bezahlt" gezählt.
+  const UNPAID_ABS=new Set(['UA']);
+  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!UNPAID_ABS.has(r.ac)).length;
+  const uaDays =rows.filter(r=>!r.we&&!r.inactive&&UNPAID_ABS.has(r.ac)).length;
   const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone&&!r.schnuppertag).length;
 
   let html='';
@@ -3002,15 +3005,10 @@ function genRapportPDF(){
   doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
   yp+=21;
 
-  // Name + Jobcoach
+  // Name (ohne Jobcoach-Kürzel)
   doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(30,58,95);
   doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
   yp+=7;
-  if(p.jobCoach){
-    doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
-    doc.text(`Jobcoach: ${JC_LBL[p.jobCoach]||p.jobCoach}`,W/2,yp,{align:'center'});
-    yp+=5;
-  }
   doc.setDrawColor(200,210,230);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
   yp+=7;
 
@@ -3021,12 +3019,12 @@ function genRapportPDF(){
   // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
   const rows=[
     ['ABWESENHEITEN',''],
-    ['Unentschuldigte Absenz (UA)', tg(stats.ua)],
     ['Bezahlte Absenz (BA)',        tg(stats.ba)],
-    ['Krankheit (KR)',              tg(stats.kr)],
-    ['Unfall (UN)',                 tg(stats.un)],
-    ...(stats.mi>0?[['Militär/Zivilschutz (MI)', tg(stats.mi)]]:[]),
     ...(stats.fe>0?[['Ferien (FE)',  tg(stats.fe)]]:[]),
+    ['Krankheit (KR)',              tg(stats.kr)],
+    ...(stats.mi>0?[['Militär/Zivilschutz (MI)', tg(stats.mi)]]:[]),
+    ['Unentschuldigte Absenz (UA)', tg(stats.ua)],
+    ['Unfall (UN)',                 tg(stats.un)],
     ['Zu spät (ZS)',               `${stats.zs}×`],
     ['',''],
     ['SCHULE',''],
