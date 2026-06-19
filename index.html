@@ -1686,6 +1686,9 @@ function getBlocks(p, date){
   for(const sp of (p.sporttermine||[])){
     if(+sp===dow){ nmB=true; if(!nmL) nmL='Sport'; }
   }
+  // Offizielle Schulferien (TG): kein Schul-/Sport-Block – der TN ist in der
+  // Lernwerkstatt. Feiertage bleiben orthogonal (tgHolidays/holiSet).
+  if(isSchulferien(date)){ vmB=nmB=fullB=false; vmL=nmL=''; }
   return {vmB,nmB,fullB,vmL,nmL};
 }
 
@@ -1866,27 +1869,32 @@ function renderDayPlan(){
     // Name – green for Lehrstelle / Praktikum
     const nameGreen=p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr';
 
+    // Geplante Schul-/Sport-Halbtage sind übersteuerbar: Dropdown vorbelegt mit dem
+    // geplanten Code, kann auf Werkstatt (oder anderen Schul-Code) geändert werden.
+    // Praktikum/Schnupperlehre (PA/PA+LS/SL) bleiben gesperrt.
+    const vmEditable = blk.vmB && SCHOOL_TYPES.includes(blk.vmL);
+    const nmEditable = blk.nmB && (SCHOOL_TYPES.includes(blk.nmL) || blk.nmL==='Sport');
+
     // VM cell – absence has priority over block and workshop
     const vmCell = vmAbsent
       ? buildAbsCell(absCode)
-      : blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',false);
+      : vmEditable ? buildWsCell(pid,'vm',plan.vm||blk.vmL,false)
+      : blk.vmB ? buildBlockedCell(blk.vmL,'school')
+      : buildWsCell(pid,'vm',plan.vm||'',false);
 
     // NM cell – absence has priority over block and workshop
     const nmCell = nmAbsent
       ? buildAbsCell(absCode)
-      : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',false);
+      : nmEditable ? buildWsCell(pid,'nm',plan.nm||blk.nmL,false)
+      : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school')
+      : buildWsCell(pid,'nm',plan.nm||'',false);
 
-    // Werkstatt-Einteilung je Slot zählen (VM / NM getrennt)
-    if(!vmAbsent && !blk.vmB && plan.vm){
-      vmCounts[plan.vm]=(vmCounts[plan.vm]||0)+1;
-    }
-    if(!nmAbsent){
-      if(blk.nmL==='Sport'||plan.nm==='Sport'){
-        nmCounts['Sport']=(nmCounts['Sport']||0)+1;
-      } else if(!blk.nmB && plan.nm){
-        nmCounts[plan.nm]=(nmCounts[plan.nm]||0)+1;
-      }
-    }
+    // Werkstatt-Belegung je Slot zählen: effektiver Wert (Slot-Eintrag übersteuert
+    // den geplanten Block). Schul-Halbtage zählen nicht als Werkstatt.
+    const vmEff = vmAbsent ? '' : (plan.vm || (blk.vmB ? blk.vmL : ''));
+    const nmEff = nmAbsent ? '' : (plan.nm || (blk.nmB ? blk.nmL : ''));
+    if(isWorkshopVal(vmEff)) vmCounts[vmEff]=(vmCounts[vmEff]||0)+1;
+    if(isWorkshopVal(nmEff)) nmCounts[nmEff]=(nmCounts[nmEff]||0)+1;
 
     // Absence
     const absTxt =plan.abwesenheitText||'';
@@ -2022,7 +2030,8 @@ function buildBlockedCell(label, type){
 }
 
 function buildWsCell(pid, slot, val, disabled){
-  const isCustom = val && !WS.includes(val) && val!=='Sport';
+  // Schul-Codes sind ebenfalls per Slot wählbar → nicht als „Anderes…"-Freitext behandeln.
+  const isCustom = val && !WS.includes(val) && val!=='Sport' && !SCHOOL_TYPES.includes(val);
   const disAttr  = disabled ? 'disabled' : '';
   const extra    = isCustom ? `<input class="ws-custom" value="${esc(val)}" placeholder="Werkstatt…"
       onchange="setPlan('${curDay}','${pid}',{${slot}:this.value})">` : '';
@@ -2031,6 +2040,9 @@ function buildWsCell(pid, slot, val, disabled){
       <option value="">–</option>
       ${WS.map(w=>`<option${val===w?' selected':''}>${w}</option>`).join('')}
       ${slot==='nm'?`<option value="Sport"${val==='Sport'?' selected':''}>Sport</option>`:''}
+      <optgroup label="Schule">
+        ${SCHOOL_TYPES.map(s=>`<option value="${s}"${val===s?' selected':''}>${s}</option>`).join('')}
+      </optgroup>
       <option value="__custom"${isCustom?' selected':''}>Anderes…</option>
     </select>
     ${extra}
@@ -2594,6 +2606,44 @@ function tgHolidays(year){
   return map;
 }
 
+// ── Schulferien Kanton Thurgau ───────────────────────────────────────────────
+// Regelbasiert berechnet (zukunftssicher, ohne feste Tabelle / ohne Zusatzdaten).
+// Liefert inklusive Bereiche ['YYYY-MM-DD','YYYY-MM-DD'].
+function fAddDays(dt,n){ const x=new Date(dt); x.setDate(x.getDate()+n); return x; }
+function fRange(start,days){ return [ds(start), ds(fAddDays(start,days-1))]; }
+// Montag der ISO-Kalenderwoche `week` im Jahr `year`.
+function isoMonday(year,week){
+  const jan4=new Date(year,0,4);
+  const dow=(jan4.getDay()+6)%7;            // 0=Mo … 6=So
+  const mon1=fAddDays(jan4,-dow);           // Montag der KW1
+  return fAddDays(mon1,(week-1)*7);
+}
+function computeFerien(year){
+  const r=[];
+  r.push(fRange(isoMonday(year,5),7));      // Sportferien: Mo ISO-KW 5, 7 Tage
+  const e=easterSunday(year);               // Frühlingsferien: abhängig von Ostern
+  const late=(e.getMonth()===3 && e.getDate()>=11) || e.getMonth()>3; // April=3
+  if(late) r.push(fRange(fAddDays(e,-13),15));   // Start Mo, 15 Tage
+  else     r.push(fRange(fAddDays(e,-2),17));    // Start Karfreitag, 17 Tage
+  r.push(fRange(fAddDays(e,39),12));        // Pfingstferien: Auffahrt (Ostern+39), 12 Tage
+  r.push(fRange(isoMonday(year,28),35));    // Sommerferien: Mo ISO-KW 28, 35 Tage
+  r.push(fRange(isoMonday(year,41),14));    // Herbstferien: Mo ISO-KW 41, 14 Tage
+  const xmas=new Date(year,11,25);          // Weihnachtsferien: Mo der Woche des 25.12., 14 Tage
+  r.push(fRange(fAddDays(xmas,-((xmas.getDay()+6)%7)),14));
+  return r;
+}
+// Liegt `date` in offiziellen TG-Schulferien? Prüft Jahr und Vorjahr (Weihnachtsferien
+// laufen über den Jahreswechsel).
+function isSchulferien(date){
+  const s=ds(date), y=date.getFullYear();
+  for(const yr of [y,y-1])
+    for(const[a,b] of computeFerien(yr))
+      if(a<=s && s<=b) return true;
+  return false;
+}
+// Werkstatt-Wert = belegt, aber kein Schul-Code.
+function isWorkshopVal(v){ return !!v && !SCHOOL_TYPES.includes(v); }
+
 function getRptRows(p,year,month){
   const holidays=tgHolidays(year);
   return monthDays(year,month).map(d=>{
@@ -2629,11 +2679,15 @@ function getRptRows(p,year,month){
     } else if(plan.sw==='S.LW'){
       az='8';
     } else {
-      const isSchool=SCHOOL_TYPES.includes(blk.vmL)||SCHOOL_TYPES.includes(blk.nmL);
+      // Effektiver Code je Halbtag: Slot-Eintrag (plan.vm/nm) übersteuert den Block.
+      // Schule = wenn der effektive Code ein Schul-Code ist (Block ODER per Slot gewählt).
+      const vmCode=plan.vm||(blk.vmB?blk.vmL:'');
+      const nmCode=plan.nm||(blk.nmB?blk.nmL:'');
+      const isSchool=SCHOOL_TYPES.includes(vmCode)||SCHOOL_TYPES.includes(nmCode);
       const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
       if(isSchool){
         bem='Schule';
-        az='8'; // Schule = immer 8h Arbeitszeit (auch ohne Werkstatt-Eintrag)
+        az='8'; // Schule = ganzer Tag anwesend (Schul-Halbtag + Lernwerkstatt)
       } else if(present){
         az='8';
       }
@@ -2852,7 +2906,7 @@ function genRapportPDF(){
   // Abwesenheiten in Tagen: ganzer Tag = 1, VM/NM = 0.5, Wochencodes (KR-W) je Tag = 1.
   const stats={
     ua:0, ba:0, kr:0, zs:0,
-    s_days:0, daz:0, foa:0, dk:0,
+    s_half:0, daz:0, foa:0, dk:0, ikpc:0,   // s_half: Schul-Halbtage (je 4 Lek)
     sport:0, bw:0,
     schnuppertag:0, schnupperwoche:0,
   };
@@ -2884,34 +2938,28 @@ function genRapportPDF(){
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
       const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
 
-      // Schule-Blöcke (nur zählen wenn der Slot nicht durch Absenz gesperrt ist)
-      if(blk.fullB&&blk.vmL==='S'&&!fullAbsent) stats.s_days++;
-      else {
-        if(blk.vmB&&blk.vmL==='DAZ'&&!vmAbs) stats.daz++;
-        if(blk.nmB&&blk.nmL==='DAZ'&&!nmAbs) stats.daz++;
-        if(blk.vmB&&blk.vmL==='FöA'&&!vmAbs) stats.foa++;
-        if(blk.nmB&&blk.nmL==='FöA'&&!nmAbs) stats.foa++;
-        if(blk.vmB&&blk.vmL==='DK'&&!vmAbs)  stats.dk++;
-        if(blk.nmB&&blk.nmL==='DK'&&!nmAbs)  stats.dk++;
-      }
-
-      // Werkstatt-Einsätze (nur bei nicht gesperrtem Slot und nicht abwesend)
-      if(!blk.vmB&&!vmAbs&&plan.vm==='Sport')    stats.sport++;
-      if(!blk.nmB&&!nmAbs&&plan.nm==='Sport')    stats.sport++;
-      if(!blk.vmB&&!vmAbs&&plan.vm==='Bewerben') stats.bw++;
-      if(!blk.nmB&&!nmAbs&&plan.nm==='Bewerben') stats.bw++;
-
-      // Schule auch zählen, wenn sie als Tages-Einteilung (plan.vm/nm) statt als
-      // fixer Schultag-Block erfasst wurde – sonst fehlen diese im Rapport,
-      // obwohl sie in der Monatsübersicht erscheinen.
-      // S (ganzer Schultag) max. 1× pro Tag zählen.
-      if(!blk.fullB&&!fullAbsent&&((!blk.vmB&&plan.vm==='S')||(!blk.nmB&&plan.nm==='S'))) stats.s_days++;
-      if(!blk.vmB&&!vmAbs&&plan.vm==='DAZ') stats.daz++;
-      if(!blk.nmB&&!nmAbs&&plan.nm==='DAZ') stats.daz++;
-      if(!blk.vmB&&!vmAbs&&plan.vm==='FöA') stats.foa++;
-      if(!blk.nmB&&!nmAbs&&plan.nm==='FöA') stats.foa++;
-      if(!blk.vmB&&!vmAbs&&plan.vm==='DK')  stats.dk++;
-      if(!blk.nmB&&!nmAbs&&plan.nm==='DK')  stats.dk++;
+      // Effektiv gültiger Code je Halbtag (Priorität):
+      //   1. Absenz sperrt den Halbtag (vmAbs/nmAbs)
+      //   2. expliziter Slot-Eintrag (plan.vm/nm) übersteuert den geplanten Block
+      //      – Werkstatt-Code ODER per Slot gewählter Schul-Code (S/DAZ/FöA/DK/IKPC)
+      //   3. sonst der geplante Block (Ferien sind in getBlocks bereits geleert)
+      // Schule wird halbtagsgenau gezählt (je Halbtag = 4 Lek).
+      const countSlot=(slotVal,blkB,blkL,absSlot)=>{
+        if(absSlot) return;
+        const code = slotVal ? slotVal : (blkB ? blkL : '');
+        switch(code){
+          case 'S':    stats.s_half++; break;
+          case 'DAZ':  stats.daz++;    break;
+          case 'FöA':  stats.foa++;    break;
+          case 'DK':   stats.dk++;     break;
+          case 'IKPC': stats.ikpc++;   break;
+          case 'Sport':stats.sport++;  break;
+          case 'Bewerben': stats.bw++; break;
+          // andere Werkstatt-Werte (Holz, Metall, …) → allg. Lernwerkstatt, keine eigene Lek-Zeile
+        }
+      };
+      countSlot(plan.vm, blk.vmB, blk.vmL, vmAbs);
+      countSlot(plan.nm, blk.nmB, blk.nmL, nmAbs);
 
       // Schnuppern
       if(!rawAbs&&plan.sw==='S.EX') stats.schnupperwoche++;
@@ -2920,11 +2968,12 @@ function genRapportPDF(){
     d.setDate(d.getDate()+1);
   }
 
-  const s_lek   = stats.s_days * 8;
-  const daz_lek = stats.daz * 4;
-  const foa_lek = stats.foa * 4;
-  const dk_lek  = stats.dk * 4;
-  const total_sch = s_lek + daz_lek + foa_lek + dk_lek;
+  const s_lek    = stats.s_half * 4;   // je Schul-Halbtag 4 Lektionen
+  const daz_lek  = stats.daz * 4;
+  const foa_lek  = stats.foa * 4;
+  const dk_lek   = stats.dk * 4;
+  const ikpc_lek = stats.ikpc * 4;
+  const total_sch = s_lek + daz_lek + foa_lek + dk_lek + ikpc_lek;
   const sport_lek = stats.sport * 2;
   const bw_lek    = stats.bw * 4;
 
@@ -2971,6 +3020,7 @@ function genRapportPDF(){
     ['DAZ – Deutsch als Zweitsprache', lk(daz_lek)],
     ['FöA – Förderatelier',         lk(foa_lek)],
     ...(stats.dk>0?[['DK – Deutschkurs Migros', lk(dk_lek)]]:[]),
+    ...(stats.ikpc>0?[['IKPC – Informatik/PC', lk(ikpc_lek)]]:[]),
     ['Total Schul-Lektionen',       lk(total_sch)],
     ['',''],
     ['LERNWERKSTATT',''],
