@@ -3,7 +3,7 @@
 **Datum:** 2026-06-19
 **Repository:** https://github.com/lioal17/Wochenplanung
 **Arbeits-Branch:** `claude/amazing-archimedes-4d0agw`
-**Stand (HEAD):** `c233bc5`
+**Stand (HEAD):** `cd9aa38`
 
 ---
 
@@ -64,7 +64,15 @@ Alle Änderungen betreffen ausschliesslich `index.html`.
 ### E. Layout
 - Teilnehmer-Rapport **ohne Jobcoach-Kürzel** – nur noch der Name des TN.
 
-### F. Review-Fixes (Qualität)
+### F. Wochenplan-PDF: Monatsübersicht als Querformat-Seite
+- Beim Generieren des Wochenplan-PDF (Button „📄 Wochenplan generieren", `genWeekPDF`)
+  wird **zusätzlich immer eine Monatsübersicht im Querformat** mitgedruckt.
+- Seitenreihenfolge: **1 Wochenübersicht · 2 Tagesübersicht · 3 Monatsübersicht · 4 Legende.**
+- Monat = der Monat der berichteten Woche; je Tag eine Spalte (VM oben / NM unten),
+  Codes spiegeln das Monatsraster (Ferien, Slot-Übersteuerung, Halb-/Ganztags-/Wochen-
+  Absenzen) + UA-/ZS-Summe je TN.
+
+### G. Review-Fixes (Qualität)
 - Behoben: Ein ganzer, beidseitig auf Werkstatt übersteuerter Schultag zeigte im
   Monatsrapport 0 statt 8 Std.
 - Behoben: Übersteuerter Schul-/Sport-Halbtag wird im Monatsraster jetzt korrekt als
@@ -84,6 +92,7 @@ Alle Änderungen betreffen ausschliesslich `index.html`.
 | `935223e` | Review-Fixes: 0h-Bug + Raster-Anzeige |
 | `3beedcd` | Doku: Projekt-Zusammenfassung & Datensicherung |
 | `c233bc5` | Absenzen: Wochencodes BA-W und UA-W ergänzen |
+| `cd9aa38` | Wochenplan-PDF: Monatsübersicht als Querformat-Seite anhängen |
 
 **Umfang gesamt:** im Wesentlichen `index.html` (Logik) + diese Doku-Datei.
 
