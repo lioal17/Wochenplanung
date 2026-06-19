@@ -3174,8 +3174,12 @@ function genWeekPDF(){
       if(!isActiveOnDay(p,d)){row.push('–','–');return;}
       const plan=getPlan(ds(d),p.id);
       const blk=getBlocks(p,d);
-      if(plan.abwesenheit){row.push(plan.abwesenheit,plan.abwesenheit);return;}
-      row.push(blk.vmB?blk.vmL:wsAbbr(plan.vm||''),blk.nmB?blk.nmL:wsAbbr(plan.nm||''));
+      // ZS (Zu spät): TN ist trotzdem da → echte Einteilung anzeigen, nicht ZS
+      if(plan.abwesenheit&&plan.abwesenheit!=='ZS'){row.push(plan.abwesenheit,plan.abwesenheit);return;}
+      const vmCell=blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCell=blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      // Schule-Code «S» ausgeschrieben darstellen
+      row.push(vmCell==='S'?'Schule':vmCell,nmCell==='S'?'Schule':nmCell);
     });
     return row;
   });
@@ -3213,7 +3217,7 @@ function genWeekPDF(){
       if(data.column.index>=3){
         const v=data.cell.raw;
         if(v==='PA'||v==='PA+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        else if(['Schule','S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
   });
