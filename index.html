@@ -1474,16 +1474,20 @@ const ABS = [
   {c:'UA-VM', l:'UA-VM – Unentschuldigte Absenz (Vormittag)'},
   {c:'UA-NM', l:'UA-NM – Unentschuldigte Absenz (Nachmittag)'},
   {c:'UN',    l:'UN – Unfall (ganzer Tag)'},
+  {c:'UN-VM', l:'UN-VM – Unfall (Vormittag)'},
+  {c:'UN-NM', l:'UN-NM – Unfall (Nachmittag)'},
+  {c:'UN-W',  l:'UN-W – Unfall (ganze Woche)'},
   {c:'ZS',    l:'ZS – Zu spät'},
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
-const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
+const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
   BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz Vormittag','BA-NM':'Bezahlte Absenz Nachmittag',
-  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',UN:'Unfall',
+  FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',
+  UN:'Unfall','UN-VM':'Unfall Vormittag','UN-NM':'Unfall Nachmittag','UN-W':'Unfall ganze Woche',
   UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz Vormittag','UA-NM':'Unentschuldigte Absenz Nachmittag',
   MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
@@ -1732,11 +1736,12 @@ function neoCountForDay(p, d){
   const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
   const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
   const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
-  const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
+  const isUNvm=rawAbs==='UN-VM', isUNnm=rawAbs==='UN-NM';
+  const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm||isUNvm||isUNnm)?'':rawAbs;
   if(effAbs) return 0;                              // Ganztags-Absenz
   if(plan.sw==='S.LW'||plan.sw==='S.EX') return 0;  // Schnupperwoche
-  const vmNeo = !(isUAvm||isKRvm||isBAvm) && !blk.vmB && plan.vm==='Neophyten';
-  const nmNeo = !(isUAnm||isKRnm||isBAnm) && !blk.nmB && plan.nm==='Neophyten';
+  const vmNeo = !(isUAvm||isKRvm||isBAvm||isUNvm) && !blk.vmB && plan.vm==='Neophyten';
+  const nmNeo = !(isUAnm||isKRnm||isBAnm||isUNnm) && !blk.nmB && plan.nm==='Neophyten';
   return (vmNeo||nmNeo) ? 1 : 0;
 }
 
@@ -1811,7 +1816,7 @@ function renderDayPlan(){
     const goesBottom=p=>{
       const bl=getBlocks(p,date);
       const abs=getPlan(curDay,p.id).abwesenheit||'';
-      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W';
+      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W'||abs==='UN-W';
     };
     _pSortList = DB.participants
       .filter(p=>isActiveOnDay(p,date))
@@ -1841,8 +1846,8 @@ function renderDayPlan(){
     // UA-VM / UA-NM: nur halbtags absent, jeweiliger Slot gesperrt, anderer bleibt planbar
     const softAbs = SOFT_ABS.includes(absCode);
     const absent  = !!absCode && !softAbs;
-    const vmAbsent = absent || absCode==='UA-VM' || absCode==='KR-VM' || absCode==='BA-VM';
-    const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM' || absCode==='BA-NM';
+    const vmAbsent = absent || absCode==='UA-VM' || absCode==='KR-VM' || absCode==='BA-VM' || absCode==='UN-VM';
+    const nmAbsent = absent || absCode==='UA-NM' || absCode==='KR-NM' || absCode==='BA-NM' || absCode==='UN-NM';
     const pid    = p.id;
 
     // Row class – bei Absenz keine Einfärbung
@@ -1900,7 +1905,7 @@ function renderDayPlan(){
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
       <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
-        ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
+        ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W'||a.c==='UN-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
         onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
@@ -1966,7 +1971,7 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
-    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','PA'];
+    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
     if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
       ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
@@ -2072,11 +2077,11 @@ function onWsCh(sel, pid, slot){
 
 function onAbsChange(pid, day, val){
   const curAbs=getPlan(day,pid).abwesenheit||'';
-  const isWeekCode=c=>c==='KR-W'||c==='FE-W';
+  const isWeekCode=c=>c==='KR-W'||c==='FE-W'||c==='UN-W';
   if(isWeekCode(val)){
     // Ganze-Woche-Codes können nur am Montag gesetzt werden und füllen immer Mo–Fr
     if(pd(day).getDay()!==1){
-      toast('⚠ KR-W / FE-W kann nur am Montag eingesteuert werden','t-warn');
+      toast('⚠ KR-W / FE-W / UN-W kann nur am Montag eingesteuert werden','t-warn');
       renderDayPlan();
       return;
     }
@@ -2477,8 +2482,9 @@ function renderMonthly(){
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
       const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
       const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
+      const isUNvm=rawAbs==='UN-VM', isUNnm=rawAbs==='UN-NM';
       // Full-day absence (not ZS, not half-day codes)
-      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm)?'':rawAbs;
+      const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm||isUNvm||isUNnm)?'':rawAbs;
       if(rawAbs==='ZS'&&!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
         dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
@@ -2492,10 +2498,10 @@ function renderMonthly(){
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
       // Individual VM + NM cells (with partial absences)
-      const vmCls=(isUAvm||isKRvm||isBAvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=(isUAnm||isKRnm||isBAnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      const vmCls=(isUAvm||isKRvm||isBAvm||isUNvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':isUNvm?'UN':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCls=(isUAnm||isKRnm||isBAnm||isUNnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':isUNnm?'UN':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
@@ -2664,7 +2670,7 @@ function getRptRows(p,year,month){
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
-    const HALF_ABS=['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM'];
+    const HALF_ABS=['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
     const isHalfAbs=HALF_ABS.includes(rawAbs);
     const effAbs=(isZS||isPA||isHalfAbs)?'':rawAbs;
     if(isHalfAbs){
@@ -2930,16 +2936,18 @@ function genRapportPDF(){
       // KR-W (Krank ganze Woche) ist je Wochentag gespeichert → je Tag = 1
       if(rawAbs==='KR'||rawAbs==='KR-W') stats.kr+=1;
       else if(rawAbs==='KR-VM'||rawAbs==='KR-NM') stats.kr+=0.5;
-      if(rawAbs==='UN') stats.un+=1;                       // Unfall (ganzer Tag)
+      // UN-W (Unfall ganze Woche) ist je Wochentag gespeichert → je Tag = 1
+      if(rawAbs==='UN'||rawAbs==='UN-W') stats.un+=1;       // Unfall (ganzer Tag)
+      else if(rawAbs==='UN-VM'||rawAbs==='UN-NM') stats.un+=0.5;
       if(rawAbs==='MI') stats.mi+=1;                       // Militär/Zivilschutz (ganzer Tag)
       if(rawAbs==='FE'||rawAbs==='FE-W') stats.fe+=1;      // Ferien (FE-W je Wochentag = 1)
       if(rawAbs==='ZS') stats.zs++;
 
       // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
-      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
+      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
       const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
-      const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM');
-      const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM');
+      const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM');
+      const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM');
 
       // Effektiv gültiger Code je Halbtag (Priorität):
       //   1. Absenz sperrt den Halbtag (vmAbs/nmAbs)
@@ -3215,7 +3223,7 @@ function genWeekPDF(){
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
-  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM']);
+  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
   const dayActive=DB.participants
     .filter(p=>{
       if(!isActiveOnDay(p,dayDate)) return false;
