@@ -3,7 +3,7 @@
 **Datum:** 2026-06-19
 **Repository:** https://github.com/lioal17/Wochenplanung
 **Arbeits-Branch:** `claude/amazing-archimedes-4d0agw`
-**Stand (HEAD):** `935223e`
+**Stand (HEAD):** `c233bc5`
 
 ---
 
@@ -55,8 +55,11 @@ Alle Änderungen betreffen ausschliesslich `index.html`.
   FE/FE-W (Ferien)** – vorher wurden ganze Unfall-Wochen nicht gezählt.
 - **Unfall als volle Code-Familie** (analog Krankheit): `UN-VM` (4h), `UN-NM` (4h),
   `UN` (8h), `UN-W` (ganze Woche, Mo–Fr, nur am Montag setzbar).
+- **Wochencodes BA-W und UA-W** ergänzt – `BA-W` (Bezahlte Absenz ganze Woche) und
+  `UA-W` (Unentschuldigte Absenz ganze Woche). Damit gibt es alle Wochencodes:
+  BA-W, FE-W, KR-W, UA-W, UN-W (alle nur am Montag setzbar, füllen Mo–Fr).
 - Absenzen im Teilnehmer-Rapport **alphabetisch**: BA, FE, KR, MI, UA, UN, ZS.
-- **UN gilt als bezahlte Absenz** (Monatsrapport) – wie BA; nur UA ist unbezahlt.
+- **UN/BA(-W) gelten als bezahlte Absenz** (Monatsrapport); nur `UA`/`UA-W` sind unbezahlt.
 
 ### E. Layout
 - Teilnehmer-Rapport **ohne Jobcoach-Kürzel** – nur noch der Name des TN.
@@ -79,8 +82,10 @@ Alle Änderungen betreffen ausschliesslich `index.html`.
 | `afbfd19` | Absenzen: UN-Familie (UN-VM/UN-NM/UN/UN-W) wie KR umsetzen |
 | `ff4ff7d` | Rapport: Absenzen alphabetisch, UN bezahlt, JC-Zeile entfernen |
 | `935223e` | Review-Fixes: 0h-Bug + Raster-Anzeige |
+| `3beedcd` | Doku: Projekt-Zusammenfassung & Datensicherung |
+| `c233bc5` | Absenzen: Wochencodes BA-W und UA-W ergänzen |
 
-**Umfang gesamt:** `index.html`, +151 / −87 Zeilen.
+**Umfang gesamt:** im Wesentlichen `index.html` (Logik) + diese Doku-Datei.
 
 ---
 
