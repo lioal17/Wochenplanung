@@ -386,6 +386,7 @@ input,select,textarea{font-family:inherit}
 }
 .mo-tbl tr:hover td.td-name{background:var(--g1)}
 .mo-tbl td.c-off{background:var(--g1)}
+.mo-tbl td.mo-x{color:var(--g4);font-weight:700}
 .mo-tbl td.c-stat{background:var(--g1);font-weight:700;color:var(--navy);padding:4px 2px}
 .mo-tbl .mo-sep,.mo-tbl th.mo-sep{border-left:3px solid var(--navy) !important}
 /* Sub-cell divs inside each day cell */
@@ -2055,7 +2056,7 @@ function buildWsCell(pid, slot, val, disabled){
       ${WS.map(w=>`<option${val===w?' selected':''}>${w}</option>`).join('')}
       ${slot==='nm'?`<option value="Sport"${val==='Sport'?' selected':''}>Sport</option>`:''}
       <optgroup label="Schule">
-        ${SCHOOL_TYPES.map(s=>`<option value="${s}"${val===s?' selected':''}>${s}</option>`).join('')}
+        ${SCHOOL_TYPES.map(s=>`<option value="${s}"${val===s?' selected':''}>${BLK_LABEL[s]||s}</option>`).join('')}
       </optgroup>
       <option value="__custom"${isCustom?' selected':''}>Anderes…</option>
     </select>
@@ -2506,7 +2507,8 @@ function renderMonthly(){
     wd.forEach(d=>{
       const sep=d.getDay()===1?' mo-sep':'';
       const dstr=ds(d);
-      if(!isActiveOnDay(p,d)){tds+=`<td class="c-off${sep}"></td><td class="c-off"></td>`;return;}
+      // Tag ausserhalb des Einsatzzeitraums (vor Eintritt / nach Austritt) → «X»
+      if(!isActiveOnDay(p,d)){tds+=`<td colspan="2" class="c-off mo-x${sep}">X</td>`;return;}
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
