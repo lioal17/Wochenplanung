@@ -2498,10 +2498,13 @@ function renderMonthly(){
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
       // Individual VM + NM cells (with partial absences)
-      const vmCls=(isUAvm||isKRvm||isBAvm||isUNvm)?'moc-abs':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':isUNvm?'UN':blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=(isUAnm||isKRnm||isBAnm||isUNnm)?'moc-abs':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':isUNnm?'UN':blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      // Werkstatt-Einteilung kann einen geplanten Schul-/Sport-Block übersteuern (plan.vm/nm)
+      const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
+      const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
+      const vmCls=(isUAvm||isKRvm||isBAvm||isUNvm)?'moc-abs':vmOver?'moc-work':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
+      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':isUNvm?'UN':vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+      const nmCls=(isUAnm||isKRnm||isBAnm||isUNnm)?'moc-abs':nmOver?'moc-work':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
+      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':isUNnm?'UN':nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
@@ -2690,12 +2693,11 @@ function getRptRows(p,year,month){
       const vmCode=plan.vm||(blk.vmB?blk.vmL:'');
       const nmCode=plan.nm||(blk.nmB?blk.nmL:'');
       const isSchool=SCHOOL_TYPES.includes(vmCode)||SCHOOL_TYPES.includes(nmCode);
-      const present=isZS||(plan.vm&&!blk.vmB)||(plan.nm&&!blk.nmB);
-      if(isSchool){
-        bem='Schule';
-        az='8'; // Schule = ganzer Tag anwesend (Schul-Halbtag + Lernwerkstatt)
-      } else if(present){
+      // Anwesend (8h) sobald ein Halbtag belegt ist – egal ob Schule, Block oder
+      // (auch einen Block übersteuernde) Werkstatt-Einteilung; ZS zählt ebenfalls.
+      if(vmCode||nmCode||isZS){
         az='8';
+        if(isSchool) bem='Schule';
       }
     }
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
