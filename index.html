@@ -3311,7 +3311,10 @@ function genWeekPDF(){
   doc.addPage();
   const mY=d0.getFullYear(), mM=d0.getMonth();
   const moDays=monthDays(mY,mM).filter(d=>!isWE(d));
-  pdfTitle(doc,`Monatsübersicht  –  ${MON[mM]} ${mY}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
+  // KW-Spanne des Monats (erster bis letzter Werktag) für den Untertitel
+  const moKwFrom=isoWeek(moDays[0]).w, moKwTo=isoWeek(moDays[moDays.length-1]).w;
+  const moKwLbl=moKwFrom===moKwTo?`KW ${pad(moKwFrom)}`:`KW ${pad(moKwFrom)} – KW ${pad(moKwTo)}`;
+  pdfTitle(doc,`Monatsübersicht  –  ${MON[mM]} ${mY}`,`${moKwLbl} · ${mY}   ·   Lernwerkstatt BASISJOB`);
 
   // Reihenfolge wie in der Monatsübersicht-Ansicht (Praktikum/Lehre ans Ende)
   const moBottom=p=>p.status==='praktikum'||p.status==='prklehr';
@@ -3322,7 +3325,8 @@ function genWeekPDF(){
   // Effektiver VM/NM-Code je Tag (konsistent mit dem Monatsraster: Ferien, Slot-
   // Übersteuerung, Halb-/Ganztags-Absenzen). Zelle = 2 Zeilen (VM oben, NM unten).
   const moCell=(p,d)=>{
-    if(!isActiveOnDay(p,d)) return '';
+    // Tage ausserhalb des Einsatzzeitraums (vor Eintritt / nach Austritt) → «X»
+    if(!isActiveOnDay(p,d)) return 'X';
     const plan=getPlan(ds(d),p.id), blk=getBlocks(p,d), a=plan.abwesenheit||'';
     const half={'UA-VM':'UA','UA-NM':'UA','KR-VM':'KR','KR-NM':'KR','BA-VM':'BA','BA-NM':'BA','UN-VM':'UN','UN-NM':'UN'};
     const isVMhalf=a==='UA-VM'||a==='KR-VM'||a==='BA-VM'||a==='UN-VM';
@@ -3368,7 +3372,10 @@ function genWeekPDF(){
     columnStyles:moCs,
     alternateRowStyles:{fillColor:[205,228,246]},
     didParseCell:(data)=>{
-      if(data.section==='body'&&data.column.index===0) greenIfStatus(moPersons[data.row.index],data);
+      if(data.section!=='body') return;
+      if(data.column.index===0){greenIfStatus(moPersons[data.row.index],data);return;}
+      // «X» (ausserhalb Einsatzzeitraum) gedämpft grau darstellen
+      if(data.cell.raw==='X'){data.cell.styles.textColor=[150,150,150];data.cell.styles.fillColor=[238,238,238];}
     },
   });
 
