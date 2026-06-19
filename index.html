@@ -1869,27 +1869,32 @@ function renderDayPlan(){
     // Name – green for Lehrstelle / Praktikum
     const nameGreen=p.status==='lehrstelle'||p.status==='praktikum'||p.status==='prklehr';
 
+    // Geplante Schul-/Sport-Halbtage sind übersteuerbar: Dropdown vorbelegt mit dem
+    // geplanten Code, kann auf Werkstatt (oder anderen Schul-Code) geändert werden.
+    // Praktikum/Schnupperlehre (PA/PA+LS/SL) bleiben gesperrt.
+    const vmEditable = blk.vmB && SCHOOL_TYPES.includes(blk.vmL);
+    const nmEditable = blk.nmB && (SCHOOL_TYPES.includes(blk.nmL) || blk.nmL==='Sport');
+
     // VM cell – absence has priority over block and workshop
     const vmCell = vmAbsent
       ? buildAbsCell(absCode)
-      : blk.vmB ? buildBlockedCell(blk.vmL,'school') : buildWsCell(pid,'vm',plan.vm||'',false);
+      : vmEditable ? buildWsCell(pid,'vm',plan.vm||blk.vmL,false)
+      : blk.vmB ? buildBlockedCell(blk.vmL,'school')
+      : buildWsCell(pid,'vm',plan.vm||'',false);
 
     // NM cell – absence has priority over block and workshop
     const nmCell = nmAbsent
       ? buildAbsCell(absCode)
-      : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school') : buildWsCell(pid,'nm',plan.nm||'',false);
+      : nmEditable ? buildWsCell(pid,'nm',plan.nm||blk.nmL,false)
+      : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school')
+      : buildWsCell(pid,'nm',plan.nm||'',false);
 
-    // Werkstatt-Einteilung je Slot zählen (VM / NM getrennt)
-    if(!vmAbsent && !blk.vmB && plan.vm){
-      vmCounts[plan.vm]=(vmCounts[plan.vm]||0)+1;
-    }
-    if(!nmAbsent){
-      if(blk.nmL==='Sport'||plan.nm==='Sport'){
-        nmCounts['Sport']=(nmCounts['Sport']||0)+1;
-      } else if(!blk.nmB && plan.nm){
-        nmCounts[plan.nm]=(nmCounts[plan.nm]||0)+1;
-      }
-    }
+    // Werkstatt-Belegung je Slot zählen: effektiver Wert (Slot-Eintrag übersteuert
+    // den geplanten Block). Schul-Halbtage zählen nicht als Werkstatt.
+    const vmEff = vmAbsent ? '' : (plan.vm || (blk.vmB ? blk.vmL : ''));
+    const nmEff = nmAbsent ? '' : (plan.nm || (blk.nmB ? blk.nmL : ''));
+    if(isWorkshopVal(vmEff)) vmCounts[vmEff]=(vmCounts[vmEff]||0)+1;
+    if(isWorkshopVal(nmEff)) nmCounts[nmEff]=(nmCounts[nmEff]||0)+1;
 
     // Absence
     const absTxt =plan.abwesenheitText||'';
