@@ -339,6 +339,13 @@ input,select,textarea{font-family:inherit}
 }
 .p-meta span{display:flex;align-items:center;gap:3px}
 .p-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+.p-card.p-archived{opacity:.6;background:#f7f7f7}
+.p-card.p-archived:hover{opacity:.8}
+.p-card.p-archived .p-actions{opacity:1}
+.ar-tag{font-size:10px;font-weight:600;color:var(--g6);background:var(--g2);border:1px solid var(--g3);border-radius:6px;padding:1px 6px;margin-left:6px}
+.archive-bar{display:flex;align-items:center;gap:10px;margin:14px 0 4px;border-top:1px dashed var(--g3);padding-top:12px;flex-wrap:wrap}
+.ar-hint{font-size:11px;color:var(--g5)}
+.archive-list{display:flex;flex-direction:column;gap:8px}
 
 /* ═══════════════════════════════════════════
    WB ALERTS
@@ -2162,6 +2169,17 @@ function clearCurrentDay(){
 // ────────────────────────────────────────────
 // PARTICIPANT MANAGEMENT
 // ────────────────────────────────────────────
+// ZV ausgelaufen → Teilnehmer ist archiviert (Ende-ZV-Datum liegt vor heute).
+// Daten bleiben unverändert erhalten; wird das Datum wieder in die Zukunft
+// gesetzt (oder geleert), erscheint der TN automatisch wieder in der Liste.
+function isArchived(p){
+  if(!p.einsatzBis) return false;
+  const today=new Date(); today.setHours(0,0,0,0);
+  return pd(p.einsatzBis)<today;
+}
+let _showArchive=false;
+function toggleArchive(){ _showArchive=!_showArchive; renderPersons(); }
+
 function renderPersons(){
   const el=document.getElementById('pList');
   const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
@@ -2170,15 +2188,15 @@ function renderPersons(){
     return;
   }
   const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
-  el.innerHTML=sorted.map(p=>{
+  const card=(p,archived)=>{
     const sch=(p.schultage||[]).map(s=>`${SCH_LABELS[s.typ]||s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
     const krs=(p.kurse||[]).map(k=>`${SCH_LABELS[k.typ]||k.typ}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
-    const wb=wbBadge(p);
-    const wbBtns=wbActionBtns(p);
-    return `<div class="p-card sc-${p.status}">
+    const wb=archived?'':wbBadge(p);
+    const wbBtns=archived?'':wbActionBtns(p);
+    return `<div class="p-card sc-${p.status}${archived?' p-archived':''}">
       <div class="p-card-info">
-        <div class="p-name-lg">${p.vorname} ${p.nachname} ${wb}</div>
+        <div class="p-name-lg">${p.vorname} ${p.nachname} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
         <div class="p-meta">
           <span>📌 ${stLbl[p.status]||p.status}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
@@ -2197,7 +2215,20 @@ function renderPersons(){
         <button class="btn btn-danger btn-sm" onclick="delPerson('${p.id}')">🗑️</button>
       </div>
     </div>`;
-  }).join('');
+  };
+  const activeP=sorted.filter(p=>!isArchived(p));
+  const archived=sorted.filter(isArchived);
+  let html=activeP.length
+    ? activeP.map(p=>card(p,false)).join('')
+    : `<div class="empty-state" style="padding:30px"><p>Keine aktiven Teilnehmer.</p></div>`;
+  if(archived.length){
+    html+=`<div class="archive-bar">
+      <button class="btn btn-secondary btn-sm" onclick="toggleArchive()">🗄 Archiv (${archived.length}) ${_showArchive?'▲':'▼'}</button>
+      <span class="ar-hint">ZV ausgelaufen – Daten bleiben erhalten, bis der TN gelöscht wird</span>
+    </div>`;
+    if(_showArchive) html+=`<div class="archive-list">${archived.map(p=>card(p,true)).join('')}</div>`;
+  }
+  el.innerHTML=html;
 }
 
 function wbBadge(p){
