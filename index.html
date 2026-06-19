@@ -3101,7 +3101,7 @@ function genRapportPDF(){
 }
 
 // ────────────────────────────────────────────
-// WOCHENPLAN PDF  (Seite 1: Wochenübersicht, Seite 2: Tagesübersicht)
+// WOCHENPLAN PDF  (S.1 Wochenübersicht, S.2 Tagesübersicht, S.3 Monatsübersicht, S.4 Legende)
 // ────────────────────────────────────────────
 function genWeekPDF(){
   if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
@@ -3302,7 +3302,74 @@ function genWeekPDF(){
   });
 
   // ══════════════════════════════════════════
-  // SEITE 3 – Legende (Einteilungs- und Absenzcodes)
+  // SEITE 3 – Monatsübersicht (Querformat) – Monat der berichteten Woche
+  // ══════════════════════════════════════════
+  doc.addPage();
+  const mY=d0.getFullYear(), mM=d0.getMonth();
+  const moDays=monthDays(mY,mM).filter(d=>!isWE(d));
+  pdfTitle(doc,`Monatsübersicht  –  ${MON[mM]} ${mY}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
+
+  // Reihenfolge wie in der Monatsübersicht-Ansicht (Praktikum/Lehre ans Ende)
+  const moBottom=p=>p.status==='praktikum'||p.status==='prklehr';
+  const moPersons=[...DB.participants]
+    .filter(p=>moDays.some(d=>isActiveOnDay(p,d)))
+    .sort((a,b)=>(moBottom(a)?1:0)-(moBottom(b)?1:0)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+
+  // Effektiver VM/NM-Code je Tag (konsistent mit dem Monatsraster: Ferien, Slot-
+  // Übersteuerung, Halb-/Ganztags-Absenzen). Zelle = 2 Zeilen (VM oben, NM unten).
+  const moCell=(p,d)=>{
+    if(!isActiveOnDay(p,d)) return '';
+    const plan=getPlan(ds(d),p.id), blk=getBlocks(p,d), a=plan.abwesenheit||'';
+    const half={'UA-VM':'UA','UA-NM':'UA','KR-VM':'KR','KR-NM':'KR','BA-VM':'BA','BA-NM':'BA','UN-VM':'UN','UN-NM':'UN'};
+    const isVMhalf=a==='UA-VM'||a==='KR-VM'||a==='BA-VM'||a==='UN-VM';
+    const isNMhalf=a==='UA-NM'||a==='KR-NM'||a==='BA-NM'||a==='UN-NM';
+    const effAbs=(a==='ZS'||half[a])?'':a;
+    if(effAbs) return effAbs;                       // Ganztags-/Wochen-Absenz
+    if(plan.sw==='S.LW') return 'S.LW';
+    if(plan.sw==='S.EX') return 'SL';
+    const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
+    const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
+    const vm=isVMhalf?half[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+    const nm=isNMhalf?half[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+    return (vm||'·')+'\n'+(nm||'·');
+  };
+
+  const moHead=['Name',...moDays.map(d=>`${WD[d.getDay()]}\n${pad(d.getDate())}`),'UA','ZS'];
+  const moBody=moPersons.map(p=>{
+    let ua=0,zs=0;
+    moDays.forEach(d=>{
+      if(!isActiveOnDay(p,d)) return;
+      const a=getPlan(ds(d),p.id).abwesenheit||'';
+      if(a==='UA'||a==='UA-VM'||a==='UA-NM'||a==='UA-W') ua++;
+      if(a==='ZS') zs++;
+    });
+    return [`${p.vorname} ${p.nachname}`,...moDays.map(d=>moCell(p,d)),ua||'',zs||''];
+  });
+
+  const nMo=Math.max(moPersons.length,1);
+  const moAvailH=210-17-8;
+  const moRowH=moAvailH/(nMo+2);
+  const moCp=Math.min(1.4,Math.max(0.4,moRowH*0.16));
+  const moFs=Math.min(7,Math.max(4,Math.floor((moRowH-moCp*2)/0.85)));   // 2 Zeilen je Zelle
+  const moCs={0:{cellWidth:32,overflow:'ellipsize',halign:'left'}};
+  moDays.forEach((_,i)=>{moCs[1+i]={halign:'center'};});
+  moCs[moDays.length+1]={cellWidth:8,halign:'center'};
+  moCs[moDays.length+2]={cellWidth:8,halign:'center'};
+
+  doc.autoTable({
+    head:[moHead],body:moBody,startY:17,margin:{left:mg,right:mg,bottom:8},
+    theme:'grid',
+    styles:{fontSize:moFs,cellPadding:moCp,overflow:'hidden',halign:'center',valign:'middle',lineColor:[41,128,200],lineWidth:0.2,textColor:[20,20,20]},
+    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:moFs,halign:'center',lineColor:[30,55,100],lineWidth:0.2},
+    columnStyles:moCs,
+    alternateRowStyles:{fillColor:[205,228,246]},
+    didParseCell:(data)=>{
+      if(data.section==='body'&&data.column.index===0) greenIfStatus(moPersons[data.row.index],data);
+    },
+  });
+
+  // ══════════════════════════════════════════
+  // SEITE 4 – Legende (Einteilungs- und Absenzcodes)
   // ══════════════════════════════════════════
   doc.addPage();
   pdfTitle(doc,'Kürzel-Legende','Lernwerkstatt BASISJOB');
