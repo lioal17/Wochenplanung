@@ -2459,7 +2459,12 @@ function renderMonthly(){
   document.getElementById('moLabel').textContent=`${MON[m]} ${y}`;
   const days=monthDays(y,m);
   const isBottom=p=>p.status==='praktikum'||p.status==='prklehr';
-  const persons=[...DB.participants].sort((a,b)=>{
+  // Archivlogik: TN nur im Monat anzeigen, in dem er an mind. einem Tag aktiv
+  // ist. Ausgetretene TN bleiben so im Austrittsmonat sichtbar (Resttage «X»)
+  // und verschwinden ab dem Folgemonat – konsistent zur PDF-Monatsübersicht.
+  const persons=[...DB.participants]
+    .filter(p=>days.some(d=>isActiveOnDay(p,d)))
+    .sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
     return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
