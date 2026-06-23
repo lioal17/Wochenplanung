@@ -1510,6 +1510,11 @@ const LEGEND_BLOCK = [
   ['IKPC','Informatik/PC (ganzer Tag)'],['IKPC-VM','Informatik/PC (Vormittag)'],['IKPC-NM','Informatik/PC (Nachmittag)'],
   ['S','Schule (ganzer Tag)'],
 ];
+// Schul-Code → Bezeichnung (ohne Tageszeit-Zusatz) – z. B. für den Monatsrapport,
+// wo Schultage als Absenz (TN nicht in der LW) mit ihrem Code geführt werden.
+const SCHOOL_LABEL = Object.fromEntries(
+  LEGEND_BLOCK.map(([c,l])=>[c, l.replace(/\s*\((?:ganzer Tag|Vormittag|Nachmittag)\)$/,'')])
+);
 // Vollständige Bezeichnung pro Einteilungscode – für Anzeige in VM/NM-Zellen
 const BLK_LABEL = {
   'S':'Schule','DAZ':'DAZ','FöA':'FöA','DK':'DK',
@@ -2709,7 +2714,7 @@ function getRptRows(p,year,month){
     const plan=getPlan(dstr,p.id);
     const blk=getBlocks(p,d);
     const absTxt=plan.abwesenheitText||'';
-    let az='',as='',ac='',bem='';
+    let az='',as='',ac='',bem='',isSchoolDay=false;
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
@@ -2724,7 +2729,8 @@ function getRptRows(p,year,month){
       as='8';ac=effAbs;
       bem=AUTO_BEM[effAbs]||'';
     } else if(blk.vmL==='SL'||blk.nmL==='SL'){
-      ac='SL';bem='Schnupperlehre';
+      // Schnupperlehre (Schnupperwoche extern) → 8h unter Absenz Std.
+      as='8';ac='SL';bem='Schnupperlehre';
     } else if(plan.sw==='S.LW'){
       az='8';
     } else {
@@ -2732,17 +2738,33 @@ function getRptRows(p,year,month){
       // Schule = wenn der effektive Code ein Schul-Code ist (Block ODER per Slot gewählt).
       const vmCode=plan.vm||(blk.vmB?blk.vmL:'');
       const nmCode=plan.nm||(blk.nmB?blk.nmL:'');
-      const isSchool=SCHOOL_TYPES.includes(vmCode)||SCHOOL_TYPES.includes(nmCode);
-      // Anwesend (8h) sobald ein Halbtag belegt ist – egal ob Schule, Block oder
-      // (auch einen Block übersteuernde) Werkstatt-Einteilung; ZS zählt ebenfalls.
-      if(vmCode||nmCode||isZS){
+      const vmSchool=SCHOOL_TYPES.includes(vmCode);
+      const nmSchool=SCHOOL_TYPES.includes(nmCode);
+      // Schul-Halbtage zählen als Absenz (TN ist dann nicht in der LW): je ½-Tag = 4h.
+      const schoolHalf=(vmSchool?1:0)+(nmSchool?1:0);
+      if(schoolHalf){
+        isSchoolDay=true;
+        as=String(schoolHalf*4);
+        // Restliche (Werkstatt-)Zeit bleibt Arbeitszeit; der Tag bleibt gesamt 8h.
+        az=schoolHalf<2?String(8-schoolHalf*4):'';
+        // Schul-Code mit Halbtags-Suffix aufbauen ('S' ist immer ganzer Tag).
+        if(vmSchool&&nmSchool&&vmCode===nmCode){
+          ac=vmCode;
+        } else {
+          const parts=[];
+          if(vmSchool) parts.push(vmCode==='S'?'S':vmCode+'-VM');
+          if(nmSchool) parts.push(nmCode==='S'?'S':nmCode+'-NM');
+          ac=parts.join('+');
+        }
+        bem=SCHOOL_LABEL[ac]||'Schule';
+      } else if(vmCode||nmCode||isZS){
+        // Reine Werkstatt-/Sport-Einteilung (oder ZS): voller Arbeitstag.
         az='8';
-        if(isSchool) bem='Schule';
       }
     }
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
     if(absTxt) bem=absTxt+(bem&&bem!==absTxt?' · '+bem:'');
-    return{tag:d.getDate(),dow:WD[d.getDay()],az,as,ac,bem,
+    return{tag:d.getDate(),dow:WD[d.getDay()],az,as,ac,bem,school:isSchoolDay,
       ecDone:plan.ecaseEntered||false,schnuppertag:isSchnuppertag(plan),dstr,we:false,inactive:false};
   });
 }
@@ -2759,9 +2781,10 @@ function buildRpt(){
   // Unbezahlt = nur UA (inkl. Wochencode UA-W). Alle übrigen Absenz-Codes
   // (BA/BA-W, KR, UN/Unfall, FE, MI …) gelten als bezahlte Absenz.
   const UNPAID_ABS=new Set(['UA','UA-W']);
-  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!UNPAID_ABS.has(r.ac)).length;
+  // Schultage (r.school) sind keine Absenz und brauchen keinen eCase-Eintrag.
+  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!UNPAID_ABS.has(r.ac)).length;
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&UNPAID_ABS.has(r.ac)).length;
-  const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.ecDone&&!r.schnuppertag).length;
+  const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!r.ecDone&&!r.schnuppertag).length;
 
   let html='';
   if(openEC>0) html+=`<div class="warn-bar">⚠️ ${openEC} eCase-Einträge noch offen – bitte erst in eCase erfassen, bevor der Rapport generiert wird.</div>`;
