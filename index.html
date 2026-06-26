@@ -3808,11 +3808,6 @@ function parseDocText(text){
     const key=rawName||nameRegion;
     if(!key) continue;
 
-    // Parse klasse code
-    const cm=km[0].match(/^(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-/);
-    const ktyp=cm?cm[1]:null;
-    const kwd=cm?IMP_DAY[cm[2]]||0:0;
-
     if(!map[key]) map[key]={rawName,jc,sch:[],spt:[],von:'',bis:''};
 
     // Eintritt (= Einsatz von) und Ende ZV (= Einsatz bis) aus der Zeile lesen.
@@ -3824,7 +3819,17 @@ function parseDocText(text){
     if(dates.length>=1 && !map[key].von) map[key].von=dates[0];
     if(dates.length>=2 && !map[key].bis) map[key].bis=dates[1];
 
-    if(ktyp&&kwd){
+    // ALLE Klassen-Codes der Zeile auswerten – ein TN kann an mehreren Tagen
+    // Schule haben (mehrere Codes pro Zeile bzw. mehrere Zeilen pro Person).
+    // Jeder Code (z.B. DMA-Mo-…, FöA-Do-…) ergibt einen eigenen Schultag/Sporttermin.
+    KLASSE_RE.lastIndex=0;
+    let kc;
+    while((kc=KLASSE_RE.exec(line))){
+      const cm=kc[0].match(/^(DMA|DAZ|FöA|Spo|DK|IKPC|M)-(Mo|Di|Mi|Do|Fr)-/);
+      if(!cm) continue;
+      const ktyp=cm[1];
+      const kwd=IMP_DAY[cm[2]]||0;
+      if(!ktyp||!kwd) continue;
       if(ktyp==='Spo'){
         if(!map[key].spt.includes(kwd)) map[key].spt.push(kwd);
       } else {
