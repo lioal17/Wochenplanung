@@ -3524,17 +3524,17 @@ function genTNPDF(){
   const dateStr=`${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}`;
   const isoStr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
 
-  // Tabellen-Body. Hauptkennzahl, darunter die Status-Aufschlüsselung (davon …),
-  // dann IIZ; Schnuppern separat (eigene Hervorhebung).
+  // Tabellen-Body. Hauptkennzahl (aktive TN exkl. Schnuppern), dann IIZ, dann die
+  // Status-Aufschlüsselung (davon …); Schnuppern separat (eigene Hervorhebung).
   const body=[
-    ['Teilnehmende in der Lernwerkstatt', String(s.lernwerkstatt)],
-    ['    davon Status Praktikum', String(s.praktikum)],
-    ['    davon Status Lehrstelle', String(s.lehrstelle)],
-    ['    davon Status Lehrstelle + Praktikum', String(s.prklehr)],
+    ['Aktive Teilnehmende', String(s.lernwerkstatt)],
     ['Teilnehmende mit aktivem IIZ', String(s.iiz)],
-    ['Schnuppern (Schnupperwoche)', String(s.schnupper)],
+    ['    davon Status Lehrstelle', String(s.lehrstelle)],
+    ['    davon Status Praktikum', String(s.praktikum)],
+    ['    davon Status Lehrstelle + Praktikum', String(s.prklehr)],
+    ['Schnuppern (Schnupperwoche in der LW)', String(s.schnupper)],
   ];
-  const mainRow=0, iizRow=4, schnupperRow=5;
+  const mainRow=0, iizRow=1, schnupperRow=5;
 
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,mg=15;
@@ -3546,7 +3546,7 @@ function genTNPDF(){
   doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(90);
   doc.text(`Stand: ${dateStr}`,mg,34);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
-  doc.text(`${s.total} aktive Teilnehmende gesamt`,W-mg,34,{align:'right'});
+  doc.text(`${s.lernwerkstatt} aktive Teilnehmende · ${s.schnupper} Schnuppern`,W-mg,34,{align:'right'});
   doc.setDrawColor(BLUE[0],BLUE[1],BLUE[2]);doc.setLineWidth(0.6);doc.line(mg,39,W-mg,39);
 
   doc.autoTable({
@@ -3589,7 +3589,7 @@ function genTNPDF(){
   }
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
-  toast(`👥 TN-Statistik: ${s.lernwerkstatt} in der Lernwerkstatt, ${s.schnupper} Schnuppern`,'t-ok');
+  toast(`👥 TN-Statistik: ${s.lernwerkstatt} aktive Teilnehmende, ${s.schnupper} Schnuppern`,'t-ok');
 }
 
 // ────────────────────────────────────────────
