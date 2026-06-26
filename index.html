@@ -584,7 +584,7 @@ input,select,textarea{font-family:inherit}
   <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
   <button class="nav-btn nav-tn" onclick="genTNPDF()" title="Teilnehmer-Statistik (Kennzahlen) als PDF generieren">👥 TN-Statistik</button>
-  <button class="nav-btn nav-neophyt" onclick="genNeophytPDF()" title="Neophyten – Anzahl Teilnehmende (mit KW &amp; Datum) als PDF generieren">🌱 Neophyt</button>
+  <button class="nav-btn nav-neophyt" onclick="openNeophytModal()" title="Neophyten-Auswertung: Jahr wählen, Sommer-/Herbst-PDF erzeugen">🌱 Neophyt</button>
 </nav>
 
 <div class="main">
@@ -942,6 +942,32 @@ input,select,textarea{font-family:inherit}
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closeRapportModal()">Abbrechen</button>
     <button class="btn btn-primary" onclick="genRapportPDF()">📊 PDF exportieren</button>
+  </div>
+</div>
+</div>
+
+<!-- NEOPHYTEN-AUSWERTUNG (Jahr wählen, Sommer/Herbst getrennt) -->
+<div class="overlay" id="neoOverlay">
+<div class="modal" style="max-width:440px">
+  <div class="modal-head">
+    <div class="modal-title">🌱 Neophyten-Auswertung</div>
+    <button class="modal-x" onclick="closeNeophytModal()">&times;</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:4px">
+    <div class="fg">
+      <label>Jahr</label>
+      <select class="fi" id="neoYear" style="width:100%"></select>
+    </div>
+    <div style="font-size:12px;color:#667;line-height:1.5">
+      Es werden zwei <b>getrennte</b> Auswertungen erstellt:<br>
+      <b>Sommer</b> = Januar–August · <b>Herbst</b> = September–Dezember.<br>
+      Jeder Button erzeugt ein eigenes PDF.
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="closeNeophytModal()">Abbrechen</button>
+    <button class="btn btn-primary" onclick="genNeophytPDF('sommer')">🌱 Sommer-PDF</button>
+    <button class="btn btn-primary" onclick="genNeophytPDF('herbst')">🍂 Herbst-PDF</button>
   </div>
 </div>
 </div>
@@ -3413,23 +3439,54 @@ function genWeekPDF(){
 // ────────────────────────────────────────────
 // NEOPHYT – Anzahl Teilnehmende pro Tag übers ganze Jahr (ohne Namen) als PDF
 // ────────────────────────────────────────────
-function genNeophytPDF(){
-  if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
-  const{jsPDF}=jspdf;
+// Neophyten-Auswertung: Jahr-Auswahl-Modal öffnen/schliessen.
+function openNeophytModal(){
+  const cur=(curWeek||isoWeek(new Date())).y;
+  const years=new Set();
+  Object.keys(DB.plans||{}).forEach(dStr=>{ const d=pd(dStr); if(d) years.add(d.getFullYear()); });
+  for(let y=cur;y<=cur+3;y++) years.add(y);            // aktuelles Jahr + 3 Jahre voraus
+  const list=[...years].sort((a,b)=>a-b);
+  const sel=document.getElementById('neoYear');
+  sel.innerHTML=list.map(y=>`<option value="${y}"${y===cur?' selected':''}>${y}</option>`).join('');
+  document.getElementById('neoOverlay').classList.add('open');
+}
+function closeNeophytModal(){
+  document.getElementById('neoOverlay').classList.remove('open');
+}
 
-  // Jahr aus der aktuell gewählten Woche ableiten
-  const Y=(curWeek||isoWeek(new Date())).y;
-
-  // Alle Tage des Jahres mit Neophyten-Einteilung sammeln (VM und NM je separat = +1)
+// Reine Sammelfunktion (testbar): Tage mit Neophyten-Einteilung für Jahr + Zeitraum.
+// Zeitraum 'sommer' = Januar–August (Monat 0–7), 'herbst' = September–Dezember (8–11,
+// Dezember bewusst inkludiert). Garantiert die strikte Trennung an EINER Stelle.
+function neoDaysForPeriod(year, period){
+  const inP = m => period==='sommer' ? (m<=7) : (m>=8);
   const dayData=[];
   Object.keys(DB.plans||{}).forEach(dStr=>{
     const d=pd(dStr);
-    if(!d||d.getFullYear()!==Y) return;
+    if(!d || d.getFullYear()!==year || !inP(d.getMonth())) return;
     let cnt=0;
     DB.participants.forEach(p=>{ cnt+=neoCountForDay(p,d); });
     if(cnt>0) dayData.push({d,cnt});
   });
   dayData.sort((a,b)=>a.d-b.d);
+  return dayData;
+}
+
+function genNeophytPDF(period){
+  if(typeof jspdf==='undefined'){toast('jsPDF nicht geladen – bitte Seite neu laden','t-err');return;}
+  const{jsPDF}=jspdf;
+
+  // Jahr aus dem Auswahl-Modal lesen
+  const Y=parseInt((document.getElementById('neoYear')||{}).value,10)||(curWeek||isoWeek(new Date())).y;
+
+  // Zeitraum-Konfiguration (Sommer/Herbst strikt getrennt)
+  const PERIODS={
+    sommer:{titel:'Sommer Neophyten-Einsatz', range:'Januar–August',      datei:'Sommer', emoji:'🌱'},
+    herbst:{titel:'Herbst Neophyten-Einsatz', range:'September–Dezember', datei:'Herbst', emoji:'🍂'},
+  };
+  const P=PERIODS[period]||PERIODS.sommer;
+
+  // Nur die Tage des gewählten Zeitraums (keine Vermischung Sommer/Herbst)
+  const dayData=neoDaysForPeriod(Y,period);
   const yearTotal=dayData.reduce((s,r)=>s+r.cnt,0);
   const dayCount=dayData.length;
 
@@ -3452,9 +3509,9 @@ function genNeophytPDF(){
 
   // Kopfzeile (Seite 1)
   doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(21,128,61);
-  doc.text('Neophyten',mg,26);
+  doc.text(P.titel,mg,26);
   doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(90);
-  doc.text(`Anzahl Teilnehmende · Jahr ${Y}`,mg,34);
+  doc.text(`${P.range} · Jahr ${Y}`,mg,34);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120);
   doc.text(`${yearTotal} Einteilungen an ${dayCount} Tag${dayCount===1?'':'en'}`,W-mg,34,{align:'right'});
   doc.setDrawColor(21,128,61);doc.setLineWidth(0.6);doc.line(mg,39,W-mg,39);
@@ -3469,7 +3526,7 @@ function genNeophytPDF(){
     headStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:11,halign:'left'},
     alternateRowStyles:{fillColor:[240,253,244]},
     columnStyles:{0:{cellWidth:24},1:{cellWidth:40},2:{cellWidth:50},3:{cellWidth:'auto',halign:'center',fontStyle:'bold'}},
-    foot:[[`Total Jahr ${Y}`,'',`${dayCount} Tag${dayCount===1?'':'e'}`,String(yearTotal)]],
+    foot:[[`Total ${P.range} ${Y}`,'',`${dayCount} Tag${dayCount===1?'':'e'}`,String(yearTotal)]],
     footStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:12,halign:'left',lineColor:[21,128,61],lineWidth:0.3},
     showFoot:'lastPage',
     didParseCell:(data)=>{
@@ -3493,8 +3550,9 @@ function genNeophytPDF(){
     doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
   }
 
-  doc.save(`Neophyten_Jahr_${Y}.pdf`);
-  toast(`🌱 Neophyten ${Y}: ${yearTotal} Einteilungen an ${dayCount} Tagen`,'t-ok');
+  doc.save(`Neophyten_${P.datei}_${Y}.pdf`);
+  closeNeophytModal();
+  toast(`${P.emoji} ${P.titel} ${Y}: ${yearTotal} Einteilungen an ${dayCount} Tagen`,'t-ok');
 }
 
 // Teilnehmer-Kennzahlen (reine Berechnung, testbar/wiederverwendbar).
