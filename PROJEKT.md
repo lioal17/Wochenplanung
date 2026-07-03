@@ -5,7 +5,8 @@
 > (ersetzt aber nicht) die Datei `index.html`, welche selbst die zuverlässigste
 > Sicherung ist (reiner Text/HTML, einfach im Browser öffnen).
 >
-> Stand: 2026-06-15 · Branch `claude/peaceful-lamport-nxir68`
+> Stand: 2026-07-03 (Details zu Zwischenständen siehe die datierten
+> `PROJEKT-ZUSAMMENFASSUNG-*.md`-Dateien)
 
 ---
 
@@ -140,20 +141,22 @@ Einheitliches Schema (wie Absenz-Codes): **Basis = ganzer Tag**, `-VM` = Vormitt
 > Neue Einträge nutzen das einheitliche Schema (Basis = ganzer Tag).
 
 ### 3.3 Absenz-Codes (`ABS`)
-`BA`, `BA-NM`, `BA-VM` (Bezahlte Absenz / -Nachmittag / -Vormittag),
+`BA`, `BA-NM`, `BA-VM`, `BA-W` (Bezahlte Absenz / -Nachmittag / -Vormittag / ganze Woche),
 `FE`, `FE-W` (Ferien / Ferien ganze Woche),
 `KR`, `KR-NM`, `KR-VM`, `KR-W` (Krank / halbtags / ganze Woche),
 `MI` (Militär/Zivilschutz), `PA` (Praktikum), `SL` (Schnupperlehre),
-`UA`, `UA-NM`, `UA-VM` (Unbezahlte Absenz / halbtags),
-`UN` (Unfall), `ZS` (Zu spät).
+`UA`, `UA-NM`, `UA-VM`, `UA-W` (Unbezahlte Absenz / halbtags / ganze Woche),
+`UN`, `UN-NM`, `UN-VM`, `UN-W` (Unfall / halbtags / ganze Woche), `ZS` (Zu spät).
 
 - **Kein eCase-Auftrag:** `SL` (Schnupperlehre/-tag) und `PA` (Praktikum) erzeugen
   **keinen** offenen eCase-Eintrag (weder im Tages-/Wochenplan, im Badge noch im Monatsplan).
 
-- **Halbtags-Absenzen** (`SOFT_ABS`): ZS, UA-VM/NM, KR-VM/NM, BA-VM/NM – Werkstatt-Einteilung
-  des nicht betroffenen Slots bleibt möglich.
-- **Wochencodes** KR-W / FE-W: nur am **Montag** einsteuerbar, füllen automatisch Mo–Fr (5 Tage);
-  Entfernen löscht die ganze Woche.
+- **Halbtags-Absenzen** (`SOFT_ABS`): ZS, UA-VM/NM, KR-VM/NM, BA-VM/NM, UN-VM/NM –
+  Werkstatt-Einteilung des nicht betroffenen Slots bleibt möglich.
+- **Wochencodes** BA-W / FE-W / KR-W / UA-W / UN-W: nur am **Montag** einsteuerbar, füllen
+  automatisch Mo–Fr (5 Tage); Entfernen löscht die ganze Woche. Nur `UA`/`UA-W` gelten im
+  Monatsrapport als **unbezahlt** – `UA-VM`/`UA-NM` (Halbtag) sowie alle übrigen Absenz-Codes
+  (inkl. `UN`-Familie) zählen als **bezahlt**.
 
 ### 3.4 Jobcoaches
 `lio`→Lio, `tom`→Tom, `yvi`→Yvi (jeweils eigene Farbe).
@@ -173,6 +176,7 @@ Top-Navigation (`show(view)`):
 4. **👥 Teilnehmer** (`person`) – Teilnehmer-Verwaltung (anlegen/bearbeiten/löschen).
 5. **📥 Dokument-Import** (`import`) – Teilnehmerlisten aus PDF/Excel/Word einlesen.
 6. **🌱 Neophyt** – direkter PDF-Export (Anzahl Teilnehmende pro Tag mit KW & Datum).
+7. **👥 TN-Statistik** – direkter PDF-Export mit Teilnehmer-Kennzahlen (siehe §7).
 
 Zusätzlich: **Teilnehmer-Rapport** (Modal, siehe §6) und diverse Speicher-/Import-Knöpfe.
 
@@ -258,11 +262,12 @@ vorliegt – die Tagesplanung hat immer Vorrang vor dem hinterlegten Sporttermin
 | Schnuppertag | je `SL`-Tag = 1 Tag |
 | Schnupperlehre (ganze Woche) | je `S.EX`-Tag = 1 (volle Woche = 5 Tage) |
 
-> **Weitere Absenz-Faktoren im Regelwerk** (im Teilnehmer-Rapport **bewusst nicht**
-> als eigene Zeile, da dort nicht benötigt): FE-W = 5 Tage, MI = 1 Tag, UN = 1 Tag,
-> SL = 5 Tage. Diese Codes werden im Plan erfasst und erscheinen in der
-> **Monatsübersicht** (als Tageszelle) sowie im **Monatsrapport** (als Tageszeile),
-> jedoch **nicht** im Abwesenheiten-Block des Teilnehmer-Rapports (nur UA/BA/KR/ZS).
+> **Ferien/Militär/Unfall im Teilnehmer-Rapport:** `FE` (Ferien), `MI` (Militär/
+> Zivilschutz) und `UN` (Unfall) erscheinen im Abwesenheiten-Block **als eigene
+> Zeile** – `FE`/`MI` jedoch **nur, wenn ihr Total > 0 ist** (sonst ausgeblendet, um
+> die Tabelle kurz zu halten); `UN` wird immer angezeigt, auch bei 0. `FE-W` zählt
+> dabei wie die anderen Wochencodes 5 Tage (Mo–Fr), `SL` (Schnupperlehre) läuft
+> separat im Abschnitt SCHNUPPERLEHRE (siehe unten), nicht unter ABWESENHEITEN.
 
 ### 6.2 Darstellung
 Zwei-Spalten-Tabelle **Bereich · Total**; pro Abschnitt nur die **Endzahl** mit Einheit
@@ -273,9 +278,14 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
 ---
 
 ## 7. Weitere PDF-Exporte
-- **`genWeekPDF`** – Wochenplan (Seite 1 Wochenübersicht, Seite 2 Tagesübersicht, Seite 3 Legende).
+- **`genWeekPDF`** – Wochenplan: Seite 1 Wochenübersicht, Seite 2 Tagesübersicht,
+  Seite 3 Monatsübersicht (Querformat, Monat der berichteten Woche), Seite 4 Legende.
 - **`genPDF` / `buildRpt`** – Monatsrapport (BASISJOB-Format, inkl. Freitext-Notizen).
 - **`genNeophytPDF`** – Liste „Anzahl Teilnehmende pro Tag" (KW, Datum) übers ganze Jahr.
+- **`genTNPDF`** (Kennzahlen aus `tnStats`) – Teilnehmer-Statistik als PDF: aktive
+  Teilnehmende (exkl. Schnuppern), Anzahl mit aktivem IIZ, Aufschlüsselung nach Status
+  (Lehrstelle/Praktikum/Praktikum+Lehrstelle), Schnuppern separat ausgewiesen.
+  Bezugsmenge = aktive TN (`isActiveOnDay`) am Erstellungstag.
 
 ---
 
