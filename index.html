@@ -134,6 +134,8 @@ input,select,textarea{font-family:inherit}
 .btn-danger:hover{background:#b91c1c}
 .btn-amber{background:var(--amber);color:#fff}
 .btn-amber:hover{background:#b45309}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#1d4ed8}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-xs{padding:3px 8px;font-size:11px}
 .btn-icon{
@@ -672,7 +674,10 @@ input,select,textarea{font-family:inherit}
           <label>Monat</label>
           <input type="month" class="fi" id="rptM" onchange="buildRpt()" style="width:155px">
         </div>
-        <button class="btn btn-success" onclick="genPDF()">📄 Monatsrapport generieren</button>
+        <div style="display:flex;flex-direction:column;gap:10px;width:260px">
+          <button class="btn btn-success" onclick="genPDF()" style="width:100%;justify-content:center">📄 Monatsrapport generieren</button>
+          <button class="btn btn-blue" onclick="genAllRapportsPDF()" style="width:100%;justify-content:center">📄 Alle Monatsrapporte generieren</button>
+        </div>
       </div>
       <div id="rptArea"></div>
     </div>
@@ -2427,21 +2432,27 @@ function markWBDone(pid,weeks){
 // ────────────────────────────────────────────
 // MONATSÜBERSICHT
 // ────────────────────────────────────────────
-function renderMonthly(){
-  const{y,m}=curMonth;
-  document.getElementById('moLabel').textContent=`${MON[m]} ${y}`;
+// Archivlogik: TN nur im Monat anzeigen, in dem er an mind. einem Tag aktiv
+// ist. Ausgetretene TN bleiben so im Austrittsmonat sichtbar (Resttage «X»)
+// und verschwinden ab dem Folgemonat – konsistent zur PDF-Monatsübersicht.
+// Massgebliche Teilnehmer-Reihenfolge für Monatsübersicht UND Monatsrapporte.
+function monthlyOrderedParticipants(y,m){
   const days=monthDays(y,m);
   const isBottom=p=>p.status==='praktikum'||p.status==='prklehr';
-  // Archivlogik: TN nur im Monat anzeigen, in dem er an mind. einem Tag aktiv
-  // ist. Ausgetretene TN bleiben so im Austrittsmonat sichtbar (Resttage «X»)
-  // und verschwinden ab dem Folgemonat – konsistent zur PDF-Monatsübersicht.
-  const persons=[...DB.participants]
+  return [...DB.participants]
     .filter(p=>days.some(d=>isActiveOnDay(p,d)))
     .sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
     return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
   });
+}
+
+function renderMonthly(){
+  const{y,m}=curMonth;
+  document.getElementById('moLabel').textContent=`${MON[m]} ${y}`;
+  const days=monthDays(y,m);
+  const persons=monthlyOrderedParticipants(y,m);
 
   if(!persons.length){
     document.getElementById('moArea').innerHTML='<div class="empty-state"><p>Keine Teilnehmer erfasst.</p></div>';
@@ -2802,16 +2813,11 @@ function buildRpt(){
   area.innerHTML=html;
 }
 
-function genPDF(){
-  const pid=document.getElementById('rptP').value;
-  const mv=document.getElementById('rptM').value;
-  if(!pid||!mv) return;
-  const[y,m]=mv.split('-').map(Number); const month=m-1;
-  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+// Zeichnet den Monatsrapport eines Teilnehmers auf die aktuelle Seite von `doc`
+// (kein doc.save(), keine Fusszeile – siehe addRapportFooters). Wird sowohl von
+// genPDF() (Einzelrapport) als auch von genAllRapportsPDF() (Sammel-PDF) genutzt.
+function drawRapportPage(doc,p,y,month){
   const rows=getRptRows(p,y,month);
-
-  const{jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,mg=14;
   let yp=mg;
 
@@ -2841,7 +2847,7 @@ function genPDF(){
   yp+=8;
 
   // Freitext-Bemerkung direkt unter dem Namen
-  const rptNote=getRptNote(pid,y,month);
+  const rptNote=getRptNote(p.id,y,month);
   if(rptNote.trim()){
     doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0);
     doc.text('Bemerkungen:',mg,yp);
@@ -2898,14 +2904,58 @@ function genPDF(){
     doc.text('................................................................',W/2+4,sy+13);
   }
 
-  // BASISJOB
-  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(55,55,55);
-  doc.text('BASISJOB',W-mg,283,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(150);
-  doc.text('Seite 1 / 1',mg,287);
+}
+
+// Fusszeile ("BASISJOB" + "Seite i / N") auf allen Seiten von `doc` setzen –
+// muss erst NACH dem Zusammenführen aller Rapport-Seiten aufgerufen werden.
+function addRapportFooters(doc){
+  const W=210,mg=14;
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(55,55,55);
+    doc.text('BASISJOB',W-mg,283,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(150);
+    doc.text(`Seite ${i} / ${pageCount}`,mg,287);
+  }
+}
+
+function genPDF(){
+  const pid=document.getElementById('rptP').value;
+  const mv=document.getElementById('rptM').value;
+  if(!pid||!mv) return;
+  const[y,m]=mv.split('-').map(Number); const month=m-1;
+  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  drawRapportPage(doc,p,y,month);
+  addRapportFooters(doc);
 
   doc.save(`Monatsrapport_${p.vorname}_${p.nachname}_${MON[month]}_${y}.pdf`);
   toast('📄 PDF wird heruntergeladen…','t-ok');
+}
+
+// Erzeugt für jeden im gewählten Monat aktiven Teilnehmer eine Rapport-Seite
+// und führt sie – in der Reihenfolge der Monatsübersicht – zu einem einzigen
+// PDF zusammen.
+function genAllRapportsPDF(){
+  const mv=document.getElementById('rptM').value;
+  if(!mv){ toast('Bitte zuerst einen Monat auswählen','t-warn'); return; }
+  const[y,m]=mv.split('-').map(Number); const month=m-1;
+  const persons=monthlyOrderedParticipants(y,month);
+  if(!persons.length){ toast('Keine Teilnehmer in diesem Monat aktiv','t-warn'); return; }
+
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  persons.forEach((p,i)=>{
+    if(i>0) doc.addPage();
+    drawRapportPage(doc,p,y,month);
+  });
+  addRapportFooters(doc);
+
+  doc.save(`Monatsrapporte_${MON[month]}_${y}.pdf`);
+  toast(`📄 ${persons.length} Monatsrapporte zusammengeführt & heruntergeladen`,'t-ok');
 }
 
 // ────────────────────────────────────────────
