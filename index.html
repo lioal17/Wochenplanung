@@ -1464,10 +1464,10 @@ const ABS = [
   {c:'MI',    l:'MI – Militär/Zivilschutz (ganzer Tag)'},
   {c:'PA',    l:'PA – Praktikum (ganzer Tag)'},
   {c:'SL',    l:'SL – Schnupperlehre (ganzer Tag)'},
-  {c:'UA',    l:'UA – Unentschuldigte Absenz (ganzer Tag)'},
-  {c:'UA-VM', l:'UA-VM – Unentschuldigte Absenz (Vormittag)'},
-  {c:'UA-NM', l:'UA-NM – Unentschuldigte Absenz (Nachmittag)'},
-  {c:'UA-W',  l:'UA-W – Unentschuldigte Absenz (ganze Woche)'},
+  {c:'UA',    l:'UA – Unbezahlte Absenz (ganzer Tag)'},
+  {c:'UA-VM', l:'UA-VM – Unbezahlte Absenz (Vormittag)'},
+  {c:'UA-NM', l:'UA-NM – Unbezahlte Absenz (Nachmittag)'},
+  {c:'UA-W',  l:'UA-W – Unbezahlte Absenz (ganze Woche)'},
   {c:'UN',    l:'UN – Unfall (ganzer Tag)'},
   {c:'UN-VM', l:'UN-VM – Unfall (Vormittag)'},
   {c:'UN-NM', l:'UN-NM – Unfall (Nachmittag)'},
@@ -1483,7 +1483,7 @@ const AUTO_BEM = {
   BA:'Bezahlte Absenz','BA-VM':'Bezahlte Absenz Vormittag','BA-NM':'Bezahlte Absenz Nachmittag','BA-W':'Bezahlte Absenz ganze Woche',
   FE:'Ferien','FE-W':'Ferien ganze Woche',KR:'Krank','KR-VM':'Krank Vormittag','KR-NM':'Krank Nachmittag','KR-W':'Krank ganze Woche',
   UN:'Unfall','UN-VM':'Unfall Vormittag','UN-NM':'Unfall Nachmittag','UN-W':'Unfall ganze Woche',
-  UA:'Unentschuldigte Absenz','UA-VM':'Unentschuldigte Absenz Vormittag','UA-NM':'Unentschuldigte Absenz Nachmittag','UA-W':'Unentschuldigte Absenz ganze Woche',
+  UA:'Unbezahlte Absenz','UA-VM':'Unbezahlte Absenz Vormittag','UA-NM':'Unbezahlte Absenz Nachmittag','UA-W':'Unbezahlte Absenz ganze Woche',
   MI:'Militär/Zivilschutz',SL:'Schnupperlehre',
 };
 
@@ -2474,7 +2474,7 @@ function renderMonthly(){
     r2+=`<th colspan="2" class="${sep}" style="font-weight:400;font-size:9px">${WD[d.getDay()]}</th>`;
     r3+=`<th class="${sep} mo-slot-h">VM</th><th class="${sep} mo-slot-h">NM</th>`;
   });
-  const statH=`<th rowspan="4" class="th-stat" style="color:var(--red)" title="Unentschuldigte Absenz">UA</th>`+
+  const statH=`<th rowspan="4" class="th-stat" style="color:var(--red)" title="Unbezahlte Absenz">UA</th>`+
     `<th rowspan="4" class="th-stat" style="color:var(--amber)" title="Zu spät">ZS</th>`;
   r0+=statH+`</tr>`;r1+=`</tr>`;r2+=`</tr>`;r3+=`</tr>`;
 
@@ -3057,7 +3057,7 @@ function genRapportPDF(){
     ...(stats.fe>0?[['Ferien (FE)',  tg(stats.fe)]]:[]),
     ['Krankheit (KR)',              tg(stats.kr)],
     ...(stats.mi>0?[['Militär/Zivilschutz (MI)', tg(stats.mi)]]:[]),
-    ['Unentschuldigte Absenz (UA)', tg(stats.ua)],
+    ['Unbezahlte Absenz (UA)',      tg(stats.ua)],
     ['Unfall (UN)',                 tg(stats.un)],
     ['Zu spät (ZS)',               `${stats.zs}×`],
     ['',''],
