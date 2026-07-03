@@ -198,7 +198,11 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 `false`, wenn `date` vor `einsatzVon` oder nach `einsatzBis` liegt.
 
 ### 5.3 Slot-Priorität bei der Darstellung
-**Absenz > Block (Schule/Sport) > Werkstatt-Einteilung.** Ganztags-Absenzen sperren beide Slots.
+**Absenz (je Halbtag) > manueller Tages-Eintrag (`plan.vm`/`plan.nm`, Schule- oder
+Werkstatt-Code) > geplanter Block (Schule/Sport) > Lernwerkstatt (Default).**
+Ganztags-Absenzen sperren beide Slots. D. h. ein fixer Sporttermin (oder Schultag) wird
+angezeigt, **nur solange** für diesen Halbtag keine Absenz und keine manuelle Einteilung
+vorliegt – die Tagesplanung hat immer Vorrang vor dem hinterlegten Sporttermin.
 
 ### 5.4 Weitere Helfer
 - `neoCountForDay` – zählt Neophyten-Einteilung max. 1× pro TN/Tag.
