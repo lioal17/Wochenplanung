@@ -144,7 +144,7 @@ Einheitliches Schema (wie Absenz-Codes): **Basis = ganzer Tag**, `-VM` = Vormitt
 `FE`, `FE-W` (Ferien / Ferien ganze Woche),
 `KR`, `KR-NM`, `KR-VM`, `KR-W` (Krank / halbtags / ganze Woche),
 `MI` (Militär/Zivilschutz), `PA` (Praktikum), `SL` (Schnupperlehre),
-`UA`, `UA-NM`, `UA-VM` (Unentschuldigte Absenz / halbtags),
+`UA`, `UA-NM`, `UA-VM` (Unbezahlte Absenz / halbtags),
 `UN` (Unfall), `ZS` (Zu spät).
 
 - **Kein eCase-Auftrag:** `SL` (Schnupperlehre/-tag) und `PA` (Praktikum) erzeugen
@@ -243,7 +243,7 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 **ABWESENHEITEN (Ausgabe in Tagen bzw. Vorkommnissen):**
 | Code | Regel |
 |------|-------|
-| Unentschuldigte Absenz (UA) | ganzer Tag = 1; VM/NM = 0.5 |
+| Unbezahlte Absenz (UA) | ganzer Tag = 1; VM/NM = 0.5 |
 | Bezahlte Absenz (BA) | ganzer Tag = 1; VM/NM = 0.5 |
 | Krankheit (KR) | ganzer Tag = 1; VM/NM = 0.5; KR-W = 5 (je Wochentag 1) |
 | Zu spät (ZS) | Anzahl Vorkommnisse (×) |
