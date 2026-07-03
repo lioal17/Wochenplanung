@@ -3235,8 +3235,9 @@ function genWeekPDF(){
       const blk=getBlocks(p,d);
       // ZS (Zu spät): TN ist trotzdem da → echte Einteilung anzeigen, nicht ZS
       if(plan.abwesenheit&&plan.abwesenheit!=='ZS'){row.push(plan.abwesenheit,plan.abwesenheit);return;}
-      const vmCell=blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCell=blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+      // Slot-Eintrag (plan.vm/nm) übersteuert immer den geplanten Block (Sport/Schule).
+      const vmCell=plan.vm?wsAbbr(plan.vm):(blk.vmB?blk.vmL:'');
+      const nmCell=plan.nm?wsAbbr(plan.nm):(blk.nmB?blk.nmL:'');
       // Schule-Code «S» ausgeschrieben darstellen
       row.push(vmCell==='S'?'Schule':vmCell,nmCell==='S'?'Schule':nmCell);
     });
@@ -3290,6 +3291,18 @@ function genWeekPDF(){
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
   const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
+  // Effektiver Wert je Slot: Halbtags-/Ganztags-Absenz > manueller Plan-Eintrag > geplanter
+  // Block (Sport/Schule) – mirrors renderDayPlan()'s vmAbsent/nmAbsent + Slot-Override-Logik.
+  const slotEff=(pl,bl)=>{
+    const rawAbs=pl.abwesenheit||'';
+    const softAbs=SOFT_ABS_PDF.has(rawAbs);
+    const absent=!!rawAbs&&!softAbs;
+    const vmAbsent=absent||rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
+    const nmAbsent=absent||rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM';
+    const vm=vmAbsent?rawAbs:(pl.vm||(bl.vmB?bl.vmL:''));
+    const nm=nmAbsent?rawAbs:(pl.nm||(bl.nmB?bl.nmL:''));
+    return{vm,nm};
+  };
   const dayActive=DB.participants
     .filter(p=>{
       if(!isActiveOnDay(p,dayDate)) return false;
@@ -3302,9 +3315,10 @@ function genWeekPDF(){
       // Ganztags-Absenz → nie auf Tagesliste
       const rawAbs=pl.abwesenheit||'';
       if(rawAbs&&!SOFT_ABS_PDF.has(rawAbs)) return false;
-      // Nur TN mit effektivem Werkstatt-Eintrag (nicht gesperrter Slot)
-      const hasVm=!bl.vmB&&WS.includes(pl.vm);
-      const hasNm=!bl.nmB&&(WS.includes(pl.nm)||pl.nm==='Sport');
+      // Nur TN mit effektivem Werkstatt-/Sport-Eintrag (Slot-Absenz > Plan-Eintrag > Block)
+      const{vm,nm}=slotEff(pl,bl);
+      const hasVm=WS.includes(vm);
+      const hasNm=WS.includes(nm)||nm==='Sport';
       return hasVm||hasNm;
     })
     .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
@@ -3314,8 +3328,7 @@ function genWeekPDF(){
     const plan=getPlan(curDay,p.id);
     const blk=getBlocks(p,dayDate);
     const bwJC=p.bewerbenJC||p.jobCoach||'';
-    const vmVal=blk.vmB?(blk.vmL==='PA+LS'?'PA+LS':blk.vmL):(plan.vm||'');
-    const nmVal=blk.nmB?(blk.nmL==='PA+LS'?'PA+LS':blk.nmL):(plan.nm||'');
+    const{vm:vmVal,nm:nmVal}=slotEff(plan,blk);
     const abs=plan.abwesenheit?(plan.abwesenheitText?`${plan.abwesenheit} – ${plan.abwesenheitText}`:plan.abwesenheit):'';
     const swLbl=plan.sw==='S.EX'?'Schnupperlehre':'';
     const bemPdf=[swLbl,plan.bemerkung].filter(Boolean).join(' · ');
