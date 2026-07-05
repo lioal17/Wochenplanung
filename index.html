@@ -1842,6 +1842,9 @@ function neoCountForDay(p, d){
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
+// Standard-Teilnehmersortierung: Vorname, dann Nachname (deutsche Kollation).
+const byName=(a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+
 // ────────────────────────────────────────────
 // NAVIGATION
 // ────────────────────────────────────────────
@@ -1919,7 +1922,7 @@ function renderDayPlan(){
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
         // Alle TN: immer nach Vorname sortieren
-        return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+        return byName(a,b);
       });
   }
   const active = _pSortList;
@@ -2270,7 +2273,7 @@ function toggleArchive(){ _showArchive=!_showArchive; renderPersons(); }
 
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  const sorted=[...DB.participants].sort(byName);
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
@@ -2548,7 +2551,7 @@ function monthlyOrderedParticipants(y,m){
     .sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+    return byName(a,b);
   });
 }
 
@@ -2703,7 +2706,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  const sorted=[...DB.participants].sort(byName);
   sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
@@ -3023,6 +3026,21 @@ function addRapportFooters(doc){
   }
 }
 
+// Gemeinsame Seiten-Fusszeile (Seite i / N, optional links ein Erstellt-am-Text)
+// für Wochenplan-, Neophyten- und TN-Statistik-PDF. setFont nur wenn übergeben
+// (TN-Statistik braucht 'normal' nach vorherigem italic; die anderen nutzen die
+// Ambient-Schrift → kein setFont, damit die Ausgabe byte-identisch bleibt).
+function pdfPageFooters(doc,{W,mg,y,fs,gray,left,font}){
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    if(font) doc.setFont('helvetica',font);
+    doc.setFontSize(fs);doc.setTextColor(gray);
+    if(left) doc.text(left,mg,y);
+    doc.text(`Seite ${i} / ${pageCount}`,W-mg,y,{align:'right'});
+  }
+}
+
 function genPDF(){
   const pid=document.getElementById('rptP').value;
   const mv=document.getElementById('rptM').value;
@@ -3066,7 +3084,7 @@ function genAllRapportsPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  const sorted=[...DB.participants].sort(byName);
   sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   document.getElementById('rapportOverlay').classList.add('open');
 }
@@ -3318,7 +3336,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||byName(a,b));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -3422,7 +3440,7 @@ function genWeekPDF(){
       const hasNm=WS.includes(nm)||nm==='Sport';
       return hasVm||hasNm;
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||byName(a,b));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -3493,7 +3511,7 @@ function genWeekPDF(){
   const moBottom=p=>p.status==='praktikum'||p.status==='prklehr';
   const moPersons=[...DB.participants]
     .filter(p=>moDays.some(d=>isActiveOnDay(p,d)))
-    .sort((a,b)=>(moBottom(a)?1:0)-(moBottom(b)?1:0)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+    .sort((a,b)=>(moBottom(a)?1:0)-(moBottom(b)?1:0)||byName(a,b));
 
   // Effektiver VM/NM-Code je Tag (konsistent mit dem Monatsraster: Ferien, Slot-
   // Übersteuerung, Halb-/Ganztags-Absenzen). Zelle = 2 Zeilen (VM oben, NM unten).
@@ -3587,12 +3605,7 @@ function genWeekPDF(){
   lgSection('ABSENZ-CODE', legendAbsCombined(), 3, [254,226,226], [150,20,20]);
 
   // Footer alle Seiten
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFontSize(7);doc.setTextColor(180);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,205,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:205,fs:7,gray:180});
 
   doc.save(`Wochenplan_KW${pad(w)}_${y}.pdf`);
   toast('📄 Wochenplan PDF (3 Seiten) wird heruntergeladen…','t-ok');
@@ -3696,13 +3709,8 @@ function genNeophytPDF(){
 
   // Fuß- und Seitenzahlen auf allen Seiten
   const now=new Date();
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFontSize(8);doc.setTextColor(170);
-    doc.text(`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,290);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:290,fs:8,gray:170,
+    left:`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`});
 
   doc.save(`Neophyten_${Y}.pdf`);
   closeNeophytModal();
@@ -3792,13 +3800,8 @@ function genTNPDF(){
   doc.text('Schnuppern wird separat ausgewiesen und ist in den übrigen Kennzahlen nicht enthalten.',mg,yEnd+8);
 
   // Fuß- und Seitenzahlen
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(170);
-    doc.text(`Erstellt am ${dateStr} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,290);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:290,fs:8,gray:170,font:'normal',
+    left:`Erstellt am ${dateStr} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`});
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
   toast(`👥 TN-Statistik: ${s.lernwerkstatt} aktive Teilnehmende, ${s.schnupper} Schnuppern`,'t-ok');
