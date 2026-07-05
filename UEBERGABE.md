@@ -65,8 +65,8 @@ hier ist die *Übergabe-Sicht*, `PROJEKT.md` ist das *technische Nachschlagewerk
 - **GitHub-Repository:** https://github.com/lioal17/Wochenplanung
   → Eigentümer-Konto: **`lioal17`**. Die Nachfolge-Person braucht **Schreibrechte**
   auf dieses Repo (als Mitarbeiter/Collaborator hinzufügen oder Repo-Eigentum übertragen).
-- **Versionsverwaltung:** Git. Die **komplette Geschichte** (247 Commits, seit
-  2026-06-09) ist in dieser Sicherung als Git-Bundle enthalten (siehe Abschnitt 8) –
+- **Versionsverwaltung:** Git. Die **komplette Geschichte** (seit 2026-06-09) ist
+  in dieser Sicherung als Git-Bundle enthalten (siehe Abschnitt 8) –
   damit ist das Projekt selbst dann vollständig wiederherstellbar, wenn das
   GitHub-Konto verloren geht.
 - **Veröffentlichte Version (GitHub Pages):** Bei jedem Push auf den `main`-Branch
@@ -160,9 +160,10 @@ sie automatisch (Workflow `deploy-pages.yml`). Nichts weiter zu tun.
   wöchentlich**, und immer vor grösseren Änderungen.
 - **Wiederherstellen / Umzug auf neuen Computer:** `index.html` öffnen → Import-Knopf →
   die zuletzt gesicherte `.json`-Datei einlesen. Damit sind alle Daten wieder da.
-- Die App hält zusätzlich einen internen Sicherungs-Snapshot im Browser
-  (`lw_db_backup`) – das ersetzt aber **keine** externe Sicherung (geht beim
-  Löschen der Browserdaten verloren).
+- **Wichtig:** Es gibt **keinen** internen Auto-Backup-Snapshot in der App. Die
+  einzige Sicherung ist der **manuelle JSON-Export** – deshalb regelmäßig sichern.
+- **„🗑 Daten löschen":** entfernt alle lokalen Daten (localStorage + IndexedDB)
+  nach zwei Rückfragen – gedacht für geteilte Rechner. Vorher per Export sichern!
 
 > **Datenschutz:** Diese JSON-Dateien enthalten **Personendaten** von Teilnehmenden.
 > Sie gehören auf ein geschütztes Laufwerk, nicht in ein öffentliches Repository
@@ -196,7 +197,7 @@ Diese „vollumfängliche Datensicherung" besteht aus einem Archiv
    `README.md`, `PROJEKT-ZUSAMMENFASSUNG-2026-06-19.md`.
 3. **`.github/`** + **`.nojekyll`** – die Veröffentlichungs-Konfiguration.
 4. **`Wochenplanung-git-vollbackup-2026-06-25.bundle`** – die **komplette
-   Git-Versionsgeschichte** (alle 247 Commits, alle Branches) in einer einzigen
+   Git-Versionsgeschichte** (alle Commits, alle Branches) in einer einzigen
    Datei. Damit ist das gesamte Projekt **auch ohne GitHub** wiederherstellbar:
 
 ```bash

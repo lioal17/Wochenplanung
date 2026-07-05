@@ -103,10 +103,12 @@ Gültigkeit eines Kurses an einem Datum (`schultagAktiv`):
 | `bemerkung` | Freitext |
 
 ### 2.4 Persistenz (localStorage-Keys)
-- `lw_db_v3` – Hauptdatenbank (`DB`).
-- `lw_db_backup` – interner Wiederherstellungs-Snapshot (`{ts, data}`).
+- `lw_db_v3` – Hauptdatenbank (`DB`). Beim Laden über `sanitizeDB()` strukturell
+  validiert (Feld-Whitelist, Typkoersion, ID-Format).
 - `lw_lastsave` – Zeitstempel der letzten manuellen Sicherung.
-- Optionaler File-System-Access-Handle für „Speichern ohne Dialog".
+- Optionaler File-System-Access-Handle (IndexedDB `lw_fh`) für „Speichern ohne Dialog".
+- **„🗑 Daten löschen"** (`wipeAllData`) entfernt `lw_db_v3`, `lw_lastsave` **und**
+  die IndexedDB `lw_fh` nach zwei Bestätigungen (für geteilte Rechner / Datenschutz).
 
 ---
 
@@ -300,9 +302,10 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
   jedem Neuladen der Seite **einmalig** nach der Schreib-Erlaubnis (nicht abschaltbar);
   innerhalb der Sitzung danach stumm. **Wochenplan generieren** (`genWeekPDF`) erzeugt
   das PDF und löst zugleich diese Sicherung aus.
-- **Interner Snapshot** (`snapshotBackup`/`restoreBackup`) als Wiederherstellungspunkt.
 - **JSON-Import** (`doImportFSA`/`processImportJSON`): mit **Vorschau der Änderungen**
   vor dem Überschreiben; schützt bestehende Daten (Abweichungen nur auf Bestätigung).
+  Importierte Daten laufen durch `sanitizeDB()` (Whitelist/Typprüfung), bevor sie
+  in der Vorschau erscheinen und übernommen werden.
 - **Dokument-Import** (`handleDocUpload` → `parseDocText`): liest Teilnehmerlisten aus
   PDF/Excel/Word, erkennt Klassen-Codes (z. B. `FöA-Do-…`, `DMA-Mo-…`), Jobcoach,
   Eintritt/Ende-ZV; legt fixe Schultage & Sporttermine an. Eintritt/Ende-ZV landen
