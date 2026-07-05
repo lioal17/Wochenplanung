@@ -1488,7 +1488,14 @@ const ABS = [
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
+// SOFT_ABS(_SET): Teilnehmer (teilweise) anwesend – inkl. ZS (nur zu spät). Werkstatt-Einteilung
+//   des freien Halbtags bleibt möglich. HALF_ABS(_SET): echte Halbtags-Absenz (4h) OHNE ZS.
+//   HALF_ABS_BASE: 'UA-VM' → 'UA' usw. (Kurzanzeige der betroffenen Halbtags-Absenz).
 const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
+const SOFT_ABS_SET = new Set(SOFT_ABS);
+const HALF_ABS = ['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
+const HALF_ABS_SET = new Set(HALF_ABS);
+const HALF_ABS_BASE = Object.fromEntries(HALF_ABS.map(c=>[c,c.split('-')[0]]));
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
@@ -2059,6 +2066,8 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
+    // Eigenes Konzept „keine eCase-Pflicht": bewusst OHNE ZS und OHNE BA-VM/BA-NM
+    // (beide sind eCase-pflichtig), aber MIT PA – daher nicht mit SOFT_ABS/HALF_ABS mergen.
     const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
     if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
@@ -2792,8 +2801,7 @@ function getRptRows(p,year,month){
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
-    const HALF_ABS=['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
-    const isHalfAbs=HALF_ABS.includes(rawAbs);
+    const isHalfAbs=HALF_ABS_SET.has(rawAbs);
     const effAbs=(isZS||isPA||isHalfAbs)?'':rawAbs;
     if(isHalfAbs){
       // Halbtags-Absenz: 4h Absenz + 4h Arbeitszeit
@@ -3126,8 +3134,7 @@ function genRapportPDF(){
       if(rawAbs==='ZS') stats.zs++;
 
       // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
-      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
-      const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
+      const fullAbsent=rawAbs&&!SOFT_ABS_SET.has(rawAbs);
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM');
       const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM');
 
@@ -3385,12 +3392,11 @@ function genWeekPDF(){
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
-  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
   // Effektiver Wert je Slot: Halbtags-/Ganztags-Absenz > manueller Plan-Eintrag > geplanter
   // Block (Sport/Schule) – mirrors renderDayPlan()'s vmAbsent/nmAbsent + Slot-Override-Logik.
   const slotEff=(pl,bl)=>{
     const rawAbs=pl.abwesenheit||'';
-    const softAbs=SOFT_ABS_PDF.has(rawAbs);
+    const softAbs=SOFT_ABS_SET.has(rawAbs);
     const absent=!!rawAbs&&!softAbs;
     const vmAbsent=absent||rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
     const nmAbsent=absent||rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM';
@@ -3409,7 +3415,7 @@ function genWeekPDF(){
       if(bl.fullB&&bl.vmL==='S') return false;
       // Ganztags-Absenz → nie auf Tagesliste
       const rawAbs=pl.abwesenheit||'';
-      if(rawAbs&&!SOFT_ABS_PDF.has(rawAbs)) return false;
+      if(rawAbs&&!SOFT_ABS_SET.has(rawAbs)) return false;
       // Nur TN mit effektivem Werkstatt-/Sport-Eintrag (Slot-Absenz > Plan-Eintrag > Block)
       const{vm,nm}=slotEff(pl,bl);
       const hasVm=WS.includes(vm);
@@ -3495,17 +3501,16 @@ function genWeekPDF(){
     // Tage ausserhalb des Einsatzzeitraums (vor Eintritt / nach Austritt) → «X»
     if(!isActiveOnDay(p,d)) return 'X';
     const plan=getPlan(ds(d),p.id), blk=getBlocks(p,d), a=plan.abwesenheit||'';
-    const half={'UA-VM':'UA','UA-NM':'UA','KR-VM':'KR','KR-NM':'KR','BA-VM':'BA','BA-NM':'BA','UN-VM':'UN','UN-NM':'UN'};
     const isVMhalf=a==='UA-VM'||a==='KR-VM'||a==='BA-VM'||a==='UN-VM';
     const isNMhalf=a==='UA-NM'||a==='KR-NM'||a==='BA-NM'||a==='UN-NM';
-    const effAbs=(a==='ZS'||half[a])?'':a;
+    const effAbs=(a==='ZS'||HALF_ABS_BASE[a])?'':a;
     if(effAbs) return effAbs;                       // Ganztags-/Wochen-Absenz
     if(plan.sw==='S.LW') return 'S.LW';
     if(plan.sw==='S.EX') return 'SL';
     const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
     const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
-    const vm=isVMhalf?half[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-    const nm=isNMhalf?half[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
     return (vm||'·')+'\n'+(nm||'·');
   };
 
