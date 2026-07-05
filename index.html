@@ -1897,11 +1897,11 @@ function renderDayPlan(){
     // Absence
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
-      <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
+      <select class="abs-sel" onchange="onAbsChange('${esc(pid)}','${curDay}',this.value)">
         ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W'||a.c==='UN-W'||a.c==='BA-W'||a.c==='UA-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
-        onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
+        onchange="setPlan('${curDay}','${esc(pid)}',{abwesenheitText:this.value})">
     </div>`;
 
     // eCase
@@ -1916,7 +1916,7 @@ function renderDayPlan(){
     } else {
       ecCell=`<div class="ec-wrap">
         <input type="checkbox" class="ec-cb" title="In eCase eintragen und abhaken"
-          onchange="setPlan('${curDay}','${pid}',{ecaseEntered:this.checked});renderDayPlan()">
+          onchange="setPlan('${curDay}','${esc(pid)}',{ecaseEntered:this.checked});renderDayPlan()">
         <span class="ec-open" title="eCase ausstehend">!</span>
       </div>`;
     }
@@ -1926,18 +1926,18 @@ function renderDayPlan(){
     const sw=plan.sw||'';
     const isSchnupTag=isSchnuppertag(plan);
     const bemCell=`<div class="bem-wrap">
-      <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
+      <select class="bem-sel" onchange="onBemChange(this,'${esc(pid)}','${curDay}')">
         <option value=""${(!sw&&!isSchnupTag)?' selected':''}>–</option>
         <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
         <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperlehre</option>
         <option value="S.TAG"${isSchnupTag?' selected':''}>Schnuppertag</option>
       </select>
       <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
-        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
+        onchange="setPlan('${curDay}','${esc(pid)}',{bemerkung:this.value})">
     </div>`;
 
     rows+=`<tr class="${rowCls}">
-      <td><span class="cell-name${nameGreen?' cell-name-green':''}">${p.vorname} ${p.nachname}</span>${chip}</td>
+      <td><span class="cell-name${nameGreen?' cell-name-green':''}">${esc(p.vorname)} ${esc(p.nachname)}</span>${chip}</td>
       <td>${jcBadge}</td>
       <td style="text-align:center;font-size:11px;font-weight:600">${p.iiz==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
       <td style="text-align:center">${bwDot}</td>
@@ -1974,11 +1974,11 @@ function renderDayPlan(){
   if(badge){
     if(openEC>0){
       const rows=ecEntries.map(e=>`<tr>
-        <td style="padding:3px 8px">${e.name}</td>
+        <td style="padding:3px 8px">${esc(e.name)}</td>
         <td style="padding:3px 8px;color:var(--red);font-weight:700">${e.abs}</td>
         <td style="padding:3px 8px">
           <input type="checkbox" title="In eCase eingetragen"
-            onchange="this.closest('.ec-drop').style.display='none';setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
+            onchange="this.closest('.ec-drop').style.display='none';setPlan('${esc(e.dstr)}','${esc(e.pid)}',{ecaseEntered:this.checked});renderDayPlan()">
         </td></tr>`).join('');
       badge.innerHTML=`<div class="ec-badge-wrap">
         <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2032,9 +2032,9 @@ function buildWsCell(pid, slot, val, disabled){
   const isCustom = val && !WS.includes(val) && val!=='Sport' && !SCHOOL_TYPES.includes(val);
   const disAttr  = disabled ? 'disabled' : '';
   const extra    = isCustom ? `<input class="ws-custom" value="${esc(val)}" placeholder="Werkstatt…"
-      onchange="setPlan('${curDay}','${pid}',{${slot}:this.value})">` : '';
+      onchange="setPlan('${curDay}','${esc(pid)}',{${slot}:this.value})">` : '';
   return `<div>
-    <select class="ws-sel" ${disAttr} onchange="onWsCh(this,'${pid}','${slot}')">
+    <select class="ws-sel" ${disAttr} onchange="onWsCh(this,'${esc(pid)}','${slot}')">
       <option value="">–</option>
       ${WS.map(w=>`<option${val===w?' selected':''}>${w}</option>`).join('')}
       ${slot==='nm'?`<option value="Sport"${val==='Sport'?' selected':''}>Sport</option>`:''}
@@ -2180,7 +2180,7 @@ function renderPersons(){
     const wbBtns=archived?'':wbActionBtns(p);
     return `<div class="p-card sc-${p.status}${archived?' p-archived':''}">
       <div class="p-card-info">
-        <div class="p-name-lg">${p.vorname} ${p.nachname} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
+        <div class="p-name-lg">${esc(p.vorname)} ${esc(p.nachname)} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
         <div class="p-meta">
           <span>📌 ${stLbl[p.status]||p.status}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
@@ -2195,8 +2195,8 @@ function renderPersons(){
       </div>
       <div class="p-actions">
         ${wbBtns}
-        <button class="btn btn-secondary btn-sm" onclick="openPM('${p.id}')">✏️ Bearbeiten</button>
-        <button class="btn btn-danger btn-sm" onclick="delPerson('${p.id}')">🗑️</button>
+        <button class="btn btn-secondary btn-sm" onclick="openPM('${esc(p.id)}')">✏️ Bearbeiten</button>
+        <button class="btn btn-danger btn-sm" onclick="delPerson('${esc(p.id)}')">🗑️</button>
       </div>
     </div>`;
   };
@@ -2227,8 +2227,8 @@ function wbActionBtns(p){
   if(p.status!=='aktiv'||!p.aktiviertAm) return '';
   const w=diffWeeks(new Date(p.aktiviertAm),new Date());
   let out='';
-  if(w>=8&&!p.wb8)   out+=`<button class="btn btn-amber btn-sm" onclick="sendWB('${p.id}','8')">📧 WB 8W</button>`;
-  if(w>=10&&!p.wb10) out+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${p.id}','10')">📧 WB 10W</button>`;
+  if(w>=8&&!p.wb8)   out+=`<button class="btn btn-amber btn-sm" onclick="sendWB('${esc(p.id)}','8')">📧 WB 8W</button>`;
+  if(w>=10&&!p.wb10) out+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${esc(p.id)}','10')">📧 WB 10W</button>`;
   return out;
 }
 
@@ -2314,10 +2314,10 @@ function schPeriodStr(k){
 }
 function renderTags(){
   document.getElementById('schTags').innerHTML=tSch.map((s,i)=>
-    `<span class="tag tag-sch">${s.typ} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${esc(s.typ)} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('kursTags').innerHTML=tKurse.map((k,i)=>
-    `<span class="tag tag-sch">${SCH_LABELS[k.typ]||k.typ}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${esc(SCH_LABELS[k.typ]||k.typ)}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('sptTags').innerHTML=tSpt.map((t,i)=>
     `<span class="tag tag-spt">SP ${WD[+t]}<span class="tag-x" onclick="tSpt.splice(${i},1);renderTags()">×</span></span>`
@@ -2402,12 +2402,12 @@ function renderWBAlerts(){
   wrap.innerHTML=alerts.map(a=>`
     <div class="wb-alert ${a.cls}">
       <div class="wb-body">
-        <div class="wb-title">${a.weeks==='10'?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${a.p.vorname} ${a.p.nachname}</div>
+        <div class="wb-title">${a.weeks==='10'?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${esc(a.p.vorname)} ${esc(a.p.nachname)}</div>
         <div class="wb-sub">Aktiviert: ${fd(a.p.aktiviertAm)} · ${a.weeks==='8'?'→ Einschätzung durch Arbeitsagogen':'→ Wirkungsbericht durch Berater'}</div>
       </div>
       <div class="wb-btns">
-        <button class="btn btn-secondary btn-sm" onclick="sendWB('${a.p.id}','${a.weeks}')">📧 E-Mail senden</button>
-        <button class="btn btn-success btn-sm" onclick="markWBDone('${a.p.id}','${a.weeks}')">✓ Erledigt</button>
+        <button class="btn btn-secondary btn-sm" onclick="sendWB('${esc(a.p.id)}','${a.weeks}')">📧 E-Mail senden</button>
+        <button class="btn btn-success btn-sm" onclick="markWBDone('${esc(a.p.id)}','${a.weeks}')">✓ Erledigt</button>
       </div>
     </div>`).join('');
 }
@@ -2532,7 +2532,7 @@ function renderMonthly(){
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
-    tbody+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>${tds}
+    tbody+=`<tr><td class="td-name">${esc(p.vorname)} ${esc(p.nachname)}</td>${tds}
       <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
       <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
@@ -2552,12 +2552,12 @@ function renderMonthly(){
 
   if(totalOpen>0){
     const ecRows=moEcList.map(e=>`<tr>
-      <td style="padding:4px 10px;font-weight:600">${e.name}</td>
+      <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
       <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
       <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
       <td style="padding:4px 10px;text-align:center">
         <input type="checkbox" title="In eCase eingetragen"
-          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
+          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${esc(e.pid)}','${esc(e.dstr)}',this.checked)">
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2600,7 +2600,7 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 function renderRapport(){
   const sel=document.getElementById('rptP');
   const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
-  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
+  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   buildRpt();
@@ -2964,7 +2964,7 @@ function genAllRapportsPDF(){
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
   const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
-  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
+  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   document.getElementById('rapportOverlay').classList.add('open');
 }
 function closeRapportModal(){
@@ -3956,7 +3956,7 @@ function toast(msg,cls=''){
 // ────────────────────────────────────────────
 // MISC
 // ────────────────────────────────────────────
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // Close modals on backdrop click
 document.getElementById('pmOverlay').addEventListener('click',e=>{
