@@ -2,6 +2,12 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<!-- Content-Security-Policy: erlaubt nur die beiden benötigten CDNs (pdf.js/mammoth)
+     als Skriptquellen, unterbindet Nachladen fremder Skripte und Daten-Exfiltration
+     (fetch/XHR/WebSocket/Bild-Beacon). 'unsafe-inline' ist architekturbedingt nötig
+     (Inline-<script> und onclick-Handler); ohne 'self', da die App keine
+     Same-Origin-Ressourcen lädt → auch von file:// lauffähig. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; worker-src blob: https://cdnjs.cloudflare.com; connect-src https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lernwerkstatt – Einteilungsplan</title>
 <!-- App-Icon (selbst-enthalten, keine Zusatzdatei noetig) -->
