@@ -572,6 +572,7 @@ input,select,textarea{font-family:inherit}
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort (Ordner) wählen/ändern – 1× einstellen, danach automatisch dorthin" style="padding:0 8px">📁</button>
+    <button class="btn btn-danger btn-sm" onclick="wipeAllData()" title="Alle lokal gespeicherten Daten unwiderruflich löschen" style="padding:0 8px">🗑 Daten löschen</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -1628,7 +1629,7 @@ function migrateSchnupper(){
       if(pl && pl.bemerkung==='S.LW'){ pl.sw='S.LW'; pl.bemerkung=''; changed=true; }
     });
   });
-  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
+  if(changed) try{ localStorage.setItem(DBKEY,JSON.stringify(DB)); }catch(e){ console.warn('Migration-Save fehlgeschlagen',e); }
 }
 
 // Alt-Daten: bisher bedeutete der Basis-Code DAZ/FöA/DK/IKPC „½ Tag VM".
@@ -1649,12 +1650,39 @@ function migrateSchulCodes(){
       if(k && k.typ && k.typ!=='DK' && !hasSuf(k.typ)){ k.typ=k.typ+'-VM'; changed=true; }
     });
   });
-  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
+  if(changed) try{ localStorage.setItem(DBKEY,JSON.stringify(DB)); }catch(e){ console.warn('Migration-Save fehlgeschlagen',e); }
 }
 
 function saveDB(){
-  localStorage.setItem(DBKEY,JSON.stringify(DB));
   dirty=true;
+  try{
+    localStorage.setItem(DBKEY,JSON.stringify(DB));
+  }catch(e){
+    // localStorage voll (QuotaExceeded) o. Ä. – Nutzer warnen statt still zu scheitern.
+    console.warn('Speichern fehlgeschlagen',e);
+    try{ toast('⚠ Speichern fehlgeschlagen – Speicher voll? Bitte manuell per Export sichern.','t-err'); }catch(_){}
+  }
+}
+
+// Löscht ALLE lokal gespeicherten Daten (localStorage + gemerkter Speicherort in
+// IndexedDB) und setzt den In-Memory-Stand zurück. Zwei Bestätigungen gegen Fehlklicks;
+// personenbezogene Daten sollen sich so bewusst und vollständig entfernen lassen
+// (z. B. auf geteilten Rechnern).
+async function wipeAllData(){
+  const n=(DB.participants||[]).length;
+  if(!confirm(`Wirklich ALLE lokal gespeicherten Daten löschen?\n\n• ${n} Teilnehmer\n• alle Einteilungen & Notizen\n• gemerkter Speicherort\n\nDies kann nicht rückgängig gemacht werden. Vorher ggf. per Export sichern.`)) return;
+  if(!confirm('Letzte Bestätigung: Daten endgültig löschen?')) return;
+  try{ localStorage.removeItem(DBKEY); }catch(_){}
+  try{ localStorage.removeItem(SAVEKEY); }catch(_){}
+  try{ indexedDB.deleteDatabase(FH_DB); }catch(_){}
+  saveDirHandle=null;
+  DB={ participants:[], plans:{}, rptNotes:{} };
+  dirty=false;
+  try{ updateSaveInfo(); }catch(_){}
+  try{ updateSaveFileLabel(); }catch(_){}
+  const active=document.querySelector('.nav-btn.active');
+  if(active) show(active.dataset.v); else renderPlan();
+  toast('🗑 Alle lokalen Daten wurden gelöscht.','t-ok');
 }
 
 // ────────────────────────────────────────────
@@ -2206,7 +2234,7 @@ function clearCurrentDay(){
     n=Object.keys(DB.plans[curDay]).length;
     delete DB.plans[curDay];
   }
-  saveDB(); dirty=true;
+  saveDB(); // setzt dirty=true
   toast(`🗑 ${label} geleert (${n} Einträge entfernt)`,'t-ok');
   renderPlan();
 }
@@ -4270,7 +4298,9 @@ function _impShowImagePreview(file){
 async function _impParsePDF(file){
   if(typeof pdfjsLib==='undefined') throw new Error('PDF.js nicht geladen – bitte Seite neu laden');
   const buf=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  // isEvalSupported:false entschärft CVE-2024-4367 (JS-Ausführung via präparierter
+  // Font-Matrix in pdf.js 3.x) beim Import fremder PDFs.
+  const pdf=await pdfjsLib.getDocument({data:buf, isEvalSupported:false}).promise;
   let out='';
   for(let i=1;i<=pdf.numPages;i++){
     const pg=await pdf.getPage(i);
@@ -4354,7 +4384,7 @@ function doImportDoc(){
   });
 
   if(added+updated>0){
-    saveDB(); dirty=true; renderWBAlerts(); renderImpTable();
+    saveDB(); renderWBAlerts(); renderImpTable();
     toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}`, 't-ok');
     setTimeout(()=>show('person'),700);
   }else{
