@@ -1548,10 +1548,71 @@ let tSch=[], tSpt=[], tKurse=[];
 const DBKEY    = 'lw_db_v3';
 const SAVEKEY  = 'lw_lastsave';
 
+// Bereinigt fremde/geladene Daten (localStorage-Altbestand ODER JSON-Import) auf eine
+// bekannte Struktur. Zweck: verhindert, dass manipulierte Namen/IDs oder falsche Typen
+// unkontrolliert in die App gelangen (Defense-in-Depth zusätzlich zum HTML-Escaping).
+// Keine Werteliste-Prüfung auf vm/nm/status – Freitext-Werkstätten sind ein Feature.
+const _ID_RE=/^[a-z0-9][a-z0-9_-]{0,31}$/i, _DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+const _str=v=>typeof v==='string'?v:(v==null?'':String(v));
+const _dstr2=v=>_DATE_RE.test(_str(v))?_str(v):'';
+function _sanPlan(pl){
+  if(!pl||typeof pl!=='object') return null;
+  const o={};
+  for(const k of ['vm','nm','abwesenheit','abwesenheitText','bemerkung','sw'])
+    if(pl[k]!=null) o[k]=_str(pl[k]);
+  if(pl.ecaseEntered!=null) o.ecaseEntered=!!pl.ecaseEntered;
+  return o;
+}
+function sanitizeDB(d){
+  d=(d&&typeof d==='object')?d:{};
+  const idMap={}; // ungültige alte ID → neue uid() (Referenzen in plans/rptNotes werden migriert)
+  const participants=(Array.isArray(d.participants)?d.participants:[])
+    .filter(p=>p&&typeof p==='object')
+    .map(p=>{
+      let id=_str(p.id);
+      if(!_ID_RE.test(id)){ const nid=uid(); if(id) idMap[id]=nid; id=nid; }
+      return { id,
+        vorname:_str(p.vorname), nachname:_str(p.nachname),
+        status:_str(p.status)||'aktiv',
+        jobCoach:_str(p.jobCoach), bewerbenJC:_str(p.bewerbenJC),
+        stammwerkstatt:_str(p.stammwerkstatt),
+        einsatzVon:_dstr2(p.einsatzVon), einsatzBis:_dstr2(p.einsatzBis),
+        iiz:p.iiz==='ja'?'ja':'nein',
+        aktiviertAm:_dstr2(p.aktiviertAm), bemerkung:_str(p.bemerkung),
+        wb8:!!p.wb8, wb10:!!p.wb10,
+        schultage:(Array.isArray(p.schultage)?p.schultage:[]).filter(s=>s&&typeof s==='object')
+          .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag)})),
+        sporttermine:(Array.isArray(p.sporttermine)?p.sporttermine:[]).map(_str),
+        kurse:(Array.isArray(p.kurse)?p.kurse:[]).filter(k=>k&&typeof k==='object')
+          .map(k=>({typ:_str(k.typ),erfasstAm:_dstr2(k.erfasstAm),
+            zeit:(Array.isArray(k.zeit)?k.zeit:[]).filter(z=>z&&typeof z==='object')
+              .map(z=>({von:_dstr2(z.von),bis:_dstr2(z.bis)}))})),
+      };
+    });
+  const plans={};
+  Object.entries((d.plans&&typeof d.plans==='object')?d.plans:{}).forEach(([day,per])=>{
+    if(!_DATE_RE.test(day)||!per||typeof per!=='object') return;
+    const out={};
+    Object.entries(per).forEach(([pid,pl])=>{
+      const nid=idMap[pid]||pid;
+      if(!_ID_RE.test(nid)) return;
+      const e=_sanPlan(pl); if(e) out[nid]=e;
+    });
+    if(Object.keys(out).length) plans[day]=out;
+  });
+  const rptNotes={};
+  Object.entries((d.rptNotes&&typeof d.rptNotes==='object')?d.rptNotes:{}).forEach(([k,v])=>{
+    const m=/^(.+)_(\d{4}-\d{2})$/.exec(k); if(!m) return;
+    const nid=idMap[m[1]]||m[1];
+    if(_ID_RE.test(nid)) rptNotes[`${nid}_${m[2]}`]=_str(v);
+  });
+  return {participants,plans,rptNotes};
+}
+
 function loadDB(){
   try{
     const raw=localStorage.getItem(DBKEY);
-    if(raw){ const d=JSON.parse(raw); DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{}; }
+    if(raw){ const c=sanitizeDB(JSON.parse(raw)); DB.participants=c.participants; DB.plans=c.plans; DB.rptNotes=c.rptNotes; }
   }catch(e){ console.warn('Load error',e); }
   migrateSchnupper();
   migrateSchulCodes();
@@ -3878,8 +3939,8 @@ let _pendingImport=null;
 
 function processImportJSON(text){
   try{
-    const d=JSON.parse(text);
-    const diff=_jsonImportDiff(d.participants||[], d.plans||{});
+    const d=sanitizeDB(JSON.parse(text));
+    const diff=_jsonImportDiff(d.participants, d.plans);
     _pendingImport=d;
     openImportPreview(diff);
   }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
