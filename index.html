@@ -2697,7 +2697,13 @@ function renderRapport(){
 
 const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC'];
 // Ostersonntag (Gregorianischer Kalender, Meeus/Jones/Butcher)
+// Reine Jahresfunktionen (easterSunday/tgHolidays/computeFerien) werden pro Jahr
+// gecacht – sie sind deterministisch, daher keine Invalidierung nötig. Entlastet
+// getBlocks/isSchulferien, die pro Teilnehmer×Tag-Zelle aufgerufen werden.
+const _easterCache=new Map();
 function easterSunday(year){
+  const cached=_easterCache.get(year);
+  if(cached) return new Date(cached);            // Kopie – Date ist mutierbar
   const a=year%19,b=Math.floor(year/100),c=year%100;
   const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
   const g=Math.floor((b-f+1)/3);
@@ -2707,11 +2713,16 @@ function easterSunday(year){
   const m=Math.floor((a+11*h+22*l)/451);
   const mo=Math.floor((h+l-7*m+114)/31);
   const day=((h+l-7*m+114)%31)+1;
-  return new Date(year,mo-1,day);
+  const r=new Date(year,mo-1,day);
+  _easterCache.set(year,r);
+  return new Date(r);
 }
 
 // Gesetzliche Feiertage + Brückentage Kanton Thurgau (Motivationssemester)
+const _holiCache=new Map();
 function tgHolidays(year){
+  const cached=_holiCache.get(year);
+  if(cached) return cached;                       // Rückgabe wird nur gelesen
   const map={};
   const add=(dt,name)=>{map[ds(dt)]=name;};
   add(new Date(year,0,1),'Neujahrstag');
@@ -2725,6 +2736,7 @@ function tgHolidays(year){
   off(50,'Pfingstmontag');
   add(new Date(year,4,1),'Tag der Arbeit');
   add(new Date(year,7,1),'Nationalfeiertag');
+  _holiCache.set(year,map);
   return map;
 }
 
@@ -2740,7 +2752,10 @@ function isoMonday(year,week){
   const mon1=fAddDays(jan4,-dow);           // Montag der KW1
   return fAddDays(mon1,(week-1)*7);
 }
+const _ferienCache=new Map();
 function computeFerien(year){
+  const cached=_ferienCache.get(year);
+  if(cached) return cached;                 // Rückgabe wird nur gelesen
   const r=[];
   r.push(fRange(isoMonday(year,5),7));      // Sportferien: Mo ISO-KW 5, 7 Tage
   const e=easterSunday(year);               // Frühlingsferien: abhängig von Ostern
@@ -2752,6 +2767,7 @@ function computeFerien(year){
   r.push(fRange(isoMonday(year,41),14));    // Herbstferien: Mo ISO-KW 41, 14 Tage
   const xmas=new Date(year,11,25);          // Weihnachtsferien: Mo der Woche des 25.12., 14 Tage
   r.push(fRange(fAddDays(xmas,-((xmas.getDay()+6)%7)),14));
+  _ferienCache.set(year,r);
   return r;
 }
 // Liegt `date` in offiziellen TG-Schulferien? Prüft Jahr und Vorjahr (Weihnachtsferien
