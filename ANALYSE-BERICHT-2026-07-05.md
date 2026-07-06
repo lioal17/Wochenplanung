@@ -44,7 +44,7 @@ siehe §3.1) und ist behoben.
 | S1 | **Stored/DOM-XSS** über Teilnehmer-Namen & -IDs | **Hoch** | ✅ behoben |
 | S2 | **CVE-2024-4367** (pdf.js 3.11.174, JS-Ausführung via präpariertem PDF) | **Hoch** | ✅ entschärft |
 | S3 | Import übernahm Daten **ohne Validierung** | **Hoch** | ✅ behoben |
-| S4 | CDN-Skripte ohne CSP/SRI | **Mittel** | ✅ CSP / ⚠ SRI dokumentiert |
+| S4 | CDN-Skripte ohne CSP/SRI | **Mittel** | ✅ CSP + SRI |
 | S5 | veraltete eingebettete Libs (xlsx 0.18.5, jsPDF 2.5.1) | **Mittel** | 📋 Empfehlung |
 | S6 | `saveDB` ohne Quota-Fehlerbehandlung | **Niedrig** | ✅ behoben |
 
@@ -69,9 +69,9 @@ bleiben erhalten). Eingehängt in `loadDB` **und** `processImportJSON`. 15 Testf
 **S4 — CSP (behoben, Commit `663f0b1`).** Restriktive `Content-Security-Policy`
 (`default-src 'none'`), Skripte nur von den zwei genutzten CDNs; verhindert Nachladen fremder
 Skripte und Daten-Exfiltration (fetch/XHR/WebSocket/Bild-Beacon). Getestet: Rendering, Styles,
-Favicon, jsPDF-Erzeugung, Blob-Download — **0 Verstöße**. **SRI** konnte in dieser Umgebung
-nicht verifiziert berechnet werden (Egress-Policy blockiert die CDNs); ein blind gesetzter Hash
-würde die App bei Fehler brechen. → als exakt dokumentierter Handschritt in `SECURITY.md`.
+Favicon, jsPDF-Erzeugung, Blob-Download — **0 Verstöße**. **SRI** wurde ergänzt: beide
+CDN-Skripte tragen `integrity`-Hashes (`sha384`), berechnet aus den identischen npm-Artefakten
+(`pdfjs-dist@3.11.174`, `mammoth@1.6.0`), die die CDNs unverändert ausliefern. Details in `SECURITY.md`.
 
 ---
 
@@ -143,9 +143,7 @@ jeweils verhaltensneutral belegt (Browser-Test + Golden-Master über alle Ansich
 ## 9. Sofort umsetzbare Änderungen (durch dich, ohne Code)
 
 1. **Pull Request mergen** (GitHub → „Compare & pull request" für den Branch → Merge).
-2. **SRI-Hashes ergänzen** (5 Minuten, Anleitung in `SECURITY.md`) — schließt die letzte
-   CDN-Härtungslücke.
-3. Prüfen, ob die drei realen Namen/E-Mails im Quelltext öffentlich stehen dürfen.
+2. Prüfen, ob die drei realen Namen/E-Mails im Quelltext öffentlich stehen dürfen.
 
 ---
 
@@ -166,7 +164,7 @@ jeweils verhaltensneutral belegt (Browser-Test + Golden-Master über alle Ansich
 | Kategorie | Score | Begründung |
 |-----------|:----:|-----------|
 | **Architektur** | 7 | Single-File bewusst & passend; klare Blockgliederung. Abzug: sehr lange Funktionen, globaler Scope. |
-| **Sicherheit** | 8 | XSS geschlossen, Import validiert, CSP + pdf.js-Härtung. Abzug: SRI noch manuell, Libs veraltet. |
+| **Sicherheit** | 9 | XSS geschlossen, Import validiert, CSP + SRI + pdf.js-Härtung. Abzug: eingebettete Libs (jsPDF/xlsx) veraltet. |
 | **Datenschutz** | 8 | Kein Tracking, Pages-Deploy eingegrenzt, `.gitignore`, Lösch-Anleitung dokumentiert. Abzug: unverschlüsselter localStorage, Namen im Code. |
 | **Performance** | 8 | Feiertags-Memoisierung eliminiert die Hauptlast; Render/Save für die Datenmenge angemessen. |
 | **Codequalität** | 8 | Nach Dedup deutlich DRY-er, Dead Code entfernt. Abzug: Magic Strings. |
@@ -187,8 +185,7 @@ und Wartbarkeit deutlich robuster.
 **🔴 Kritisch:** — (keine offen)
 
 **🟠 Hoch:**
-- ✅ XSS-Härtung · ✅ Import-Validierung · ✅ pdf.js-Härtung *(alle erledigt)*
-- ⏳ SRI-Hashes ergänzen (manuell, `SECURITY.md`)
+- ✅ XSS-Härtung · ✅ Import-Validierung · ✅ pdf.js-Härtung · ✅ SRI-Hashes *(alle erledigt)*
 
 **🟡 Mittel:**
 - ✅ CSP · ✅ Datenlöschfunktion · ✅ Pages-Deploy eingrenzen *(erledigt)*
