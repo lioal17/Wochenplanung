@@ -107,8 +107,8 @@ Gültigkeit eines Kurses an einem Datum (`schultagAktiv`):
   validiert (Feld-Whitelist, Typkoersion, ID-Format).
 - `lw_lastsave` – Zeitstempel der letzten manuellen Sicherung.
 - Optionaler File-System-Access-Handle (IndexedDB `lw_fh`) für „Speichern ohne Dialog".
-- **„🗑 Daten löschen"** (`wipeAllData`) entfernt `lw_db_v3`, `lw_lastsave` **und**
-  die IndexedDB `lw_fh` nach zwei Bestätigungen (für geteilte Rechner / Datenschutz).
+- Vollständiges Löschen der lokalen Daten erfolgt über die **Browser-Einstellungen**
+  (Websitedaten für die Seite entfernen) – es gibt bewusst keinen In-App-Löschknopf.
 
 ---
 

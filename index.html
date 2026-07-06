@@ -563,7 +563,6 @@ input,select,textarea{font-family:inherit}
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort (Ordner) wählen/ändern – 1× einstellen, danach automatisch dorthin" style="padding:0 8px">📁</button>
-    <button class="btn btn-danger btn-sm" onclick="wipeAllData()" title="Alle lokal gespeicherten Daten unwiderruflich löschen" style="padding:0 8px">🗑 Daten löschen</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -1659,27 +1658,6 @@ function saveDB(){
     console.warn('Speichern fehlgeschlagen',e);
     try{ toast('⚠ Speichern fehlgeschlagen – Speicher voll? Bitte manuell per Export sichern.','t-err'); }catch(_){}
   }
-}
-
-// Löscht ALLE lokal gespeicherten Daten (localStorage + gemerkter Speicherort in
-// IndexedDB) und setzt den In-Memory-Stand zurück. Zwei Bestätigungen gegen Fehlklicks;
-// personenbezogene Daten sollen sich so bewusst und vollständig entfernen lassen
-// (z. B. auf geteilten Rechnern).
-async function wipeAllData(){
-  const n=(DB.participants||[]).length;
-  if(!confirm(`Wirklich ALLE lokal gespeicherten Daten löschen?\n\n• ${n} Teilnehmer\n• alle Einteilungen & Notizen\n• gemerkter Speicherort\n\nDies kann nicht rückgängig gemacht werden. Vorher ggf. per Export sichern.`)) return;
-  if(!confirm('Letzte Bestätigung: Daten endgültig löschen?')) return;
-  try{ localStorage.removeItem(DBKEY); }catch(_){}
-  try{ localStorage.removeItem(SAVEKEY); }catch(_){}
-  try{ indexedDB.deleteDatabase(FH_DB); }catch(_){}
-  saveDirHandle=null;
-  DB={ participants:[], plans:{}, rptNotes:{} };
-  dirty=false;
-  try{ updateSaveInfo(); }catch(_){}
-  try{ updateSaveFileLabel(); }catch(_){}
-  const active=document.querySelector('.nav-btn.active');
-  if(active) show(active.dataset.v); else renderPlan();
-  toast('🗑 Alle lokalen Daten wurden gelöscht.','t-ok');
 }
 
 // ────────────────────────────────────────────
