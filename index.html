@@ -2,6 +2,12 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<!-- Content-Security-Policy: erlaubt nur die beiden benötigten CDNs (pdf.js/mammoth)
+     als Skriptquellen, unterbindet Nachladen fremder Skripte und Daten-Exfiltration
+     (fetch/XHR/WebSocket/Bild-Beacon). 'unsafe-inline' ist architekturbedingt nötig
+     (Inline-<script> und onclick-Handler); ohne 'self', da die App keine
+     Same-Origin-Ressourcen lädt → auch von file:// lauffähig. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; worker-src blob: https://cdnjs.cloudflare.com; connect-src https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lernwerkstatt – Einteilungsplan</title>
 <!-- App-Icon (selbst-enthalten, keine Zusatzdatei noetig) -->
@@ -137,7 +143,6 @@ input,select,textarea{font-family:inherit}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-blue:hover{background:#1d4ed8}
 .btn-sm{padding:5px 10px;font-size:12px}
-.btn-xs{padding:3px 8px;font-size:11px}
 .btn-icon{
   width:34px;height:34px;border-radius:50%;border:1px solid var(--g3);
   background:#fff;color:var(--g7);display:flex;align-items:center;justify-content:center;
@@ -192,8 +197,6 @@ input,select,textarea{font-family:inherit}
 .plan-tbl tr.row-prklehr:hover td{background:#d1fae5}
 .plan-tbl tr.row-lehrstelle td{background:#f0fdf8}
 .plan-tbl tr.row-lehrstelle:hover td{background:#d1fae5}
-.plan-tbl tr.row-absent td{background:#fff8f0}
-.plan-tbl tr.row-absent:hover td{background:#fef3c7}
 .plan-tbl tr.row-schnupper td{background:#fafafa}
 
 /* Name cell */
@@ -230,7 +233,6 @@ input,select,textarea{font-family:inherit}
   font-size:12px;background:#fff;color:var(--g8);width:100%;box-sizing:border-box;
 }
 .ws-sel:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 2px rgba(42,82,152,.15)}
-.ws-sel:disabled{background:var(--g2);color:var(--g5);cursor:not-allowed}
 .ws-custom{
   border:1px solid var(--navy-light);border-radius:5px;padding:5px 7px;
   font-size:12px;width:100%;margin-top:4px;
@@ -384,7 +386,6 @@ input,select,textarea{font-family:inherit}
 }
 .mo-tbl .th-name{text-align:left;width:160px;min-width:120px;padding-left:10px}
 .mo-tbl .th-stat{width:30px}
-.mo-tbl th.wknd{background:var(--g7)}
 .mo-tbl td{
   border:1px solid var(--g2);padding:2px 1px;text-align:center;
   font-size:12px;font-weight:500;overflow:hidden;
@@ -399,16 +400,11 @@ input,select,textarea{font-family:inherit}
 .mo-tbl td.mo-x{color:var(--g4);font-weight:700}
 .mo-tbl td.c-stat{background:var(--g1);font-weight:700;color:var(--navy);padding:4px 2px}
 .mo-tbl .mo-sep,.mo-tbl th.mo-sep{border-left:3px solid var(--navy) !important}
-/* Sub-cell divs inside each day cell */
-.mo-vm,.mo-nm{display:block;padding:2px 1px;line-height:1.35;min-height:13px}
-.mo-vm{border-bottom:1px dotted var(--g2)}
 .moc-work{background:#dcfce7;color:#15803d}
 .moc-abs{background:var(--red-bg);color:var(--red);font-weight:700}
 .moc-sch{background:var(--blue-bg);color:var(--blue);font-weight:600}
 .moc-prk{background:#dcfce7;color:#15803d;font-weight:700}
 .moc-slw{background:var(--red-bg);color:var(--red);font-weight:700}
-.moc-empty{background:#fff;color:var(--g4)}
-.mo-vm-sep{height:1px;background:var(--g2)}
 .mo-slot-h{font-size:10px;font-weight:700;padding:3px 0;opacity:.85}
 .mo-tbl th.mo-kw{background:var(--navy-light);color:#fff;font-size:11px;letter-spacing:.5px;opacity:1;border-bottom:1px solid rgba(255,255,255,.25)}
 .mo-legend-full{margin-top:12px;padding:8px 4px 4px;border-top:1px solid var(--g2)}
@@ -418,7 +414,6 @@ input,select,textarea{font-family:inherit}
   font-size:11px;align-items:center;
 }
 .leg{display:flex;align-items:center;gap:4px}
-.leg-dot{width:12px;height:12px;border-radius:3px}
 
 /* ═══════════════════════════════════════════
    RAPPORT
@@ -443,10 +438,8 @@ input,select,textarea{font-family:inherit}
 .rpt-tbl td{padding:6px 12px;border-bottom:1px solid var(--g2)}
 .rpt-tbl tr.rw{background:var(--g1);color:var(--g5)}
 .rpt-tbl tr.ra{background:#fff8f0}
-.rpt-tbl tr.ra-ua{background:var(--red-bg)}
 .rpt-tbl tr.ri{background:var(--g1);color:var(--g4)}
 .rpt-tbl .rpt-code{font-weight:800;color:var(--red)}
-.rpt-tbl .rpt-ua{font-weight:800;color:var(--red)}
 .rpt-tbl .rpt-num{text-align:center;font-weight:600}
 
 /* ═══════════════════════════════════════════
@@ -496,7 +489,6 @@ input,select,textarea{font-family:inherit}
 }
 .tag-sch{background:var(--blue-bg);color:var(--blue)}
 .tag-spt{background:var(--purple-bg);color:var(--purple)}
-.tag-fix{background:var(--green-bg);color:var(--green)}
 .tag-x{cursor:pointer;opacity:.6;font-size:14px;line-height:1}
 .tag-x:hover{opacity:1}
 
@@ -548,7 +540,6 @@ input,select,textarea{font-family:inherit}
   padding:10px 14px;font-size:12px;font-weight:600;color:#92400e;
   display:flex;align-items:center;gap:8px;margin-bottom:12px;
 }
-.divider{height:1px;background:var(--g2);margin:16px 0}
 </style>
 </head>
 <body>
@@ -572,6 +563,7 @@ input,select,textarea{font-family:inherit}
     <button class="btn btn-success btn-sm" onclick="manualSave()" title="Daten sichern (immer in denselben Ordner)">💾 Speichern</button>
     <button class="btn btn-secondary btn-sm" onclick="doImportFSA()" title="JSON-Datei laden">📂 Import</button>
     <button class="btn btn-secondary btn-sm" onclick="changeSaveLocation()" title="Speicherort (Ordner) wählen/ändern – 1× einstellen, danach automatisch dorthin" style="padding:0 8px">📁</button>
+    <button class="btn btn-danger btn-sm" onclick="wipeAllData()" title="Alle lokal gespeicherten Daten unwiderruflich löschen" style="padding:0 8px">🗑 Daten löschen</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(this)">
   </div>
 </header>
@@ -1481,7 +1473,14 @@ const ABS = [
 ];
 // Abwesenheiten, bei denen die Werkstatt-Einteilung trotzdem möglich bleibt (TN teilweise anwesend)
 // UA-VM/UA-NM/KR-VM/KR-NM: nur halbtags absent, kein Eintrag im Monatsrapport, 8h Arbeitszeit bleibt
+// SOFT_ABS(_SET): Teilnehmer (teilweise) anwesend – inkl. ZS (nur zu spät). Werkstatt-Einteilung
+//   des freien Halbtags bleibt möglich. HALF_ABS(_SET): echte Halbtags-Absenz (4h) OHNE ZS.
+//   HALF_ABS_BASE: 'UA-VM' → 'UA' usw. (Kurzanzeige der betroffenen Halbtags-Absenz).
 const SOFT_ABS = ['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
+const SOFT_ABS_SET = new Set(SOFT_ABS);
+const HALF_ABS = ['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
+const HALF_ABS_SET = new Set(HALF_ABS);
+const HALF_ABS_BASE = Object.fromEntries(HALF_ABS.map(c=>[c,c.split('-')[0]]));
 
 // Auto-Bemerkungstext pro Absenzcode (wird gesetzt wenn kein manueller Text vorhanden)
 const AUTO_BEM = {
@@ -1548,26 +1547,86 @@ let tSch=[], tSpt=[], tKurse=[];
 const DBKEY    = 'lw_db_v3';
 const SAVEKEY  = 'lw_lastsave';
 
+// Bereinigt fremde/geladene Daten (localStorage-Altbestand ODER JSON-Import) auf eine
+// bekannte Struktur. Zweck: verhindert, dass manipulierte Namen/IDs oder falsche Typen
+// unkontrolliert in die App gelangen (Defense-in-Depth zusätzlich zum HTML-Escaping).
+// Keine Werteliste-Prüfung auf vm/nm/status – Freitext-Werkstätten sind ein Feature.
+const _ID_RE=/^[a-z0-9][a-z0-9_-]{0,31}$/i, _DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+const _str=v=>typeof v==='string'?v:(v==null?'':String(v));
+const _dstr2=v=>_DATE_RE.test(_str(v))?_str(v):'';
+function _sanPlan(pl){
+  if(!pl||typeof pl!=='object') return null;
+  const o={};
+  for(const k of ['vm','nm','abwesenheit','abwesenheitText','bemerkung','sw'])
+    if(pl[k]!=null) o[k]=_str(pl[k]);
+  if(pl.ecaseEntered!=null) o.ecaseEntered=!!pl.ecaseEntered;
+  return o;
+}
+function sanitizeDB(d){
+  d=(d&&typeof d==='object')?d:{};
+  const idMap={}; // ungültige alte ID → neue uid() (Referenzen in plans/rptNotes werden migriert)
+  const participants=(Array.isArray(d.participants)?d.participants:[])
+    .filter(p=>p&&typeof p==='object')
+    .map(p=>{
+      let id=_str(p.id);
+      if(!_ID_RE.test(id)){ const nid=uid(); if(id) idMap[id]=nid; id=nid; }
+      return { id,
+        vorname:_str(p.vorname), nachname:_str(p.nachname),
+        status:_str(p.status)||'aktiv',
+        jobCoach:_str(p.jobCoach), bewerbenJC:_str(p.bewerbenJC),
+        stammwerkstatt:_str(p.stammwerkstatt),
+        einsatzVon:_dstr2(p.einsatzVon), einsatzBis:_dstr2(p.einsatzBis),
+        iiz:p.iiz==='ja'?'ja':'nein',
+        aktiviertAm:_dstr2(p.aktiviertAm), bemerkung:_str(p.bemerkung),
+        wb8:!!p.wb8, wb10:!!p.wb10,
+        schultage:(Array.isArray(p.schultage)?p.schultage:[]).filter(s=>s&&typeof s==='object')
+          .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag)})),
+        sporttermine:(Array.isArray(p.sporttermine)?p.sporttermine:[]).map(_str),
+        kurse:(Array.isArray(p.kurse)?p.kurse:[]).filter(k=>k&&typeof k==='object')
+          .map(k=>({typ:_str(k.typ),erfasstAm:_dstr2(k.erfasstAm),
+            zeit:(Array.isArray(k.zeit)?k.zeit:[]).filter(z=>z&&typeof z==='object')
+              .map(z=>({von:_dstr2(z.von),bis:_dstr2(z.bis)}))})),
+      };
+    });
+  const plans={};
+  Object.entries((d.plans&&typeof d.plans==='object')?d.plans:{}).forEach(([day,per])=>{
+    if(!_DATE_RE.test(day)||!per||typeof per!=='object') return;
+    const out={};
+    Object.entries(per).forEach(([pid,pl])=>{
+      const nid=idMap[pid]||pid;
+      if(!_ID_RE.test(nid)) return;
+      const e=_sanPlan(pl); if(e) out[nid]=e;
+    });
+    if(Object.keys(out).length) plans[day]=out;
+  });
+  const rptNotes={};
+  Object.entries((d.rptNotes&&typeof d.rptNotes==='object')?d.rptNotes:{}).forEach(([k,v])=>{
+    const m=/^(.+)_(\d{4}-\d{2})$/.exec(k); if(!m) return;
+    const nid=idMap[m[1]]||m[1];
+    if(_ID_RE.test(nid)) rptNotes[`${nid}_${m[2]}`]=_str(v);
+  });
+  return {participants,plans,rptNotes};
+}
+
 function loadDB(){
   try{
     const raw=localStorage.getItem(DBKEY);
-    if(raw){ const d=JSON.parse(raw); DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{}; }
+    if(raw){ const c=sanitizeDB(JSON.parse(raw)); DB.participants=c.participants; DB.plans=c.plans; DB.rptNotes=c.rptNotes; }
   }catch(e){ console.warn('Load error',e); }
   migrateSchnupper();
   migrateSchulCodes();
 }
 
-// Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW'.
-// Jetzt eigenes Feld plan.sw – Freitext-Bemerkung bleibt davon unberührt.
+// Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW' → eigenes Feld plan.sw.
+// Freitext-Bemerkung bleibt davon unberührt.
 function migrateSchnupper(){
-  // Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW' → eigenes Feld plan.sw.
   let changed=false;
   Object.values(DB.plans||{}).forEach(day=>{
     Object.values(day||{}).forEach(pl=>{
       if(pl && pl.bemerkung==='S.LW'){ pl.sw='S.LW'; pl.bemerkung=''; changed=true; }
     });
   });
-  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
+  if(changed) try{ localStorage.setItem(DBKEY,JSON.stringify(DB)); }catch(e){ console.warn('Migration-Save fehlgeschlagen',e); }
 }
 
 // Alt-Daten: bisher bedeutete der Basis-Code DAZ/FöA/DK/IKPC „½ Tag VM".
@@ -1588,12 +1647,39 @@ function migrateSchulCodes(){
       if(k && k.typ && k.typ!=='DK' && !hasSuf(k.typ)){ k.typ=k.typ+'-VM'; changed=true; }
     });
   });
-  if(changed) localStorage.setItem(DBKEY,JSON.stringify(DB));
+  if(changed) try{ localStorage.setItem(DBKEY,JSON.stringify(DB)); }catch(e){ console.warn('Migration-Save fehlgeschlagen',e); }
 }
 
 function saveDB(){
-  localStorage.setItem(DBKEY,JSON.stringify(DB));
   dirty=true;
+  try{
+    localStorage.setItem(DBKEY,JSON.stringify(DB));
+  }catch(e){
+    // localStorage voll (QuotaExceeded) o. Ä. – Nutzer warnen statt still zu scheitern.
+    console.warn('Speichern fehlgeschlagen',e);
+    try{ toast('⚠ Speichern fehlgeschlagen – Speicher voll? Bitte manuell per Export sichern.','t-err'); }catch(_){}
+  }
+}
+
+// Löscht ALLE lokal gespeicherten Daten (localStorage + gemerkter Speicherort in
+// IndexedDB) und setzt den In-Memory-Stand zurück. Zwei Bestätigungen gegen Fehlklicks;
+// personenbezogene Daten sollen sich so bewusst und vollständig entfernen lassen
+// (z. B. auf geteilten Rechnern).
+async function wipeAllData(){
+  const n=(DB.participants||[]).length;
+  if(!confirm(`Wirklich ALLE lokal gespeicherten Daten löschen?\n\n• ${n} Teilnehmer\n• alle Einteilungen & Notizen\n• gemerkter Speicherort\n\nDies kann nicht rückgängig gemacht werden. Vorher ggf. per Export sichern.`)) return;
+  if(!confirm('Letzte Bestätigung: Daten endgültig löschen?')) return;
+  try{ localStorage.removeItem(DBKEY); }catch(_){}
+  try{ localStorage.removeItem(SAVEKEY); }catch(_){}
+  try{ indexedDB.deleteDatabase(FH_DB); }catch(_){}
+  saveDirHandle=null;
+  DB={ participants:[], plans:{}, rptNotes:{} };
+  dirty=false;
+  try{ updateSaveInfo(); }catch(_){}
+  try{ updateSaveFileLabel(); }catch(_){}
+  const active=document.querySelector('.nav-btn.active');
+  if(active) show(active.dataset.v); else renderPlan();
+  toast('🗑 Alle lokalen Daten wurden gelöscht.','t-ok');
 }
 
 // ────────────────────────────────────────────
@@ -1740,6 +1826,9 @@ function neoCountForDay(p, d){
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
+// Standard-Teilnehmersortierung: Vorname, dann Nachname (deutsche Kollation).
+const byName=(a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+
 // ────────────────────────────────────────────
 // NAVIGATION
 // ────────────────────────────────────────────
@@ -1817,7 +1906,7 @@ function renderDayPlan(){
         const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
         if(ab!==bb) return ab-bb;
         // Alle TN: immer nach Vorname sortieren
-        return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+        return byName(a,b);
       });
   }
   const active = _pSortList;
@@ -1876,16 +1965,16 @@ function renderDayPlan(){
     // VM cell – absence has priority over block and workshop
     const vmCell = vmAbsent
       ? buildAbsCell(absCode)
-      : vmEditable ? buildWsCell(pid,'vm',plan.vm||blk.vmL,false)
+      : vmEditable ? buildWsCell(pid,'vm',plan.vm||blk.vmL)
       : blk.vmB ? buildBlockedCell(blk.vmL,'school')
-      : buildWsCell(pid,'vm',plan.vm||'',false);
+      : buildWsCell(pid,'vm',plan.vm||'');
 
     // NM cell – absence has priority over block and workshop
     const nmCell = nmAbsent
       ? buildAbsCell(absCode)
-      : nmEditable ? buildWsCell(pid,'nm',plan.nm||blk.nmL,false)
+      : nmEditable ? buildWsCell(pid,'nm',plan.nm||blk.nmL)
       : blk.nmB ? buildBlockedCell(blk.nmL, blk.nmL==='Sport'?'sport':'school')
-      : buildWsCell(pid,'nm',plan.nm||'',false);
+      : buildWsCell(pid,'nm',plan.nm||'');
 
     // Werkstatt-Belegung je Slot zählen: effektiver Wert (Slot-Eintrag übersteuert
     // den geplanten Block). Schul-Halbtage zählen nicht als Werkstatt.
@@ -1897,11 +1986,11 @@ function renderDayPlan(){
     // Absence
     const absTxt =plan.abwesenheitText||'';
     const absCell=`<div class="abs-wrap">
-      <select class="abs-sel" onchange="onAbsChange('${pid}','${curDay}',this.value)">
+      <select class="abs-sel" onchange="onAbsChange('${esc(pid)}','${curDay}',this.value)">
         ${ABS.filter(a=>!(a.c==='KR-W'||a.c==='FE-W'||a.c==='UN-W'||a.c==='BA-W'||a.c==='UA-W')||date.getDay()===1||absCode===a.c).map(a=>`<option value="${a.c}"${absCode===a.c?' selected':''}>${a.c||'–'}</option>`).join('')}
       </select>
       <input class="abs-txt" type="text" placeholder="Bemerkung" value="${esc(absTxt)}"
-        onchange="setPlan('${curDay}','${pid}',{abwesenheitText:this.value})">
+        onchange="setPlan('${curDay}','${esc(pid)}',{abwesenheitText:this.value})">
     </div>`;
 
     // eCase
@@ -1916,7 +2005,7 @@ function renderDayPlan(){
     } else {
       ecCell=`<div class="ec-wrap">
         <input type="checkbox" class="ec-cb" title="In eCase eintragen und abhaken"
-          onchange="setPlan('${curDay}','${pid}',{ecaseEntered:this.checked});renderDayPlan()">
+          onchange="setPlan('${curDay}','${esc(pid)}',{ecaseEntered:this.checked});renderDayPlan()">
         <span class="ec-open" title="eCase ausstehend">!</span>
       </div>`;
     }
@@ -1926,18 +2015,18 @@ function renderDayPlan(){
     const sw=plan.sw||'';
     const isSchnupTag=isSchnuppertag(plan);
     const bemCell=`<div class="bem-wrap">
-      <select class="bem-sel" onchange="onBemChange(this,'${pid}','${curDay}')">
+      <select class="bem-sel" onchange="onBemChange(this,'${esc(pid)}','${curDay}')">
         <option value=""${(!sw&&!isSchnupTag)?' selected':''}>–</option>
         <option value="S.LW"${sw==='S.LW'?' selected':''}>Schnupperwoche LW</option>
         <option value="S.EX"${sw==='S.EX'?' selected':''}>Schnupperlehre</option>
         <option value="S.TAG"${isSchnupTag?' selected':''}>Schnuppertag</option>
       </select>
       <input class="bem-inp" type="text" value="${esc(bem)}" placeholder="Bemerkung…"
-        onchange="setPlan('${curDay}','${pid}',{bemerkung:this.value})">
+        onchange="setPlan('${curDay}','${esc(pid)}',{bemerkung:this.value})">
     </div>`;
 
     rows+=`<tr class="${rowCls}">
-      <td><span class="cell-name${nameGreen?' cell-name-green':''}">${p.vorname} ${p.nachname}</span>${chip}</td>
+      <td><span class="cell-name${nameGreen?' cell-name-green':''}">${esc(p.vorname)} ${esc(p.nachname)}</span>${chip}</td>
       <td>${jcBadge}</td>
       <td style="text-align:center;font-size:11px;font-weight:600">${p.iiz==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
       <td style="text-align:center">${bwDot}</td>
@@ -1964,6 +2053,8 @@ function renderDayPlan(){
   const ecEntries=[];
   active.forEach(p=>{
     const pl=getPlan(curDay,p.id);
+    // Eigenes Konzept „keine eCase-Pflicht": bewusst OHNE ZS und OHNE BA-VM/BA-NM
+    // (beide sind eCase-pflichtig), aber MIT PA – daher nicht mit SOFT_ABS/HALF_ABS mergen.
     const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
     if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
       openEC++;
@@ -1974,11 +2065,11 @@ function renderDayPlan(){
   if(badge){
     if(openEC>0){
       const rows=ecEntries.map(e=>`<tr>
-        <td style="padding:3px 8px">${e.name}</td>
+        <td style="padding:3px 8px">${esc(e.name)}</td>
         <td style="padding:3px 8px;color:var(--red);font-weight:700">${e.abs}</td>
         <td style="padding:3px 8px">
           <input type="checkbox" title="In eCase eingetragen"
-            onchange="this.closest('.ec-drop').style.display='none';setPlan('${e.dstr}','${e.pid}',{ecaseEntered:this.checked});renderDayPlan()">
+            onchange="this.closest('.ec-drop').style.display='none';setPlan('${esc(e.dstr)}','${esc(e.pid)}',{ecaseEntered:this.checked});renderDayPlan()">
         </td></tr>`).join('');
       badge.innerHTML=`<div class="ec-badge-wrap">
         <button class="warn-bar ec-badge-btn" style="margin:0;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2027,14 +2118,13 @@ function buildBlockedCell(label, type){
   return `<div class="blocked ${cls}">${txt}</div>`;
 }
 
-function buildWsCell(pid, slot, val, disabled){
+function buildWsCell(pid, slot, val){
   // Schul-Codes sind ebenfalls per Slot wählbar → nicht als „Anderes…"-Freitext behandeln.
   const isCustom = val && !WS.includes(val) && val!=='Sport' && !SCHOOL_TYPES.includes(val);
-  const disAttr  = disabled ? 'disabled' : '';
   const extra    = isCustom ? `<input class="ws-custom" value="${esc(val)}" placeholder="Werkstatt…"
-      onchange="setPlan('${curDay}','${pid}',{${slot}:this.value})">` : '';
+      onchange="setPlan('${curDay}','${esc(pid)}',{${slot}:this.value})">` : '';
   return `<div>
-    <select class="ws-sel" ${disAttr} onchange="onWsCh(this,'${pid}','${slot}')">
+    <select class="ws-sel"  onchange="onWsCh(this,'${esc(pid)}','${slot}')">
       <option value="">–</option>
       ${WS.map(w=>`<option${val===w?' selected':''}>${w}</option>`).join('')}
       ${slot==='nm'?`<option value="Sport"${val==='Sport'?' selected':''}>Sport</option>`:''}
@@ -2145,7 +2235,7 @@ function clearCurrentDay(){
     n=Object.keys(DB.plans[curDay]).length;
     delete DB.plans[curDay];
   }
-  saveDB(); dirty=true;
+  saveDB(); // setzt dirty=true
   toast(`🗑 ${label} geleert (${n} Einträge entfernt)`,'t-ok');
   renderPlan();
 }
@@ -2166,21 +2256,21 @@ function toggleArchive(){ _showArchive=!_showArchive; renderPersons(); }
 
 function renderPersons(){
   const el=document.getElementById('pList');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  const sorted=[...DB.participants].sort(byName);
   if(!sorted.length){
     el.innerHTML=`<div class="empty-state"><p>Noch keine Teilnehmer erfasst.</p><button class="btn btn-primary" onclick="openPM()">+ Ersten Teilnehmer hinzufügen</button></div>`;
     return;
   }
   const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
   const card=(p,archived)=>{
-    const sch=(p.schultage||[]).map(s=>`${SCH_LABELS[s.typ]||s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
-    const krs=(p.kurse||[]).map(k=>`${SCH_LABELS[k.typ]||k.typ}`).join(' · ');
+    const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
+    const krs=(p.kurse||[]).map(k=>`${k.typ}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
     const wb=archived?'':wbBadge(p);
     const wbBtns=archived?'':wbActionBtns(p);
     return `<div class="p-card sc-${p.status}${archived?' p-archived':''}">
       <div class="p-card-info">
-        <div class="p-name-lg">${p.vorname} ${p.nachname} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
+        <div class="p-name-lg">${esc(p.vorname)} ${esc(p.nachname)} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
         <div class="p-meta">
           <span>📌 ${stLbl[p.status]||p.status}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
@@ -2195,8 +2285,8 @@ function renderPersons(){
       </div>
       <div class="p-actions">
         ${wbBtns}
-        <button class="btn btn-secondary btn-sm" onclick="openPM('${p.id}')">✏️ Bearbeiten</button>
-        <button class="btn btn-danger btn-sm" onclick="delPerson('${p.id}')">🗑️</button>
+        <button class="btn btn-secondary btn-sm" onclick="openPM('${esc(p.id)}')">✏️ Bearbeiten</button>
+        <button class="btn btn-danger btn-sm" onclick="delPerson('${esc(p.id)}')">🗑️</button>
       </div>
     </div>`;
   };
@@ -2227,8 +2317,8 @@ function wbActionBtns(p){
   if(p.status!=='aktiv'||!p.aktiviertAm) return '';
   const w=diffWeeks(new Date(p.aktiviertAm),new Date());
   let out='';
-  if(w>=8&&!p.wb8)   out+=`<button class="btn btn-amber btn-sm" onclick="sendWB('${p.id}','8')">📧 WB 8W</button>`;
-  if(w>=10&&!p.wb10) out+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${p.id}','10')">📧 WB 10W</button>`;
+  if(w>=8&&!p.wb8)   out+=`<button class="btn btn-amber btn-sm" onclick="sendWB('${esc(p.id)}','8')">📧 WB 8W</button>`;
+  if(w>=10&&!p.wb10) out+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${esc(p.id)}','10')">📧 WB 10W</button>`;
   return out;
 }
 
@@ -2301,7 +2391,6 @@ function addKurs(){
 }
 
 // Kurs-/Schultage-Tags zeigen einheitlich den Code (Kürzel) selbst – kein Sonder-Mapping nötig.
-const SCH_LABELS={};
 function schDateFmt(s){ const x=pd(s); return x?`${pad(x.getDate())}.${pad(x.getMonth()+1)}.${x.getFullYear()}`:''; }
 function schPeriodStr(k){
   const zs=(k.zeit||[]).filter(z=>z&&(z.von||z.bis));
@@ -2314,10 +2403,10 @@ function schPeriodStr(k){
 }
 function renderTags(){
   document.getElementById('schTags').innerHTML=tSch.map((s,i)=>
-    `<span class="tag tag-sch">${s.typ} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${esc(s.typ)} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('kursTags').innerHTML=tKurse.map((k,i)=>
-    `<span class="tag tag-sch">${SCH_LABELS[k.typ]||k.typ}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${esc(k.typ)}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('sptTags').innerHTML=tSpt.map((t,i)=>
     `<span class="tag tag-spt">SP ${WD[+t]}<span class="tag-x" onclick="tSpt.splice(${i},1);renderTags()">×</span></span>`
@@ -2402,12 +2491,12 @@ function renderWBAlerts(){
   wrap.innerHTML=alerts.map(a=>`
     <div class="wb-alert ${a.cls}">
       <div class="wb-body">
-        <div class="wb-title">${a.weeks==='10'?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${a.p.vorname} ${a.p.nachname}</div>
+        <div class="wb-title">${a.weeks==='10'?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${esc(a.p.vorname)} ${esc(a.p.nachname)}</div>
         <div class="wb-sub">Aktiviert: ${fd(a.p.aktiviertAm)} · ${a.weeks==='8'?'→ Einschätzung durch Arbeitsagogen':'→ Wirkungsbericht durch Berater'}</div>
       </div>
       <div class="wb-btns">
-        <button class="btn btn-secondary btn-sm" onclick="sendWB('${a.p.id}','${a.weeks}')">📧 E-Mail senden</button>
-        <button class="btn btn-success btn-sm" onclick="markWBDone('${a.p.id}','${a.weeks}')">✓ Erledigt</button>
+        <button class="btn btn-secondary btn-sm" onclick="sendWB('${esc(a.p.id)}','${a.weeks}')">📧 E-Mail senden</button>
+        <button class="btn btn-success btn-sm" onclick="markWBDone('${esc(a.p.id)}','${a.weeks}')">✓ Erledigt</button>
       </div>
     </div>`).join('');
 }
@@ -2444,7 +2533,7 @@ function monthlyOrderedParticipants(y,m){
     .sort((a,b)=>{
     const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
     if(aB!==bB) return aB-bB;
-    return a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de');
+    return byName(a,b);
   });
 }
 
@@ -2532,7 +2621,7 @@ function renderMonthly(){
       if(vmCls==='moc-work'||nmCls==='moc-work') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
-    tbody+=`<tr><td class="td-name">${p.vorname} ${p.nachname}</td>${tds}
+    tbody+=`<tr><td class="td-name">${esc(p.vorname)} ${esc(p.nachname)}</td>${tds}
       <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
       <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
@@ -2552,12 +2641,12 @@ function renderMonthly(){
 
   if(totalOpen>0){
     const ecRows=moEcList.map(e=>`<tr>
-      <td style="padding:4px 10px;font-weight:600">${e.name}</td>
+      <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
       <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
       <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
       <td style="padding:4px 10px;text-align:center">
         <input type="checkbox" title="In eCase eingetragen"
-          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${e.pid}','${e.dstr}',this.checked)">
+          onchange="this.closest('.ec-drop').style.display='none';setEcFromMo('${esc(e.pid)}','${esc(e.dstr)}',this.checked)">
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
@@ -2599,8 +2688,8 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
-  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
+  const sorted=[...DB.participants].sort(byName);
+  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   buildRpt();
@@ -2608,7 +2697,13 @@ function renderRapport(){
 
 const SCHOOL_TYPES=['S','DAZ','FöA','DK','IKPC'];
 // Ostersonntag (Gregorianischer Kalender, Meeus/Jones/Butcher)
+// Reine Jahresfunktionen (easterSunday/tgHolidays/computeFerien) werden pro Jahr
+// gecacht – sie sind deterministisch, daher keine Invalidierung nötig. Entlastet
+// getBlocks/isSchulferien, die pro Teilnehmer×Tag-Zelle aufgerufen werden.
+const _easterCache=new Map();
 function easterSunday(year){
+  const cached=_easterCache.get(year);
+  if(cached) return new Date(cached);            // Kopie – Date ist mutierbar
   const a=year%19,b=Math.floor(year/100),c=year%100;
   const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
   const g=Math.floor((b-f+1)/3);
@@ -2618,11 +2713,16 @@ function easterSunday(year){
   const m=Math.floor((a+11*h+22*l)/451);
   const mo=Math.floor((h+l-7*m+114)/31);
   const day=((h+l-7*m+114)%31)+1;
-  return new Date(year,mo-1,day);
+  const r=new Date(year,mo-1,day);
+  _easterCache.set(year,r);
+  return new Date(r);
 }
 
 // Gesetzliche Feiertage + Brückentage Kanton Thurgau (Motivationssemester)
+const _holiCache=new Map();
 function tgHolidays(year){
+  const cached=_holiCache.get(year);
+  if(cached) return cached;                       // Rückgabe wird nur gelesen
   const map={};
   const add=(dt,name)=>{map[ds(dt)]=name;};
   add(new Date(year,0,1),'Neujahrstag');
@@ -2636,6 +2736,7 @@ function tgHolidays(year){
   off(50,'Pfingstmontag');
   add(new Date(year,4,1),'Tag der Arbeit');
   add(new Date(year,7,1),'Nationalfeiertag');
+  _holiCache.set(year,map);
   return map;
 }
 
@@ -2651,7 +2752,10 @@ function isoMonday(year,week){
   const mon1=fAddDays(jan4,-dow);           // Montag der KW1
   return fAddDays(mon1,(week-1)*7);
 }
+const _ferienCache=new Map();
 function computeFerien(year){
+  const cached=_ferienCache.get(year);
+  if(cached) return cached;                 // Rückgabe wird nur gelesen
   const r=[];
   r.push(fRange(isoMonday(year,5),7));      // Sportferien: Mo ISO-KW 5, 7 Tage
   const e=easterSunday(year);               // Frühlingsferien: abhängig von Ostern
@@ -2663,6 +2767,7 @@ function computeFerien(year){
   r.push(fRange(isoMonday(year,41),14));    // Herbstferien: Mo ISO-KW 41, 14 Tage
   const xmas=new Date(year,11,25);          // Weihnachtsferien: Mo der Woche des 25.12., 14 Tage
   r.push(fRange(fAddDays(xmas,-((xmas.getDay()+6)%7)),14));
+  _ferienCache.set(year,r);
   return r;
 }
 // Liegt `date` in offiziellen TG-Schulferien? Prüft Jahr und Vorjahr (Weihnachtsferien
@@ -2697,8 +2802,7 @@ function getRptRows(p,year,month){
     const rawAbs=plan.abwesenheit||'';
     const isZS=rawAbs==='ZS';
     const isPA=rawAbs==='PA';
-    const HALF_ABS=['UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM'];
-    const isHalfAbs=HALF_ABS.includes(rawAbs);
+    const isHalfAbs=HALF_ABS_SET.has(rawAbs);
     const effAbs=(isZS||isPA||isHalfAbs)?'':rawAbs;
     if(isHalfAbs){
       // Halbtags-Absenz: 4h Absenz + 4h Arbeitszeit
@@ -2920,6 +3024,21 @@ function addRapportFooters(doc){
   }
 }
 
+// Gemeinsame Seiten-Fusszeile (Seite i / N, optional links ein Erstellt-am-Text)
+// für Wochenplan-, Neophyten- und TN-Statistik-PDF. setFont nur wenn übergeben
+// (TN-Statistik braucht 'normal' nach vorherigem italic; die anderen nutzen die
+// Ambient-Schrift → kein setFont, damit die Ausgabe byte-identisch bleibt).
+function pdfPageFooters(doc,{W,mg,y,fs,gray,left,font}){
+  const pageCount=doc.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    if(font) doc.setFont('helvetica',font);
+    doc.setFontSize(fs);doc.setTextColor(gray);
+    if(left) doc.text(left,mg,y);
+    doc.text(`Seite ${i} / ${pageCount}`,W-mg,y,{align:'right'});
+  }
+}
+
 function genPDF(){
   const pid=document.getElementById('rptP').value;
   const mv=document.getElementById('rptM').value;
@@ -2963,8 +3082,8 @@ function genAllRapportsPDF(){
 // ────────────────────────────────────────────
 function openRapportModal(){
   const sel=document.getElementById('rptRP');
-  const sorted=[...DB.participants].sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
-  sel.innerHTML=sorted.map(p=>`<option value="${p.id}">${p.vorname} ${p.nachname}</option>`).join('');
+  const sorted=[...DB.participants].sort(byName);
+  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   document.getElementById('rapportOverlay').classList.add('open');
 }
 function closeRapportModal(){
@@ -3031,8 +3150,7 @@ function genRapportPDF(){
       if(rawAbs==='ZS') stats.zs++;
 
       // Slot-Absenz: Ganztags-Absenz sperrt beide Slots für Werkstatt-Zählung
-      const HALF_ABS_SET=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
-      const fullAbsent=rawAbs&&!HALF_ABS_SET.has(rawAbs);
+      const fullAbsent=rawAbs&&!SOFT_ABS_SET.has(rawAbs);
       const vmAbs=fullAbsent||(rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM');
       const nmAbs=fullAbsent||(rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM');
 
@@ -3216,7 +3334,7 @@ function genWeekPDF(){
   days.forEach(d=>DB.participants.filter(p=>isActiveOnDay(p,d)).forEach(p=>{
     if(!seen.has(p.id)){seen.add(p.id);allActive.push(p);}
   }));
-  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+  allActive.sort((a,b)=>offsiteWeek(a)-offsiteWeek(b)||byName(a,b));
 
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
@@ -3290,12 +3408,11 @@ function genWeekPDF(){
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
   pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
 
-  const SOFT_ABS_PDF=new Set(['ZS','UA-VM','UA-NM','KR-VM','KR-NM','BA-VM','BA-NM','UN-VM','UN-NM']);
   // Effektiver Wert je Slot: Halbtags-/Ganztags-Absenz > manueller Plan-Eintrag > geplanter
   // Block (Sport/Schule) – mirrors renderDayPlan()'s vmAbsent/nmAbsent + Slot-Override-Logik.
   const slotEff=(pl,bl)=>{
     const rawAbs=pl.abwesenheit||'';
-    const softAbs=SOFT_ABS_PDF.has(rawAbs);
+    const softAbs=SOFT_ABS_SET.has(rawAbs);
     const absent=!!rawAbs&&!softAbs;
     const vmAbsent=absent||rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
     const nmAbsent=absent||rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM';
@@ -3314,14 +3431,14 @@ function genWeekPDF(){
       if(bl.fullB&&bl.vmL==='S') return false;
       // Ganztags-Absenz → nie auf Tagesliste
       const rawAbs=pl.abwesenheit||'';
-      if(rawAbs&&!SOFT_ABS_PDF.has(rawAbs)) return false;
+      if(rawAbs&&!SOFT_ABS_SET.has(rawAbs)) return false;
       // Nur TN mit effektivem Werkstatt-/Sport-Eintrag (Slot-Absenz > Plan-Eintrag > Block)
       const{vm,nm}=slotEff(pl,bl);
       const hasVm=WS.includes(vm);
       const hasNm=WS.includes(nm)||nm==='Sport';
       return hasVm||hasNm;
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||byName(a,b));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -3392,7 +3509,7 @@ function genWeekPDF(){
   const moBottom=p=>p.status==='praktikum'||p.status==='prklehr';
   const moPersons=[...DB.participants]
     .filter(p=>moDays.some(d=>isActiveOnDay(p,d)))
-    .sort((a,b)=>(moBottom(a)?1:0)-(moBottom(b)?1:0)||a.vorname.localeCompare(b.vorname,'de')||a.nachname.localeCompare(b.nachname,'de'));
+    .sort((a,b)=>(moBottom(a)?1:0)-(moBottom(b)?1:0)||byName(a,b));
 
   // Effektiver VM/NM-Code je Tag (konsistent mit dem Monatsraster: Ferien, Slot-
   // Übersteuerung, Halb-/Ganztags-Absenzen). Zelle = 2 Zeilen (VM oben, NM unten).
@@ -3400,17 +3517,16 @@ function genWeekPDF(){
     // Tage ausserhalb des Einsatzzeitraums (vor Eintritt / nach Austritt) → «X»
     if(!isActiveOnDay(p,d)) return 'X';
     const plan=getPlan(ds(d),p.id), blk=getBlocks(p,d), a=plan.abwesenheit||'';
-    const half={'UA-VM':'UA','UA-NM':'UA','KR-VM':'KR','KR-NM':'KR','BA-VM':'BA','BA-NM':'BA','UN-VM':'UN','UN-NM':'UN'};
     const isVMhalf=a==='UA-VM'||a==='KR-VM'||a==='BA-VM'||a==='UN-VM';
     const isNMhalf=a==='UA-NM'||a==='KR-NM'||a==='BA-NM'||a==='UN-NM';
-    const effAbs=(a==='ZS'||half[a])?'':a;
+    const effAbs=(a==='ZS'||HALF_ABS_BASE[a])?'':a;
     if(effAbs) return effAbs;                       // Ganztags-/Wochen-Absenz
     if(plan.sw==='S.LW') return 'S.LW';
     if(plan.sw==='S.EX') return 'SL';
     const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
     const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
-    const vm=isVMhalf?half[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-    const nm=isNMhalf?half[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
+    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
     return (vm||'·')+'\n'+(nm||'·');
   };
 
@@ -3487,12 +3603,7 @@ function genWeekPDF(){
   lgSection('ABSENZ-CODE', legendAbsCombined(), 3, [254,226,226], [150,20,20]);
 
   // Footer alle Seiten
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFontSize(7);doc.setTextColor(180);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,205,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:205,fs:7,gray:180});
 
   doc.save(`Wochenplan_KW${pad(w)}_${y}.pdf`);
   toast('📄 Wochenplan PDF (3 Seiten) wird heruntergeladen…','t-ok');
@@ -3596,13 +3707,8 @@ function genNeophytPDF(){
 
   // Fuß- und Seitenzahlen auf allen Seiten
   const now=new Date();
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFontSize(8);doc.setTextColor(170);
-    doc.text(`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,290);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:290,fs:8,gray:170,
+    left:`Erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`});
 
   doc.save(`Neophyten_${Y}.pdf`);
   closeNeophytModal();
@@ -3692,13 +3798,8 @@ function genTNPDF(){
   doc.text('Schnuppern wird separat ausgewiesen und ist in den übrigen Kennzahlen nicht enthalten.',mg,yEnd+8);
 
   // Fuß- und Seitenzahlen
-  const pageCount=doc.getNumberOfPages();
-  for(let i=1;i<=pageCount;i++){
-    doc.setPage(i);
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(170);
-    doc.text(`Erstellt am ${dateStr} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`,mg,290);
-    doc.text(`Seite ${i} / ${pageCount}`,W-mg,290,{align:'right'});
-  }
+  pdfPageFooters(doc,{W,mg,y:290,fs:8,gray:170,font:'normal',
+    left:`Erstellt am ${dateStr} ${pad(now.getHours())}:${pad(now.getMinutes())} · Lernwerkstatt BASISJOB`});
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
   toast(`👥 TN-Statistik: ${s.lernwerkstatt} aktive Teilnehmende, ${s.schnupper} Schnuppern`,'t-ok');
@@ -3878,8 +3979,8 @@ let _pendingImport=null;
 
 function processImportJSON(text){
   try{
-    const d=JSON.parse(text);
-    const diff=_jsonImportDiff(d.participants||[], d.plans||{});
+    const d=sanitizeDB(JSON.parse(text));
+    const diff=_jsonImportDiff(d.participants, d.plans);
     _pendingImport=d;
     openImportPreview(diff);
   }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
@@ -3956,7 +4057,7 @@ function toast(msg,cls=''){
 // ────────────────────────────────────────────
 // MISC
 // ────────────────────────────────────────────
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // Close modals on backdrop click
 document.getElementById('pmOverlay').addEventListener('click',e=>{
@@ -4209,7 +4310,9 @@ function _impShowImagePreview(file){
 async function _impParsePDF(file){
   if(typeof pdfjsLib==='undefined') throw new Error('PDF.js nicht geladen – bitte Seite neu laden');
   const buf=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  // isEvalSupported:false entschärft CVE-2024-4367 (JS-Ausführung via präparierter
+  // Font-Matrix in pdf.js 3.x) beim Import fremder PDFs.
+  const pdf=await pdfjsLib.getDocument({data:buf, isEvalSupported:false}).promise;
   let out='';
   for(let i=1;i<=pdf.numPages;i++){
     const pg=await pdf.getPage(i);
@@ -4293,7 +4396,7 @@ function doImportDoc(){
   });
 
   if(added+updated>0){
-    saveDB(); dirty=true; renderWBAlerts(); renderImpTable();
+    saveDB(); renderWBAlerts(); renderImpTable();
     toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}`, 't-ok');
     setTimeout(()=>show('person'),700);
   }else{

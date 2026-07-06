@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────
+# Datensicherungen NICHT versehentlich committen!
+# Die App exportiert JSON-Dateien mit personenbezogenen Teilnehmerdaten
+# (Namen, Absenzen inkl. Gesundheits-/Militärangaben). Diese gehören
+# NICHT ins Repository. Muster decken die typischen Export-Dateinamen ab.
+# ─────────────────────────────────────────────────────────────
+*.json
+!/.github/**/*.json
+Lernwerkstatt*.json
+Einteilung*.json
+backup*.json
+*backup*.json
+*.csv
+*.xlsx
+*.xls
+
+# GitHub-Pages-Build-Ausgabe
+_site/
+
+# Betriebssystem- / Editor-Reste
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+*.swp
+.idea/
+.vscode/

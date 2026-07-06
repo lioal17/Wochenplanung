@@ -21,3 +21,9 @@ Oder lokal: `index.html` einfach im Browser öffnen – kein Server nötig.
 
 Alle Daten werden lokal im Browser (localStorage) gespeichert.
 Regelmässig über den Export-Button sichern.
+
+> **Datenschutz:** Die Daten (inkl. personenbezogener Angaben) liegen
+> **unverschlüsselt** im Browser. Auf geteilten Rechnern die Funktion
+> **„🗑 Daten löschen"** nutzen. Exportierte `.json`-Sicherungen enthalten
+> Personendaten und dürfen **nicht** ins Repository gelangen (siehe `.gitignore`).
+> Details in [`SECURITY.md`](SECURITY.md).

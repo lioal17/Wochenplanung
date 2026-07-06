@@ -29,10 +29,19 @@ jobs:
         with:
           enablement: true
 
+      # Nur die App veröffentlichen. Interne Dokumentation (PROJEKT.md,
+      # UEBERGABE.md, PROJEKT-ZUSAMMENFASSUNG-*.md, ANALYSE-BERICHT-*.md)
+      # bleibt im Repository, wird aber NICHT auf GitHub Pages ausgeliefert.
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp .nojekyll _site/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deploy

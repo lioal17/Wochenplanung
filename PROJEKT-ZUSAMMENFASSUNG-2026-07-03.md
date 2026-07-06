@@ -116,8 +116,9 @@ Zur Sicherung:
 
 - In der App die **Speichern-/Backup-Funktion** nutzen (lädt die Daten als **JSON-Datei**
   herunter, `JSON.stringify(DB)`). Diese JSON-Datei separat aufbewahren.
-- Wiederherstellen über die **Restore-Backup-Funktion** in der App.
-- Die App hält zusätzlich einen automatischen Snapshot (`lw_db_backup` im localStorage).
+- Wiederherstellen über den **Import-Knopf** (die gesicherte `.json`-Datei einlesen).
+- Hinweis (Korrektur): Es gibt **keinen** automatischen `lw_db_backup`-Snapshot mehr –
+  die einzige Sicherung ist der manuelle JSON-Export.
 
 > Wichtig: `localStorage` ist an Browser/Gerät gebunden. Für eine echte Sicherung die
 > JSON-Datei exportieren und ausserhalb des Browsers ablegen. Diese Datei enthält
