@@ -37,26 +37,24 @@ trotzdem vor jedem Commit prüfen.
   nur von den zwei genutzten CDNs; verhindert Nachladen fremder Skripte und
   Daten-Exfiltration.
 
-## Offene, manuell umzusetzende Härtung: SRI für die CDN-Skripte
+## Subresource-Integrity (SRI) für die CDN-Skripte — umgesetzt
 
-Zwei Bibliotheken werden weiterhin per CDN geladen (nur für den
-PDF-/Word-Import nötig): `pdf.js` (cdnjs) und `mammoth` (jsDelivr). Zur
-Absicherung gegen eine CDN-Kompromittierung sollten sie **Subresource-Integrity
-(SRI)**-Hashes erhalten. Die Hashes lokal berechnen (nicht ratbar) und ergänzen:
+Die zwei per CDN geladenen Bibliotheken (`pdf.js` via cdnjs, `mammoth` via
+jsDelivr; nur für den PDF-/Word-Import nötig) tragen jetzt **SRI-Hashes**
+(`integrity="sha384-…" crossorigin="anonymous"`). Damit lädt der Browser die
+Skripte nur, wenn ihr Inhalt exakt dem erwarteten Stand entspricht — Schutz
+gegen eine CDN-Kompromittierung oder MITM.
 
-```bash
-curl -s https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js \
-  | openssl dgst -sha384 -binary | openssl base64 -A
-curl -s https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js \
-  | openssl dgst -sha384 -binary | openssl base64 -A
-```
+Die Hashes wurden aus den **identischen npm-Artefakten** berechnet
+(`pdfjs-dist@3.11.174/build/pdf.min.js`, `mammoth@1.6.0/mammoth.browser.min.js`),
+die beide CDNs unverändert ausliefern.
 
-Dann in `index.html` an den beiden `<script src=…>`-Tags ergänzen:
-
-```html
-<script src="…pdf.min.js" integrity="sha384-<HASH>" crossorigin="anonymous"></script>
-<script src="…mammoth.browser.min.js" integrity="sha384-<HASH>" crossorigin="anonymous"></script>
-```
+> Bei einem künftigen **Versionswechsel** einer der Libs müssen die Hashes neu
+> berechnet werden (sonst blockiert der Browser das Skript):
+> ```bash
+> curl -s <CDN-URL> | openssl dgst -sha384 -binary | openssl base64 -A
+> # oder aus npm:  npm pack <paket>@<version> && tar -xzf … && openssl dgst -sha384 -binary <datei> | openssl base64 -A
+> ```
 
 > Hinweis: Der PDF.js-**Worker** (`pdf.worker.min.js`) wird intern per
 > `importScripts` geladen und lässt sich nicht per SRI absichern; hier greifen
