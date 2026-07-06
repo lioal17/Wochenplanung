@@ -14,9 +14,9 @@ keine Telemetrie. Alle Daten bleiben lokal im Browser.
 
 > **Wichtig:** Die gespeicherten Daten enthalten personenbezogene und teils
 > besondere Personendaten (z. B. Krankheits-/Militärabsenzen). Sie liegen
-> **unverschlüsselt** im Browserprofil. Auf **geteilten Rechnern** die Funktion
-> **„🗑 Daten löschen"** verwenden – sie entfernt `localStorage` **und** die
-> IndexedDB vollständig.
+> **unverschlüsselt** im Browserprofil. Auf **geteilten Rechnern** nach der
+> Nutzung die **Browserdaten löschen** (Browser-Einstellungen → Websitedaten für
+> die Seite entfernen) – das löscht `localStorage` und die IndexedDB vollständig.
 
 ## Datensicherungen niemals committen
 

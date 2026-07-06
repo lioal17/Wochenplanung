@@ -78,9 +78,10 @@ würde die App bei Fehler brechen. → als exakt dokumentierter Handschritt in `
 ## 4. Datenschutzprobleme
 
 - **Unverschlüsselte lokale Speicherung** besonderer Personendaten (Krankheits-/Militärabsenzen)
-  in `localStorage`. Bisher **keine Löschfunktion**. → ✅ **behoben:** Funktion **„🗑 Daten löschen"**
-  (`wipeAllData`, Commit `42e95ff`) entfernt `localStorage` **und** IndexedDB nach zwei
-  Bestätigungen; Hinweis in `README.md`/`SECURITY.md`.
+  in `localStorage`. → 📋 **Empfehlung dokumentiert:** Auf geteilten Rechnern die Browserdaten
+  nach der Nutzung löschen (Anleitung in `README.md`/`SECURITY.md`). *(Ein zunächst ergänzter
+  In-App-Löschknopf „🗑 Daten löschen" wurde auf Wunsch wieder entfernt – Löschung erfolgt über
+  die Browser-Einstellungen.)*
 - **Öffentliche Pages-Auslieferung interner Doku.** Der Workflow veröffentlichte das *gesamte*
   Repo → `UEBERGABE.md` etc. waren öffentlich abrufbar. → ✅ **behoben** (Commit `7eb0009`): Deploy
   liefert nur noch `index.html` + `.nojekyll`.
@@ -166,7 +167,7 @@ jeweils verhaltensneutral belegt (Browser-Test + Golden-Master über alle Ansich
 |-----------|:----:|-----------|
 | **Architektur** | 7 | Single-File bewusst & passend; klare Blockgliederung. Abzug: sehr lange Funktionen, globaler Scope. |
 | **Sicherheit** | 8 | XSS geschlossen, Import validiert, CSP + pdf.js-Härtung. Abzug: SRI noch manuell, Libs veraltet. |
-| **Datenschutz** | 8 | Kein Tracking, Löschfunktion neu, Pages-Deploy eingegrenzt, `.gitignore`. Abzug: unverschlüsselter localStorage, Namen im Code. |
+| **Datenschutz** | 8 | Kein Tracking, Pages-Deploy eingegrenzt, `.gitignore`, Lösch-Anleitung dokumentiert. Abzug: unverschlüsselter localStorage, Namen im Code. |
 | **Performance** | 8 | Feiertags-Memoisierung eliminiert die Hauptlast; Render/Save für die Datenmenge angemessen. |
 | **Codequalität** | 8 | Nach Dedup deutlich DRY-er, Dead Code entfernt. Abzug: Magic Strings. |
 | **Wartbarkeit** | 8 | Gute Kommentare, zentrale Helfer, jetzt Testnetz. Abzug: Funktionslänge. |

@@ -162,8 +162,9 @@ sie automatisch (Workflow `deploy-pages.yml`). Nichts weiter zu tun.
   die zuletzt gesicherte `.json`-Datei einlesen. Damit sind alle Daten wieder da.
 - **Wichtig:** Es gibt **keinen** internen Auto-Backup-Snapshot in der App. Die
   einzige Sicherung ist der **manuelle JSON-Export** – deshalb regelmäßig sichern.
-- **„🗑 Daten löschen":** entfernt alle lokalen Daten (localStorage + IndexedDB)
-  nach zwei Rückfragen – gedacht für geteilte Rechner. Vorher per Export sichern!
+- **Geteilte Rechner:** Nach der Nutzung die **Browserdaten** für die Seite löschen
+  (Browser-Einstellungen → Websitedaten). Damit sind localStorage und IndexedDB weg.
+  Vorher per Export sichern!
 
 > **Datenschutz:** Diese JSON-Dateien enthalten **Personendaten** von Teilnehmenden.
 > Sie gehören auf ein geschütztes Laufwerk, nicht in ein öffentliches Repository
