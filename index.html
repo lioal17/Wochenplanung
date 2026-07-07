@@ -140,8 +140,6 @@ input,select,textarea{font-family:inherit}
 .btn-success:hover{background:#047857}
 .btn-danger{background:var(--red);color:#fff}
 .btn-danger:hover{background:#b91c1c}
-.btn-amber{background:var(--amber);color:#fff}
-.btn-amber:hover{background:#b45309}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-blue:hover{background:#1d4ed8}
 .btn-sm{padding:5px 10px;font-size:12px}
@@ -1710,7 +1708,6 @@ const ds  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
 function pd(s){ if(!s)return null; const[y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 function fd(s){ if(!s)return ''; const d=pd(s); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
 function isWE(d){ const w=d.getDay(); return w===0||w===6; }
-function diffWeeks(a,b){ return Math.floor((b-a)/(7*864e5)); }
 function addWeeks(iso,n){ const d=pd(iso); d.setDate(d.getDate()+n*7); return ds(d); }
 
 function isoWeek(date){
