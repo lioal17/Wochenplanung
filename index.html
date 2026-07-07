@@ -2333,9 +2333,9 @@ function wbDates(p){
   return { round, inputAG, wb };
 }
 
-// WB-Teilnehmerkreis: aktiv, Eintritt gesetzt, nicht archiviert.
+// WB-Teilnehmerkreis: Lernwerkstatt (aktiv) + Lehrstelle, Eintritt gesetzt, nicht archiviert.
 function wbEligible(){
-  return DB.participants.filter(p=>p.status==='aktiv' && p.einsatzVon && !isArchived(p));
+  return DB.participants.filter(p=>['aktiv','lehrstelle'].includes(p.status) && p.einsatzVon && !isArchived(p));
 }
 
 function wbStatus(p){
