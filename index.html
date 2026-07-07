@@ -93,7 +93,9 @@ input,select,textarea{font-family:inherit}
 }
 .nav-btn:hover{color:var(--navy);background:var(--g1)}
 .nav-btn.active{color:var(--navy);border-bottom-color:var(--navy);background:#fff}
-.nav-btn.nav-tn{margin-left:auto;color:var(--blue);font-weight:700}
+.nav-btn.nav-wbtn{margin-left:auto;color:#b45309;font-weight:700}
+.nav-btn.nav-wbtn:hover{color:#fff;background:#b45309}
+.nav-btn.nav-tn{color:var(--blue);font-weight:700}
 .nav-btn.nav-tn:hover{color:#fff;background:var(--blue)}
 .nav-btn.nav-neophyt{color:var(--green);font-weight:700}
 .nav-btn.nav-neophyt:hover{color:#fff;background:var(--green)}
@@ -360,20 +362,27 @@ input,select,textarea{font-family:inherit}
 .archive-list{display:flex;flex-direction:column;gap:8px}
 
 /* ═══════════════════════════════════════════
-   WB ALERTS
+   WB-TN (WIRKUNGSBERICHTE)
 ═══════════════════════════════════════════ */
-.wb-wrap{margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
-.wb-alert{
-  border-radius:var(--r);padding:12px 16px;
-  display:flex;align-items:center;gap:14px;
-  border:1px solid;
+.wbtn-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.wbtn-tbl th{
+  background:var(--g9);color:#fff;padding:9px 12px;text-align:left;
+  font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap;
 }
-.wb-alert.wb-w8{background:var(--amber-bg);border-color:var(--amber)}
-.wb-alert.wb-w10{background:var(--red-bg);border-color:var(--red)}
-.wb-body{flex:1}
-.wb-title{font-weight:700;font-size:13px}
-.wb-sub{font-size:11px;color:var(--g6);margin-top:2px}
-.wb-btns{display:flex;gap:6px;flex-shrink:0}
+.wbtn-tbl td{padding:8px 12px;border-bottom:1px solid var(--g2);vertical-align:middle}
+.wbtn-tbl tbody tr:hover td{background:var(--g1)}
+.wbtn-tbl tr.wbr-yellow td{background:var(--amber-bg)}
+.wbtn-tbl tr.wbr-red td{background:var(--red-bg)}
+.wbtn-tbl tr.wbr-yellow:hover td,.wbtn-tbl tr.wbr-red:hover td{filter:brightness(.98)}
+.wb-round{display:inline-block;min-width:22px;text-align:center;font-weight:700;
+  background:var(--g2);border-radius:10px;padding:1px 7px}
+.wb-pill{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:11.5px;white-space:nowrap}
+.wb-pill.wb-green{color:#15803d}
+.wb-pill.wb-yellow{color:#b45309}
+.wb-pill.wb-red{color:var(--red)}
+.wb-rem-body{font-size:14px;line-height:1.6}
+.wb-rem-body .wb-rem-tn{font-weight:700;font-size:16px;margin:10px 0 2px}
+.wb-rem-body .wb-rem-date{font-weight:700;color:var(--red)}
 
 /* ═══════════════════════════════════════════
    MONTHLY OVERVIEW
@@ -576,14 +585,12 @@ input,select,textarea{font-family:inherit}
   <button class="nav-btn"        data-v="rapport" onclick="show('rapport')" >📄 Monatsrapport</button>
   <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')"  >📥 Dokument-Import</button>
+  <button class="nav-btn nav-wbtn" data-v="wbtn"  onclick="show('wbtn')" title="Wirkungsberichte: Übersicht & Erinnerungen">📅 WB-TN</button>
   <button class="nav-btn nav-tn" onclick="genTNPDF()" title="Teilnehmer-Statistik (Kennzahlen) als PDF generieren">👥 TN-Statistik</button>
   <button class="nav-btn nav-neophyt" onclick="openNeophytModal()" title="Neophyten-Auswertung: Jahr wählen, Jahres-PDF erzeugen">🌱 Neophyt</button>
 </nav>
 
 <div class="main">
-
-  <!-- WB ALERTS -->
-  <div id="wbWrap" class="wb-wrap"></div>
 
   <!-- ╔══════════════════════════════════════════╗
        ║  VIEW: WOCHENPLAN                        ║
@@ -625,6 +632,29 @@ input,select,textarea{font-family:inherit}
         <button class="btn btn-primary" onclick="openPM()">+ Teilnehmer hinzufügen</button>
       </div>
       <div class="p-list" id="pList"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════╗
+       ║  VIEW: WB-TN (WIRKUNGSBERICHTE)          ║
+       ╚══════════════════════════════════════════╝ -->
+  <div class="view" id="view-wbtn">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">📅 Wirkungsberichte – Übersicht</span>
+        <span class="ar-hint">Sortiert nach nächstfälligem Wirkungsbericht · Erinnerung für Yvi</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="wbtn-tbl">
+          <thead>
+            <tr>
+              <th>Vorname</th><th>Nachname</th><th>Eintritt</th><th>Runde</th>
+              <th>Input Arbeitsagoge</th><th>Wirkungsbericht</th><th>Status</th><th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="wbtnList"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -822,10 +852,6 @@ input,select,textarea{font-family:inherit}
         <option value="ja">Ja</option>
       </select>
     </div>
-    <div class="fg" id="f_aktiv_g">
-      <label>Aktiviert am <small style="text-transform:none;letter-spacing:0">(Wirkungsbericht-Timer)</small></label>
-      <input class="fi" type="date" id="f_aktiv">
-    </div>
   </div>
 
   <!-- Schultage / Sport / Fix (hidden for Schnupper) -->
@@ -912,6 +938,22 @@ input,select,textarea{font-family:inherit}
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closePM()">Abbrechen</button>
     <button class="btn btn-primary" onclick="savePM()">Speichern</button>
+  </div>
+</div>
+</div>
+
+<!-- ╔══════════════════════════════════════════╗
+     ║  WB ERINNERUNG (POP-UP FÜR YVI)          ║
+     ╚══════════════════════════════════════════╝ -->
+<div class="overlay" id="wbReminderOverlay">
+<div class="modal" style="max-width:480px">
+  <div class="modal-head">
+    <div class="modal-title">📅 Wirkungsbericht – Erinnerung</div>
+  </div>
+  <div class="wb-rem-body" id="wbRemBody"></div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="wbReminderSnooze()">Später erinnern</button>
+    <button class="btn btn-success" onclick="wbReminderDone()">Erledigt</button>
   </div>
 </div>
 </div>
@@ -1576,8 +1618,8 @@ function sanitizeDB(d){
         stammwerkstatt:_str(p.stammwerkstatt),
         einsatzVon:_dstr2(p.einsatzVon), einsatzBis:_dstr2(p.einsatzBis),
         iiz:p.iiz==='ja'?'ja':'nein',
-        aktiviertAm:_dstr2(p.aktiviertAm), bemerkung:_str(p.bemerkung),
-        wb8:!!p.wb8, wb10:!!p.wb10,
+        bemerkung:_str(p.bemerkung),
+        wbRounds: Number.isInteger(p.wbRounds) ? p.wbRounds : (p.wb10 ? 1 : 0),
         schultage:(Array.isArray(p.schultage)?p.schultage:[]).filter(s=>s&&typeof s==='object')
           .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag)})),
         sporttermine:(Array.isArray(p.sporttermine)?p.sporttermine:[]).map(_str),
@@ -1669,6 +1711,7 @@ function pd(s){ if(!s)return null; const[y,m,d]=s.split('-').map(Number); return
 function fd(s){ if(!s)return ''; const d=pd(s); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
 function isWE(d){ const w=d.getDay(); return w===0||w===6; }
 function diffWeeks(a,b){ return Math.floor((b-a)/(7*864e5)); }
+function addWeeks(iso,n){ const d=pd(iso); d.setDate(d.getDate()+n*7); return ds(d); }
 
 function isoWeek(date){
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
@@ -1820,6 +1863,7 @@ function show(name){
   if(name==='person')  renderPersons();
   if(name==='monthly') renderMonthly();
   if(name==='rapport') renderRapport();
+  if(name==='wbtn')    renderWBTN();
 }
 
 // ────────────────────────────────────────────
@@ -2244,11 +2288,9 @@ function renderPersons(){
     const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
     const krs=(p.kurse||[]).map(k=>`${k.typ}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
-    const wb=archived?'':wbBadge(p);
-    const wbBtns=archived?'':wbActionBtns(p);
     return `<div class="p-card sc-${p.status}${archived?' p-archived':''}">
       <div class="p-card-info">
-        <div class="p-name-lg">${esc(p.vorname)} ${esc(p.nachname)} ${wb}${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
+        <div class="p-name-lg">${esc(p.vorname)} ${esc(p.nachname)} ${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
         <div class="p-meta">
           <span>📌 ${stLbl[p.status]||p.status}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
@@ -2258,11 +2300,9 @@ function renderPersons(){
           ${p.status!=='schnupper'?`<span>📚 ${sch}</span>`:''}
           ${p.status!=='schnupper'&&krs?`<span>🎓 Kurse: ${krs}</span>`:''}
           ${p.status!=='schnupper'&&p.sporttermine?.length?`<span>🏃 Sport: ${spt}</span>`:''}
-          ${p.aktiviertAm?`<span>✅ Aktiv seit ${fd(p.aktiviertAm)}</span>`:''}
         </div>
       </div>
       <div class="p-actions">
-        ${wbBtns}
         <button class="btn btn-secondary btn-sm" onclick="openPM('${esc(p.id)}')">✏️ Bearbeiten</button>
         <button class="btn btn-danger btn-sm" onclick="delPerson('${esc(p.id)}')">🗑️</button>
       </div>
@@ -2283,21 +2323,75 @@ function renderPersons(){
   el.innerHTML=html;
 }
 
-function wbBadge(p){
-  if(p.status!=='aktiv'||!p.aktiviertAm) return '';
-  const w=diffWeeks(new Date(p.aktiviertAm),new Date());
-  if(w>=10&&!p.wb10) return `<span style="color:var(--red);font-size:11px;font-weight:700"> ⚠ WB 10W fällig</span>`;
-  if(w>=8&&!p.wb8)   return `<span style="color:var(--amber);font-size:11px;font-weight:700"> ⚠ WB 8W fällig</span>`;
-  return '';
+// Termine der aktuell offenen WB-Runde (deterministisch ab Eintrittsdatum):
+//   WB(r)      = Eintritt + 10 Wochen + (r-1)×12 Wochen
+//   InputAG(r) = WB(r) − 2 Wochen  (einheitlich für alle Runden)
+function wbDates(p){
+  const round=(p.wbRounds||0)+1;
+  const wb=addWeeks(p.einsatzVon, 10 + (round-1)*12);
+  const inputAG=addWeeks(wb, -2);
+  return { round, inputAG, wb };
 }
 
-function wbActionBtns(p){
-  if(p.status!=='aktiv'||!p.aktiviertAm) return '';
-  const w=diffWeeks(new Date(p.aktiviertAm),new Date());
-  let out='';
-  if(w>=8&&!p.wb8)   out+=`<button class="btn btn-amber btn-sm" onclick="sendWB('${esc(p.id)}','8')">📧 WB 8W</button>`;
-  if(w>=10&&!p.wb10) out+=`<button class="btn btn-danger btn-sm" onclick="sendWB('${esc(p.id)}','10')">📧 WB 10W</button>`;
-  return out;
+// WB-Teilnehmerkreis: aktiv, Eintritt gesetzt, nicht archiviert.
+function wbEligible(){
+  return DB.participants.filter(p=>p.status==='aktiv' && p.einsatzVon && !isArchived(p));
+}
+
+function wbStatus(p){
+  const {inputAG,wb}=wbDates(p);
+  const today=ds(new Date());
+  if(today>=wb)      return {cls:'wb-red',   row:'wbr-red',    icon:'🔴', label:'Wirkungsbericht fällig'};
+  if(today>=inputAG) return {cls:'wb-yellow',row:'wbr-yellow', icon:'🟡', label:'Input Arbeitsagoge fällig'};
+  return               {cls:'wb-green', row:'',           icon:'🟢', label:'Noch offen'};
+}
+
+// Immer aufsteigend nach WB-Datum (nächstfälliger zuerst) – nicht nach Input AG.
+function wbSorted(){
+  return wbEligible().sort((a,b)=> wbDates(a).wb.localeCompare(wbDates(b).wb));
+}
+
+function renderWBTN(){
+  const tb=document.getElementById('wbtnList'); if(!tb) return;
+  const rows=wbSorted();
+  tb.innerHTML = rows.length ? rows.map(p=>{
+    const {round,inputAG,wb}=wbDates(p);
+    const s=wbStatus(p);
+    return `<tr class="${s.row}">
+      <td>${esc(p.vorname)}</td>
+      <td>${esc(p.nachname)}</td>
+      <td>${fd(p.einsatzVon)}</td>
+      <td><span class="wb-round">${round}.</span></td>
+      <td>${fd(inputAG)}</td>
+      <td>${fd(wb)}</td>
+      <td><span class="wb-pill ${s.cls}">${s.icon} ${s.label}</span></td>
+      <td><button class="btn btn-success btn-sm" onclick="wbMarkDone('${esc(p.id)}')">✓ Als erledigt markieren</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" style="text-align:center;color:var(--g6);padding:24px">Keine aktiven Teilnehmenden mit anstehenden Wirkungsberichten.</td></tr>`;
+  wbUpdateBadge();
+}
+
+// Runde abschliessen → nächste Runde beginnt automatisch (fortlaufender Zyklus).
+function wbMarkDone(id){
+  const p=DB.participants.find(x=>x.id===id);
+  if(!p || isArchived(p)) return;
+  const done=(p.wbRounds||0)+1;
+  p.wbRounds=done;
+  saveDB(); renderWBTN();
+  wbSnoozed.delete(id);
+  toast(`✓ Runde ${done} abgeschlossen`,'t-ok');
+}
+
+// Anzahl fälliger (🟡/🔴) Einträge als Badge am WB-TN-Button.
+function wbUpdateBadge(){
+  const due=wbEligible().filter(p=>wbStatus(p).cls!=='wb-green').length;
+  const tab=document.querySelector('.nav-btn[data-v="wbtn"]');
+  tab?.querySelector('.n-badge')?.remove();
+  if(due){
+    const b=document.createElement('span');
+    b.className='n-badge'; b.textContent=due;
+    tab?.appendChild(b);
+  }
 }
 
 function openPM(id=null){
@@ -2314,7 +2408,6 @@ function openPM(id=null){
   g('f_von').value=p?.einsatzVon||'';
   g('f_bis').value=p?.einsatzBis||'';
   g('f_iiz').value=p?.iiz||'nein';
-  g('f_aktiv').value=p?.aktiviertAm||'';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tKurse=[...(p.kurse||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
   Z_FIELDS.forEach(id=>{const el=g(id); if(el) el.value='';});
@@ -2327,7 +2420,6 @@ function closePM(){ document.getElementById('pmOverlay').classList.remove('open'
 function onSt(){
   const s=document.getElementById('f_st').value;
   document.getElementById('pmExtra').style.display=(s==='schnupper'||s==='prklehr')?'none':'block';
-  document.getElementById('f_aktiv_g').style.display=s==='aktiv'?'flex':'none';
   // Stammwerkstatt bleibt immer ausgeblendet (Hintergrund-Info, für TN nicht relevant)
   document.getElementById('f_sw_g').style.display='none';
 }
@@ -2420,7 +2512,6 @@ function savePM(){
     einsatzVon:document.getElementById('f_von').value,
     einsatzBis:document.getElementById('f_bis').value,
     iiz:document.getElementById('f_iiz').value,
-    aktiviertAm:document.getElementById('f_aktiv').value,
     bemerkung:document.getElementById('f_pbm').value,
     schultage:[...tSch],sporttermine:[...tSpt],kurse:[...tKurse],
   };
@@ -2431,7 +2522,7 @@ function savePM(){
     DB.participants.push({id:uid(),...data});
   }
   _pSortDay=null; // invalidate sort cache
-  saveDB(); closePM(); renderPersons(); renderWBAlerts();
+  saveDB(); closePM(); renderPersons(); renderWBTN();
   toast(`✓ ${vn} ${nn} gespeichert`,'t-ok');
 }
 
@@ -2441,59 +2532,55 @@ function delPerson(id){
   DB.participants=DB.participants.filter(x=>x.id!==id);
   Object.keys(DB.plans).forEach(d=>{ if(DB.plans[d]) delete DB.plans[d][id]; });
   _pSortDay=null; // invalidate sort cache
-  saveDB(); renderPersons(); renderWBAlerts(); toast('Teilnehmer gelöscht');
+  saveDB(); renderPersons(); renderWBTN(); toast('Teilnehmer gelöscht');
 }
 
 // ────────────────────────────────────────────
-// WIRKUNGSBERICHT ALERTS
+// WB ERINNERUNG (POP-UP FÜR YVI) – keine E-Mail, nur Erinnerung
 // ────────────────────────────────────────────
-function renderWBAlerts(){
-  const wrap=document.getElementById('wbWrap');
-  const alerts=[];
-  DB.participants.forEach(p=>{
-    if(p.status!=='aktiv'||!p.aktiviertAm) return;
-    const w=diffWeeks(new Date(p.aktiviertAm),new Date());
-    if(w>=10&&!p.wb10) alerts.push({p,weeks:'10',cls:'wb-w10'});
-    else if(w>=8&&!p.wb8) alerts.push({p,weeks:'8',cls:'wb-w8'});
-  });
+let wbSnoozed=new Set();   // Session-Merker "Später erinnern" (nicht persistiert)
+let wbRemQueue=[];         // Warteschlange fälliger Einträge beim App-Start
+let wbRemCurrent=null;     // gerade angezeigte TN-ID
 
-  // Nav badge
-  const tab=document.querySelector('.nav-btn[data-v="person"]');
-  tab?.querySelector('.n-badge')?.remove();
-  if(alerts.length){
-    const b=document.createElement('span');
-    b.className='n-badge';b.textContent=alerts.length;
-    tab?.appendChild(b);
+// Beim App-Start: alle Einträge mit erreichtem Input-AG-Datum (🟡/🔴) einreihen.
+function wbCheckReminders(){
+  wbRemQueue = wbSorted()
+    .filter(p=>wbStatus(p).cls!=='wb-green' && !wbSnoozed.has(p.id))
+    .map(p=>p.id);
+  wbShowNextReminder();
+}
+
+function wbShowNextReminder(){
+  const ov=document.getElementById('wbReminderOverlay');
+  // nächste noch gültige (nicht erledigte/archivierte) ID aus der Queue holen
+  let id=null;
+  while(wbRemQueue.length){
+    const cand=wbRemQueue.shift();
+    const p=DB.participants.find(x=>x.id===cand);
+    if(p && wbStatus(p) && wbStatus(p).cls!=='wb-green' && !wbSnoozed.has(cand)){ id=cand; break; }
   }
-
-  wrap.innerHTML=alerts.map(a=>`
-    <div class="wb-alert ${a.cls}">
-      <div class="wb-body">
-        <div class="wb-title">${a.weeks==='10'?'🔴':'🟡'} Wirkungsbericht ${a.weeks} Wochen – ${esc(a.p.vorname)} ${esc(a.p.nachname)}</div>
-        <div class="wb-sub">Aktiviert: ${fd(a.p.aktiviertAm)} · ${a.weeks==='8'?'→ Einschätzung durch Arbeitsagogen':'→ Wirkungsbericht durch Berater'}</div>
-      </div>
-      <div class="wb-btns">
-        <button class="btn btn-secondary btn-sm" onclick="sendWB('${esc(a.p.id)}','${a.weeks}')">📧 E-Mail senden</button>
-        <button class="btn btn-success btn-sm" onclick="markWBDone('${esc(a.p.id)}','${a.weeks}')">✓ Erledigt</button>
-      </div>
-    </div>`).join('');
+  if(!id){ wbRemCurrent=null; ov.classList.remove('open'); return; }
+  wbRemCurrent=id;
+  const p=DB.participants.find(x=>x.id===id);
+  const {wb}=wbDates(p);
+  document.getElementById('wbRemBody').innerHTML=
+    `Hallo Yvi<br><br>`+
+    `Bitte den Arbeitsagogen bezüglich folgendem Teilnehmer kontaktieren.`+
+    `<div class="wb-rem-tn">${esc(p.vorname)} ${esc(p.nachname)}</div>`+
+    `Wirkungsbericht fällig am: <span class="wb-rem-date">${fd(wb)}</span><br><br>`+
+    `Bitte nach Rücksprache den Wirkungsbericht vorbereiten und nach Versand entsprechend abschliessen.`;
+  ov.classList.add('open');
 }
 
-function sendWB(pid,weeks){
-  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
-  const mails={lio:'lio@basisjob.ch',tom:'tom@basisjob.ch',yvi:'yvi@basisjob.ch'};
-  const to=mails[p.jobCoach]||'';
-  const sub=encodeURIComponent(`Wirkungsbericht ${weeks} Wochen – ${p.vorname} ${p.nachname}`);
-  const body=encodeURIComponent(`Guten Tag\n\nBitte ${weeks==='8'?'Einschätzung vornehmen':'Wirkungsbericht erstellen'} für:\n\n${p.vorname} ${p.nachname}\nAktiviert am: ${fd(p.aktiviertAm)}\nEinsatz: ${fd(p.einsatzVon)} – ${fd(p.einsatzBis)}\n\nFreundliche Grüsse`);
-  window.open(`mailto:${to}?subject=${sub}&body=${body}`,'_blank');
-  if(confirm(`Wirkungsbericht ${weeks}W als erledigt markieren?`)) markWBDone(pid,weeks);
+function wbReminderDone(){
+  const id=wbRemCurrent;
+  if(id) wbMarkDone(id);
+  wbShowNextReminder();
 }
 
-function markWBDone(pid,weeks){
-  const idx=DB.participants.findIndex(x=>x.id===pid);
-  if(weeks==='8') DB.participants[idx].wb8=true;
-  else DB.participants[idx].wb10=true;
-  saveDB(); renderWBAlerts(); renderPersons(); toast('✓ Wirkungsbericht abgeschlossen','t-ok');
+function wbReminderSnooze(){
+  if(wbRemCurrent) wbSnoozed.add(wbRemCurrent);  // erscheint beim nächsten App-Start erneut
+  wbShowNextReminder();
 }
 
 // ────────────────────────────────────────────
@@ -3922,9 +4009,9 @@ function _jsonImportDiff(incoming, incomingPlans){
   const FIELDS=[
     ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
     ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
-    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['aktiviertAm','Aktiviert am'],['bemerkung','Bemerkung'],
+    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['bemerkung','Bemerkung'],
     ['schultage','Schultage'],['sporttermine','Sport'],
-    ['wb8','WB 8'],['wb10','WB 10'],
+    ['wbRounds','WB-Runden'],
   ];
   const norm=v=>typeof v==='object'?JSON.stringify(v||null):(v??'');
   const nameOf=p=>`${p.vorname||''} ${p.nachname||''}`.trim()||'(ohne Name)';
@@ -4363,10 +4450,9 @@ function doImportDoc(){
         jobCoach:p.jc||'',
         iiz:'nein',
         einsatzVon:p.von||'',einsatzBis:p.bis||'',
-        aktiviertAm:new Date().toISOString().split('T')[0],
         schultage:p.sch,
         sporttermine:p.spt,
-        wb8:false,wb10:false,
+        wbRounds:0,
         bemerkung:'',
       });
       added++;
@@ -4374,7 +4460,7 @@ function doImportDoc(){
   });
 
   if(added+updated>0){
-    saveDB(); renderWBAlerts(); renderImpTable();
+    saveDB(); renderWBTN(); renderImpTable();
     toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}`, 't-ok');
     setTimeout(()=>show('person'),700);
   }else{
@@ -4397,7 +4483,8 @@ function init(){
     if(!h) return;
     saveDirHandle=h; updateSaveFileLabel();
   });
-  renderWBAlerts();
+  wbUpdateBadge();
+  wbCheckReminders();
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
     e.preventDefault();e.returnValue='';

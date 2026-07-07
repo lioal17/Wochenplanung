@@ -60,7 +60,7 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `einsatzVon` | `YYYY-MM-DD` | **Eintritt** (= Einsatz von) |
 | `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
 | `iiz` | string | IIZ-Feld |
-| `aktiviertAm` | `YYYY-MM-DD` | Aktivierungsdatum (für Wirkungsbericht-Fristen) |
+| `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
 | `bemerkung` | string | Freitext |
 | `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schultage (unverändert) |
 | `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen (kein Wochentag) |
@@ -213,8 +213,12 @@ vorliegt – die Tagesplanung hat immer Vorrang vor dem hinterlegten Sporttermin
 ### 5.4 Weitere Helfer
 - `neoCountForDay` – zählt Neophyten-Einteilung max. 1× pro TN/Tag.
 - `copyPrev` – Vorwoche kopieren. `clearCurrentDay` – Tag leeren.
-- `renderWBAlerts` / `sendWB` – **Wirkungsbericht-Erinnerungen** (8/10 Wochen ab `aktiviertAm`)
-  mit Mailto-Link an den Jobcoach.
+- **WB-TN (Wirkungsberichte)** – eigener Bereich (`renderWBTN`, Button „📅 WB-TN"). Übersicht
+  aller aktiven TN, sortiert nach nächstfälligem Wirkungsbericht. Termine deterministisch ab
+  `einsatzVon`: `WB(r) = Eintritt + 10W + (r-1)×12W`, `InputAG(r) = WB(r) − 2W`; `wbMarkDone`
+  schliesst eine Runde ab (`wbRounds++`) und startet automatisch die nächste. `wbCheckReminders`
+  zeigt beim App-Start ein Erinnerungs-Pop-up für Yvi, sobald der Input Arbeitsagoge fällig ist
+  (Buttons „Erledigt" / „Später erinnern"). **Kein Mailversand, keine Mailvorlage.**
 
 ---
 

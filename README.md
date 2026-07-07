@@ -13,7 +13,7 @@ Oder lokal: `index.html` einfach im Browser öffnen – kein Server nötig.
 - Wochenplan mit VM/NM-Einteilung, Abwesenheitscodes, eCase-Tracking
 - Automatische Sperrung von Schultagen und Sportterminen
 - Fixpräferenzen für wiederkehrende Werkstatt-Zuweisung
-- Wirkungsbericht-Erinnerungen (8W / 10W) mit Mailto-Link
+- Wirkungsberichte (Bereich „WB-TN"): Übersicht & Erinnerung an Yvi, fortlaufender Runden-Zyklus ab Eintrittsdatum
 - Monatsübersicht und Monatsrapport als PDF (BASISJOB-Format)
 - Export / Import als JSON-Datensicherung
 
