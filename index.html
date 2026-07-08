@@ -1910,6 +1910,28 @@ function renderLegend(){
     `<div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${row(legendAbsCombined())}</div></div>`;
 }
 
+// Teilnehmer eines Tages in Anzeige-Reihenfolge: alle am Tag aktiven TN,
+// Praktikum / Ganztags-Schule / Wochen-Absenzen ans Ende, sonst nach Vorname.
+// Gemeinsam genutzt von der Bildschirm-Tagesplanung (renderDayPlan) und der
+// Tagesübersicht-Seite im Wochenplan-PDF (genWeekPDF), damit beide dieselbe
+// Liste zeigen.
+function dayParticipants(dateStr){
+  const date=pd(dateStr);
+  const goesBottom=p=>{
+    const bl=getBlocks(p,date);
+    const abs=getPlan(dateStr,p.id).abwesenheit||'';
+    return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W'||abs==='UN-W'||abs==='BA-W'||abs==='UA-W';
+  };
+  return DB.participants
+    .filter(p=>isActiveOnDay(p,date))
+    .sort((a,b)=>{
+      const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
+      if(ab!==bb) return ab-bb;
+      // Alle TN: immer nach Vorname sortieren
+      return byName(a,b);
+    });
+}
+
 function renderDayPlan(){
   const date = pd(curDay);
   const area = document.getElementById('planArea');
@@ -1917,19 +1939,7 @@ function renderDayPlan(){
   // Rebuild sort only when day changes – never during same-day edits (no jumping)
   if(_pSortDay !== curDay){
     _pSortDay = curDay;
-    const goesBottom=p=>{
-      const bl=getBlocks(p,date);
-      const abs=getPlan(curDay,p.id).abwesenheit||'';
-      return p.status==='praktikum'||p.status==='prklehr'||(bl.fullB&&bl.vmL==='S')||abs==='KR-W'||abs==='FE-W'||abs==='UN-W'||abs==='BA-W'||abs==='UA-W';
-    };
-    _pSortList = DB.participants
-      .filter(p=>isActiveOnDay(p,date))
-      .sort((a,b)=>{
-        const ab=goesBottom(a)?1:0, bb=goesBottom(b)?1:0;
-        if(ab!==bb) return ab-bb;
-        // Alle TN: immer nach Vorname sortieren
-        return byName(a,b);
-      });
+    _pSortList = dayParticipants(curDay);
   }
   const active = _pSortList;
 
@@ -3392,7 +3402,6 @@ function genWeekPDF(){
   }
   // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
   const offsiteWeek=p=>((p.status==='praktikum'||p.status==='prklehr')||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
-  const offsiteDay=(p,dStr)=>((p.status==='praktikum'||p.status==='prklehr')||getPlan(dStr,p.id).sw==='S.EX')?1:0;
 
   // ── Alle TN der Woche ────────────────────
   const seen=new Set(); const allActive=[];
@@ -3485,25 +3494,10 @@ function genWeekPDF(){
     const nm=nmAbsent?rawAbs:(pl.nm||(bl.nmB?bl.nmL:''));
     return{vm,nm};
   };
-  const dayActive=DB.participants
-    .filter(p=>{
-      if(!isActiveOnDay(p,dayDate)) return false;
-      const pl=getPlan(curDay,p.id);
-      const bl=getBlocks(p,dayDate);
-      // Praktikum / PA+LS → nie auf Tagesliste
-      if(p.status==='praktikum'||p.status==='prklehr') return false;
-      // Ganztag Schule → nie auf Tagesliste
-      if(bl.fullB&&bl.vmL==='S') return false;
-      // Ganztags-Absenz → nie auf Tagesliste
-      const rawAbs=pl.abwesenheit||'';
-      if(rawAbs&&!SOFT_ABS_SET.has(rawAbs)) return false;
-      // Nur TN mit effektivem Werkstatt-/Sport-Eintrag (Slot-Absenz > Plan-Eintrag > Block)
-      const{vm,nm}=slotEff(pl,bl);
-      const hasVm=WS.includes(vm);
-      const hasNm=WS.includes(nm)||nm==='Sport';
-      return hasVm||hasNm;
-    })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||byName(a,b));
+  // Dieselbe Teilnehmerliste wie die Bildschirm-Tagesplanung (renderDayPlan):
+  // alle am Tag aktiven TN inkl. Schule/Praktikum/Absenz. So bleibt die Seite
+  // nicht leer, wenn der gewählte Tag keine Werkstatt-Einteilungen hat.
+  const dayActive=dayParticipants(curDay);
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -3533,31 +3527,37 @@ function genWeekPDF(){
   const cs2={0:{cellWidth:50,overflow:'ellipsize'},1:{cellWidth:12},2:{cellWidth:14},
              3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
 
-  doc.autoTable({
-    head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:10},
-    theme:'grid',
-    styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[30,55,100],lineWidth:0.3},
-    columnStyles:cs2,
-    alternateRowStyles:{fillColor:[205,228,246]},
-    didParseCell:(data)=>{
-      if(data.section!=='body') return;
-      const p=dayActive[data.row.index];
-      if(data.column.index===0){greenIfStatus(p,data);return;}
-      if(data.column.index===2){
-        const bwJC=p?.bewerbenJC||p?.jobCoach||'';
-        if(bwJC==='lio') data.cell.styles.textColor=[180,20,20];
-        else if(bwJC==='tom') data.cell.styles.textColor=[30,80,180];
-        else if(bwJC==='yvi') data.cell.styles.textColor=[190,24,93];
-        return;
-      }
-      if((data.column.index===3||data.column.index===4)){
-        const v=data.cell.raw;
-        if(v==='Praktikum'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
-        else if(['S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
-      }
-    },
-  });
+  if(!n2){
+    // Kein aktiver TN an diesem Tag → klarer Hinweis statt leerer Seite
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(120);
+    doc.text('Keine aktiven Teilnehmer für diesen Tag.',mg,26);
+  } else {
+    doc.autoTable({
+      head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:10},
+      theme:'grid',
+      styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[41,128,200],lineWidth:0.3,textColor:[20,20,20]},
+      headStyles:{fillColor:[30,55,100],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[30,55,100],lineWidth:0.3},
+      columnStyles:cs2,
+      alternateRowStyles:{fillColor:[205,228,246]},
+      didParseCell:(data)=>{
+        if(data.section!=='body') return;
+        const p=dayActive[data.row.index];
+        if(data.column.index===0){greenIfStatus(p,data);return;}
+        if(data.column.index===2){
+          const bwJC=p?.bewerbenJC||p?.jobCoach||'';
+          if(bwJC==='lio') data.cell.styles.textColor=[180,20,20];
+          else if(bwJC==='tom') data.cell.styles.textColor=[30,80,180];
+          else if(bwJC==='yvi') data.cell.styles.textColor=[190,24,93];
+          return;
+        }
+        if((data.column.index===3||data.column.index===4)){
+          const v=data.cell.raw;
+          if(v==='Praktikum'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+          else if(['S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
+        }
+      },
+    });
+  }
 
   // ══════════════════════════════════════════
   // SEITE 3 – Monatsübersicht (Querformat) – Monat der berichteten Woche
@@ -3671,7 +3671,7 @@ function genWeekPDF(){
   pdfPageFooters(doc,{W,mg,y:205,fs:7,gray:180});
 
   doc.save(`Wochenplan_KW${pad(w)}_${y}.pdf`);
-  toast('📄 Wochenplan PDF (3 Seiten) wird heruntergeladen…','t-ok');
+  toast('📄 Wochenplan PDF (4 Seiten) wird heruntergeladen…','t-ok');
 }
 
 // ────────────────────────────────────────────
