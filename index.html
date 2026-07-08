@@ -1910,11 +1910,10 @@ function renderLegend(){
     `<div class="lg-grp"><div class="lg-h lg-h-red">Absenz-Code</div><div class="lg-row">${row(legendAbsCombined())}</div></div>`;
 }
 
-// Teilnehmer eines Tages in Anzeige-Reihenfolge: alle am Tag aktiven TN,
-// Praktikum / Ganztags-Schule / Wochen-Absenzen ans Ende, sonst nach Vorname.
-// Gemeinsam genutzt von der Bildschirm-Tagesplanung (renderDayPlan) und der
-// Tagesübersicht-Seite im Wochenplan-PDF (genWeekPDF), damit beide dieselbe
-// Liste zeigen.
+// Teilnehmer eines Tages in Anzeige-Reihenfolge für die Bildschirm-Tagesplanung
+// (renderDayPlan): alle am Tag aktiven TN, Praktikum / Ganztags-Schule /
+// Wochen-Absenzen ans Ende, sonst nach Vorname. (Die PDF-Tagesübersicht filtert
+// bewusst enger – nur planbare Werkstatt-/Sport-TN.)
 function dayParticipants(dateStr){
   const date=pd(dateStr);
   const goesBottom=p=>{
@@ -3402,6 +3401,7 @@ function genWeekPDF(){
   }
   // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
   const offsiteWeek=p=>((p.status==='praktikum'||p.status==='prklehr')||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
+  const offsiteDay=(p,dStr)=>((p.status==='praktikum'||p.status==='prklehr')||getPlan(dStr,p.id).sw==='S.EX')?1:0;
 
   // ── Alle TN der Woche ────────────────────
   const seen=new Set(); const allActive=[];
@@ -3494,10 +3494,24 @@ function genWeekPDF(){
     const nm=nmAbsent?rawAbs:(pl.nm||(bl.nmB?bl.nmL:''));
     return{vm,nm};
   };
-  // Dieselbe Teilnehmerliste wie die Bildschirm-Tagesplanung (renderDayPlan):
-  // alle am Tag aktiven TN inkl. Schule/Praktikum/Absenz. So bleibt die Seite
-  // nicht leer, wenn der gewählte Tag keine Werkstatt-Einteilungen hat.
-  const dayActive=dayParticipants(curDay);
+  // Nur planbare TN mit Werkstatt-/Sport-Eintrag – Praktikum, Ganztags-Schule
+  // und Ganztags-Absenzen gehören nicht auf die Tagesplanung. (Slot-Absenz >
+  // Plan-Eintrag > Block via slotEff.)
+  const dayActive=DB.participants
+    .filter(p=>{
+      if(!isActiveOnDay(p,dayDate)) return false;
+      const pl=getPlan(curDay,p.id);
+      const bl=getBlocks(p,dayDate);
+      if(p.status==='praktikum'||p.status==='prklehr') return false; // Praktikum
+      if(bl.fullB&&bl.vmL==='S') return false;                        // Ganztag Schule
+      const rawAbs=pl.abwesenheit||'';
+      if(rawAbs&&!SOFT_ABS_SET.has(rawAbs)) return false;             // Ganztags-Absenz
+      const{vm,nm}=slotEff(pl,bl);
+      const hasVm=WS.includes(vm);
+      const hasNm=WS.includes(nm)||nm==='Sport';
+      return hasVm||hasNm;
+    })
+    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||byName(a,b));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
@@ -3528,9 +3542,9 @@ function genWeekPDF(){
              3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
 
   if(!n2){
-    // Kein aktiver TN an diesem Tag → klarer Hinweis statt leerer Seite
+    // Keine Werkstatt-/Sport-Einteilung an diesem Tag → Hinweis statt leerer Seite
     doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(120);
-    doc.text('Keine aktiven Teilnehmer für diesen Tag.',mg,26);
+    doc.text('Keine Werkstatt-Einteilung an diesem Tag.',mg,26);
   } else {
     doc.autoTable({
       head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:10},
