@@ -380,9 +380,6 @@ input,select,textarea{font-family:inherit}
 .wb-pill.wb-green{color:#15803d}
 .wb-pill.wb-yellow{color:#b45309}
 .wb-pill.wb-red{color:var(--red)}
-.wb-rem-body{font-size:14px;line-height:1.6}
-.wb-rem-body .wb-rem-tn{font-weight:700;font-size:16px;margin:10px 0 2px}
-.wb-rem-body .wb-rem-date{font-weight:700;color:var(--red)}
 
 /* ═══════════════════════════════════════════
    MONTHLY OVERVIEW
@@ -2371,7 +2368,6 @@ function wbMarkDone(id){
   const done=(p.wbRounds||0)+1;
   p.wbRounds=done;
   saveDB(); renderWBTN();
-  wbSnoozed.delete(id);
   toast(`✓ Runde ${done} abgeschlossen`,'t-ok');
 }
 
@@ -2527,11 +2523,6 @@ function delPerson(id){
   _pSortDay=null; // invalidate sort cache
   saveDB(); renderPersons(); renderWBTN(); toast('Teilnehmer gelöscht');
 }
-
-// ────────────────────────────────────────────
-// WB-TN – Session-Merker (Erinnerungs-Pop-up entfernt)
-// ────────────────────────────────────────────
-let wbSnoozed=new Set();   // wird von wbMarkDone geleert – kein Erinnerungs-Pop-up mehr
 
 // ────────────────────────────────────────────
 // MONATSÜBERSICHT
