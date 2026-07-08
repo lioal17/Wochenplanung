@@ -3333,7 +3333,6 @@ function genWeekPDF(){
   }
   // Nicht vor Ort (Praktikum / Schnupperwoche extern) → ans Ende sortieren
   const offsiteWeek=p=>((p.status==='praktikum'||p.status==='prklehr')||days.some(d=>getPlan(ds(d),p.id).sw==='S.EX'))?1:0;
-  const offsiteDay=(p,dStr)=>((p.status==='praktikum'||p.status==='prklehr')||getPlan(dStr,p.id).sw==='S.EX')?1:0;
 
   // ── Alle TN der Woche ────────────────────
   const seen=new Set(); const allActive=[];
@@ -3426,24 +3425,19 @@ function genWeekPDF(){
     const nm=nmAbsent?rawAbs:(pl.nm||(bl.nmB?bl.nmL:''));
     return{vm,nm};
   };
-  // Nur planbare TN mit Werkstatt-/Sport-Eintrag – Praktikum, Ganztags-Schule
-  // und Ganztags-Absenzen gehören nicht auf die Tagesplanung. (Slot-Absenz >
-  // Plan-Eintrag > Block via slotEff.)
+  // Nur TN mit tatsächlich geplantem Werkstatt-Code in VM oder NM. slotEff macht
+  // Absenz-Halbtage zu Absenzcodes → nicht in WS. Praktikum (PA/PA+LS), Schule
+  // (S/DAZ/…), Schnupperlehre (SL), Sport und alle Absenzen (KR, KR-W, FE-W, …)
+  // sind kein Werkstatt-Code und werden dadurch ausgeschlossen.
   const dayActive=DB.participants
     .filter(p=>{
       if(!isActiveOnDay(p,dayDate)) return false;
       const pl=getPlan(curDay,p.id);
       const bl=getBlocks(p,dayDate);
-      if(p.status==='praktikum'||p.status==='prklehr') return false; // Praktikum
-      if(bl.fullB&&bl.vmL==='S') return false;                        // Ganztag Schule
-      const rawAbs=pl.abwesenheit||'';
-      if(rawAbs&&!SOFT_ABS_SET.has(rawAbs)) return false;             // Ganztags-Absenz
       const{vm,nm}=slotEff(pl,bl);
-      const hasVm=WS.includes(vm);
-      const hasNm=WS.includes(nm)||nm==='Sport';
-      return hasVm||hasNm;
+      return WS.includes(vm)||WS.includes(nm);
     })
-    .sort((a,b)=>offsiteDay(a,curDay)-offsiteDay(b,curDay)||byName(a,b));
+    .sort((a,b)=>byName(a,b));
 
   const head2=[['Name','JC','BW','VM  08:15–12:00','NM  13:15–17:00','Abwesenheit','Bemerkung']];
   const body2=dayActive.map(p=>{
