@@ -943,22 +943,6 @@ input,select,textarea{font-family:inherit}
 </div>
 
 <!-- ╔══════════════════════════════════════════╗
-     ║  WB ERINNERUNG (POP-UP FÜR YVI)          ║
-     ╚══════════════════════════════════════════╝ -->
-<div class="overlay" id="wbReminderOverlay">
-<div class="modal" style="max-width:480px">
-  <div class="modal-head">
-    <div class="modal-title">📅 Wirkungsbericht – Erinnerung</div>
-  </div>
-  <div class="wb-rem-body" id="wbRemBody"></div>
-  <div class="modal-foot">
-    <button class="btn btn-secondary" onclick="wbReminderSnooze()">Später erinnern</button>
-    <button class="btn btn-success" onclick="wbReminderDone()">Erledigt</button>
-  </div>
-</div>
-</div>
-
-<!-- ╔══════════════════════════════════════════╗
      ║  RAPPORT MODAL                           ║
      ╚══════════════════════════════════════════╝ -->
 <div class="overlay" id="rapportOverlay">
@@ -2545,52 +2529,9 @@ function delPerson(id){
 }
 
 // ────────────────────────────────────────────
-// WB ERINNERUNG (POP-UP FÜR YVI) – keine E-Mail, nur Erinnerung
+// WB-TN – Session-Merker (Erinnerungs-Pop-up entfernt)
 // ────────────────────────────────────────────
-let wbSnoozed=new Set();   // Session-Merker "Später erinnern" (nicht persistiert)
-let wbRemQueue=[];         // Warteschlange fälliger Einträge beim App-Start
-let wbRemCurrent=null;     // gerade angezeigte TN-ID
-
-// Beim App-Start: alle Einträge mit erreichtem Input-AG-Datum (🟡/🔴) einreihen.
-function wbCheckReminders(){
-  wbRemQueue = wbSorted()
-    .filter(p=>wbStatus(p).cls!=='wb-green' && !wbSnoozed.has(p.id))
-    .map(p=>p.id);
-  wbShowNextReminder();
-}
-
-function wbShowNextReminder(){
-  const ov=document.getElementById('wbReminderOverlay');
-  // nächste noch gültige (nicht erledigte/archivierte) ID aus der Queue holen
-  let id=null;
-  while(wbRemQueue.length){
-    const cand=wbRemQueue.shift();
-    const p=DB.participants.find(x=>x.id===cand);
-    if(p && wbStatus(p) && wbStatus(p).cls!=='wb-green' && !wbSnoozed.has(cand)){ id=cand; break; }
-  }
-  if(!id){ wbRemCurrent=null; ov.classList.remove('open'); return; }
-  wbRemCurrent=id;
-  const p=DB.participants.find(x=>x.id===id);
-  const {wb}=wbDates(p);
-  document.getElementById('wbRemBody').innerHTML=
-    `Hallo Yvi<br><br>`+
-    `Bitte den Arbeitsagogen bezüglich folgendem Teilnehmer kontaktieren.`+
-    `<div class="wb-rem-tn">${esc(p.vorname)} ${esc(p.nachname)}</div>`+
-    `Wirkungsbericht fällig am: <span class="wb-rem-date">${fd(wb)}</span><br><br>`+
-    `Bitte nach Rücksprache den Wirkungsbericht vorbereiten und nach Versand entsprechend abschliessen.`;
-  ov.classList.add('open');
-}
-
-function wbReminderDone(){
-  const id=wbRemCurrent;
-  if(id) wbMarkDone(id);
-  wbShowNextReminder();
-}
-
-function wbReminderSnooze(){
-  if(wbRemCurrent) wbSnoozed.add(wbRemCurrent);  // erscheint beim nächsten App-Start erneut
-  wbShowNextReminder();
-}
+let wbSnoozed=new Set();   // wird von wbMarkDone geleert – kein Erinnerungs-Pop-up mehr
 
 // ────────────────────────────────────────────
 // MONATSÜBERSICHT
@@ -4498,7 +4439,6 @@ function init(){
     saveDirHandle=h; updateSaveFileLabel();
   });
   wbUpdateBadge();
-  wbCheckReminders();
   window.addEventListener('beforeunload',e=>{
     if(!dirty) return;
     e.preventDefault();e.returnValue='';
