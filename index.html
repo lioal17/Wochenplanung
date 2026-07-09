@@ -2857,16 +2857,20 @@ function getRptRows(p,year,month){
         az='8';
       }
     }
-    // Individueller ("Anders")-Code: gearbeitete Halbtage VM/NM einzeln in der Bemerkung
-    // ausweisen (VM = 4h, NM = 4h, ganzer Tag = 8h). Ein per Absenz gesperrter Halbtag wird
-    // nicht ausgewiesen; SOFT_ABS (inkl. ZS) = TN (teilweise) anwesend.
-    {
+    // Bemerkung nach Halbtagen ordnen: Vormittag (VM) immer zuerst, dann Nachmittag (NM).
+    // Je Halbtag ein Baustein: Halbtags-Absenztext ODER individueller ("Anders")-Werkstatt-Code
+    // (VM = 4h, NM = 4h, ganzer Tag = 8h). Ganztags gesperrte Halbtage werden nicht ausgewiesen.
+    if(isHalfAbs){
+      const vmHalfAbs=rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
+      const vmPart=vmHalfAbs?(AUTO_BEM[rawAbs]||''):(isIndivWs(plan.vm)?'VM: '+plan.vm:'');
+      const nmPart=vmHalfAbs?(isIndivWs(plan.nm)?'NM: '+plan.nm:''):(AUTO_BEM[rawAbs]||'');
+      bem=[vmPart,nmPart].filter(Boolean).join(' · ');
+    } else {
+      // Ganztags-Absenz (hart) sperrt den Ausweis; SOFT_ABS (inkl. ZS) = TN anwesend.
       const _hardAbs=rawAbs&&!SOFT_ABS_SET.has(rawAbs);
-      const _vmAbs=_hardAbs||rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
-      const _nmAbs=_hardAbs||rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM';
       const _ind=[];
-      if(!_vmAbs&&isIndivWs(plan.vm)) _ind.push('VM: '+plan.vm);
-      if(!_nmAbs&&isIndivWs(plan.nm)) _ind.push('NM: '+plan.nm);
+      if(!_hardAbs&&isIndivWs(plan.vm)) _ind.push('VM: '+plan.vm);
+      if(!_hardAbs&&isIndivWs(plan.nm)) _ind.push('NM: '+plan.nm);
       if(_ind.length) bem = bem ? bem+' · '+_ind.join(' · ') : _ind.join(' · ');
     }
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
