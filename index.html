@@ -2724,9 +2724,18 @@ function rptNoteKey(pid,y,month){ return `${pid}_${y}-${pad(month+1)}`; }
 function getRptNote(pid,y,month){ return (DB.rptNotes||{})[rptNoteKey(pid,y,month)]||''; }
 function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNotes[rptNoteKey(pid,y,month)]=txt; saveDB(); }
 
+// Ausgetretene TN bleiben noch 2 Wochen nach Ende-ZV in der Rapport-Auswahl
+// (damit der letzte Monatsrapport noch erstellt werden kann) und verschwinden
+// danach automatisch – analog zum Archiv der Teilnehmerliste.
+function isRapportArchived(p){
+  if(!p.einsatzBis) return false;
+  const cutoff=new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate()-14);
+  return pd(p.einsatzBis)<cutoff;
+}
+
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=[...DB.participants].sort(byName);
+  const sorted=DB.participants.filter(p=>!isRapportArchived(p)).sort(byName);
   sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
