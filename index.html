@@ -362,22 +362,36 @@ input,select,textarea{font-family:inherit}
 /* ═══════════════════════════════════════════
    WB-TN (WIRKUNGSBERICHTE)
 ═══════════════════════════════════════════ */
-.wbtn-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
-.wbtn-tbl th{
-  background:var(--g9);color:#fff;padding:9px 12px;text-align:left;
-  font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap;
+/* Karten-Layout: ein Block je TN – ganzer WB-Ablauf auf einen Blick. */
+.wb-cards{display:flex;flex-direction:column;gap:12px}
+.wb-card{
+  border:1px solid var(--g2);border-left:4px solid var(--g5);border-radius:10px;
+  background:#fff;padding:13px 16px;display:flex;flex-direction:column;gap:10px;
 }
-.wbtn-tbl td{padding:8px 12px;border-bottom:1px solid var(--g2);vertical-align:middle}
-.wbtn-tbl tbody tr:hover td{background:var(--g1)}
-.wbtn-tbl tr.wbr-yellow td{background:var(--amber-bg)}
-.wbtn-tbl tr.wbr-red td{background:var(--red-bg)}
-.wbtn-tbl tr.wbr-yellow:hover td,.wbtn-tbl tr.wbr-red:hover td{filter:brightness(.98)}
-.wb-round{display:inline-block;min-width:22px;text-align:center;font-weight:700;
-  background:var(--g2);border-radius:10px;padding:1px 7px}
-.wb-pill{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:11.5px;white-space:nowrap}
+.wb-card.wbr-red{border-left-color:var(--red);background:var(--red-bg)}
+.wb-card.wbr-yellow{border-left-color:var(--amber);background:var(--amber-bg)}
+.wb-card.wbr-green{border-left-color:var(--green)}
+.wb-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wb-card-name{font-size:15px;font-weight:700;color:var(--g9)}
+.wb-card-grid{
+  display:grid;grid-template-columns:minmax(150px,1fr) minmax(190px,1fr) auto;
+  gap:6px 24px;align-items:center;
+}
+.wb-field{font-size:12.5px;color:var(--g7)}
+.wb-field b{color:var(--g9);font-weight:600;margin-right:4px}
+.wb-card-status{grid-column:3;grid-row:1 / span 2;justify-self:end;align-self:center}
+.wb-card-actions{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--g2);padding-top:10px}
+.wb-btn-ag.done{background:var(--green);color:#fff}
+.wb-round{display:inline-block;text-align:center;font-weight:700;
+  background:var(--g2);border-radius:10px;padding:2px 10px;font-size:12px}
+.wb-pill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px;white-space:nowrap}
 .wb-pill.wb-green{color:#15803d}
 .wb-pill.wb-yellow{color:#b45309}
 .wb-pill.wb-red{color:var(--red)}
+@media(max-width:640px){
+  .wb-card-grid{grid-template-columns:1fr}
+  .wb-card-status{grid-column:1;grid-row:auto;justify-self:start;margin-top:2px}
+}
 
 /* ═══════════════════════════════════════════
    MONTHLY OVERVIEW
@@ -638,19 +652,9 @@ input,select,textarea{font-family:inherit}
     <div class="card">
       <div class="card-head">
         <span class="card-title">📅 Wirkungsberichte – Übersicht</span>
-        <span class="ar-hint">Sortiert nach nächstfälligem Wirkungsbericht · Erinnerung für Yvi</span>
+        <span class="ar-hint">Sortiert nach nächstfälligem Wirkungsbericht · Ablauf: Arbeitsagoge → Job Coach</span>
       </div>
-      <div class="tbl-wrap">
-        <table class="wbtn-tbl">
-          <thead>
-            <tr>
-              <th>Vorname</th><th>Nachname</th><th>Eintritt</th><th>Runde</th>
-              <th>Input Arbeitsagoge</th><th>Wirkungsbericht</th><th>Status</th><th>Aktion</th>
-            </tr>
-          </thead>
-          <tbody id="wbtnList"></tbody>
-        </table>
-      </div>
+      <div id="wbtnList" class="wb-cards"></div>
     </div>
   </div>
 
@@ -1600,6 +1604,7 @@ function sanitizeDB(d){
         iiz:p.iiz==='ja'?'ja':'nein',
         bemerkung:_str(p.bemerkung),
         wbRounds: Number.isInteger(p.wbRounds) ? p.wbRounds : (p.wb10 ? 1 : 0),
+        wbAgInformed: !!p.wbAgInformed,
         schultage:(Array.isArray(p.schultage)?p.schultage:[]).filter(s=>s&&typeof s==='object')
           .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag)})),
         sporttermine:(Array.isArray(p.sporttermine)?p.sporttermine:[]).map(_str),
@@ -2326,12 +2331,17 @@ function wbEligible(){
   return DB.participants.filter(p=>['aktiv','lehrstelle'].includes(p.status) && p.einsatzVon && !isArchived(p));
 }
 
+// Fortschritts-Ampel: der bestehende Termin-Zyklus (wbDates) bleibt der Auslöser dafür,
+// WANN etwas fällig ist; das Flag wbAgInformed trackt, WAS bereits erledigt ist.
+//   🔴 Rot   = Input-AG-Termin erreicht, Arbeitsagoge noch offen
+//   🟡 Gelb  = Arbeitsagoge informiert, Job Coach noch offen
+//   🟢 Grün  = kein Handlungsbedarf (noch nicht fällig oder Runde erledigt)
 function wbStatus(p){
-  const {inputAG,wb}=wbDates(p);
+  const {inputAG}=wbDates(p);
   const today=ds(new Date());
-  if(today>=wb)      return {cls:'wb-red',   row:'wbr-red',    icon:'🔴', label:'Wirkungsbericht fällig'};
-  if(today>=inputAG) return {cls:'wb-yellow',row:'wbr-yellow', icon:'🟡', label:'Input Arbeitsagoge fällig'};
-  return               {cls:'wb-green', row:'',           icon:'🟢', label:'Noch offen'};
+  if(p.wbAgInformed) return {cls:'wb-yellow',row:'wbr-yellow',icon:'🟡', label:'Job Coach informieren'};
+  if(today>=inputAG) return {cls:'wb-red',   row:'wbr-red',   icon:'🔴', label:'Arbeitsagoge informieren'};
+  return               {cls:'wb-green', row:'wbr-green', icon:'🟢', label:'Kein Handlungsbedarf'};
 }
 
 // Immer aufsteigend nach WB-Datum (nächstfälliger zuerst) – nicht nach Input AG.
@@ -2340,33 +2350,55 @@ function wbSorted(){
 }
 
 function renderWBTN(){
-  const tb=document.getElementById('wbtnList'); if(!tb) return;
+  const el=document.getElementById('wbtnList'); if(!el) return;
   const rows=wbSorted();
-  tb.innerHTML = rows.length ? rows.map(p=>{
+  el.innerHTML = rows.length ? rows.map(p=>{
     const {round,inputAG,wb}=wbDates(p);
     const s=wbStatus(p);
-    return `<tr class="${s.row}">
-      <td>${esc(p.vorname)}</td>
-      <td>${esc(p.nachname)}</td>
-      <td>${fd(p.einsatzVon)}</td>
-      <td><span class="wb-round">${round}.</span></td>
-      <td>${fd(inputAG)}</td>
-      <td>${fd(wb)}</td>
-      <td><span class="wb-pill ${s.cls}">${s.icon} ${s.label}</span></td>
-      <td><button class="btn btn-success btn-sm" onclick="wbMarkDone('${esc(p.id)}')">✓ Als erledigt markieren</button></td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="8" style="text-align:center;color:var(--g6);padding:24px">Keine aktiven Teilnehmenden mit anstehenden Wirkungsberichten.</td></tr>`;
+    const ag=!!p.wbAgInformed;
+    const id=esc(p.id);
+    return `<div class="wb-card ${s.row}">
+      <div class="wb-card-head">
+        <span class="wb-card-name">${esc(p.vorname)} ${esc(p.nachname)}</span>
+        <span class="wb-round">Runde ${round}.</span>
+      </div>
+      <div class="wb-card-grid">
+        <div class="wb-field"><b>Eintritt:</b>${fd(p.einsatzVon)}</div>
+        <div class="wb-field"><b>Input Arbeitsagoge:</b>${fd(inputAG)}</div>
+        <div class="wb-card-status"><span class="wb-pill ${s.cls}">${s.icon} ${s.label}</span></div>
+        <div class="wb-field"><b>Austritt:</b>${p.einsatzBis?fd(p.einsatzBis):'–'}</div>
+        <div class="wb-field"><b>WB Job Coach:</b>${fd(wb)}</div>
+      </div>
+      <div class="wb-card-actions">
+        <button class="btn btn-sm wb-btn-ag ${ag?'done':'btn-secondary'}" onclick="wbInformAG('${id}')">${ag?'✓ Arbeitsagoge informiert':'Arbeitsagoge informiert'}</button>
+        <button class="btn btn-success btn-sm" onclick="wbMarkDone('${id}')">Job Coach informiert</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty-state" style="padding:26px;text-align:center;color:var(--g6)">Keine aktiven Teilnehmenden mit anstehenden Wirkungsberichten.</div>`;
   wbUpdateBadge();
 }
 
-// Runde abschliessen → nächste Runde beginnt automatisch (fortlaufender Zyklus).
+// Schritt 1: «Arbeitsagoge informiert» – Toggle (erlaubt Rückgängig bei Fehlklick).
+// 🔴 → 🟡 bzw. zurück; verändert die Runde nicht.
+function wbInformAG(id){
+  const p=DB.participants.find(x=>x.id===id);
+  if(!p || isArchived(p)) return;
+  p.wbAgInformed=!p.wbAgInformed;
+  saveDB(); renderWBTN();
+  toast(p.wbAgInformed?'✓ Arbeitsagoge informiert':'Arbeitsagoge zurückgesetzt','t-ok');
+}
+
+// Schritt 2: «Job Coach informiert» → Vorgang abgeschlossen. Setzt automatisch auch die
+// Arbeitsagoge als erledigt (Regel: nie Job Coach erledigt, Arbeitsagoge aber offen) und
+// schliesst die Runde ab → nächste Runde beginnt automatisch (fortlaufender Zyklus).
 function wbMarkDone(id){
   const p=DB.participants.find(x=>x.id===id);
   if(!p || isArchived(p)) return;
   const done=(p.wbRounds||0)+1;
   p.wbRounds=done;
+  p.wbAgInformed=false;   // neue Runde startet wieder mit offener Arbeitsagoge
   saveDB(); renderWBTN();
-  toast(`✓ Runde ${done} abgeschlossen`,'t-ok');
+  toast(`✓ Vorgang abgeschlossen · Runde ${done} erledigt`,'t-ok');
 }
 
 // Anzahl fälliger (🟡/🔴) Einträge als Badge am WB-TN-Button.
