@@ -2278,14 +2278,14 @@ function renderPersons(){
   }
   const stLbl={aktiv:'Lernwerkstatt',schnupper:'Schnuppern',praktikum:'Praktikum',lehrstelle:'Lehrstelle',prklehr:'Praktikum + Lehrstelle'};
   const card=(p,archived)=>{
-    const sch=(p.schultage||[]).map(s=>`${s.typ} ${WD[+s.wochentag]}`).join(' · ')||'–';
-    const krs=(p.kurse||[]).map(k=>`${k.typ}`).join(' · ');
+    const sch=(p.schultage||[]).map(s=>`${esc(s.typ)} ${WD[+s.wochentag]}`).join(' · ')||'–';
+    const krs=(p.kurse||[]).map(k=>`${esc(k.typ)}`).join(' · ');
     const spt=(p.sporttermine||[]).map(d=>WD[+d]).join(', ')||'–';
-    return `<div class="p-card sc-${p.status}${archived?' p-archived':''}">
+    return `<div class="p-card sc-${esc(p.status)}${archived?' p-archived':''}">
       <div class="p-card-info">
         <div class="p-name-lg">${esc(p.vorname)} ${esc(p.nachname)} ${archived?'<span class="ar-tag">🗄 archiviert</span>':''}</div>
         <div class="p-meta">
-          <span>📌 ${stLbl[p.status]||p.status}</span>
+          <span>📌 ${esc(stLbl[p.status]||p.status)}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
           ${p.iiz==='ja'?'<span>🔗 IIZ</span>':''}
           ${p.einsatzVon?`<span>▶ ${fd(p.einsatzVon)}</span>`:''}
@@ -4296,7 +4296,7 @@ function renderImpTable(){
     const{nn,vn}=impSplitName(p.rawName);
     const existing=_impFindExisting(nn,vn);
     const exists=!!existing;
-    const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${s.typ}`).join(', ')||'–';
+    const schStr=p.sch.map(s=>`${WD[s.wochentag]}: ${esc(s.typ)}`).join(', ')||'–';
     const sptStr=p.spt.map(d=>WD[d]).join(', ')||'–';
     const einsatzStr=(p.von||p.bis)?`${p.von?fd(p.von):'?'} – ${p.bis?fd(p.bis):'?'}`:'–';
     const conflicts=exists?_impConflicts(existing,p):[];
@@ -4316,7 +4316,7 @@ function renderImpTable(){
       <td><input type="checkbox" class="imp-cb" data-i="${i}" checked></td>
       <td><input class="imp-inp" id="imp-nn-${i}" value="${esc(nn)}" placeholder="Nachname"></td>
       <td><input class="imp-inp" id="imp-vn-${i}" value="${esc(vn)}" placeholder="Vorname"></td>
-      <td><span class="jc ${JC_CSS[p.jc]||''}">${JC_LBL[p.jc]||p.jc}</span></td>
+      <td><span class="jc ${JC_CSS[p.jc]||''}">${esc(JC_LBL[p.jc]||p.jc)}</span></td>
       <td style="font-size:11px;color:var(--g6)">${schStr}</td>
       <td style="font-size:11px;color:var(--g6)">${sptStr}</td>
       <td style="font-size:11px;color:var(--g6)">${einsatzStr}</td>
