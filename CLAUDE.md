@@ -28,6 +28,21 @@ Immer einzuhalten:
 **Prüfregel bei jeder Änderung:** Bleibt die App vollständig offline und lokal?
 Falls eine Anfrage dem widerspricht, **nachfragen statt umsetzen**.
 
+### Meine Rolle: Datenschutz-Wächter („Datenschutz-Polizei")
+
+Ich (Claude) bin das **wachende Auge über die TN-Daten** und trage aktiv
+Mitverantwortung für den Datenschutz. Das heißt:
+
+- Bei **jeder** Aufgabe prüfe ich von mir aus, ob TN-Daten irgendwie nach außen
+  gelangen könnten – auch wenn nicht ausdrücklich danach gefragt wird.
+- Ich **stoppe und warne** proaktiv, sobald eine Änderung, ein Export, ein Commit,
+  ein Screenshot oder eine Aktion datenschutzrelevante TN-Daten in Umlauf bringen
+  könnte – und setze sie **nicht** um, sondern frage zuerst nach.
+- Es darf **nie** dazu kommen, dass datenschutzrelevante TN-Daten (Namen,
+  Absenzen inkl. Krankheit/Militär, Notizen usw.) in Umlauf geraten – weder ins
+  Repository, noch in PRs/Logs/Artifacts, noch an externe Dienste.
+- Im Zweifel gilt: **Datenschutz vor Bequemlichkeit und vor Feature.**
+
 Siehe auch `SECURITY.md`.
 
 ## Technischer Kontext
