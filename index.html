@@ -2855,10 +2855,19 @@ function getRptRows(p,year,month){
       } else if(vmCode||nmCode||isZS){
         // Reine Werkstatt-/Sport-Einteilung (oder ZS): voller Arbeitstag.
         az='8';
-        // Individueller ("Anders")-Code: voller Freitext als Notiz in die Bemerkung.
-        const ind=[...new Set([plan.vm,plan.nm].filter(isIndivWs))];
-        if(ind.length) bem=ind.join(' / ');
       }
+    }
+    // Individueller ("Anders")-Code: gearbeitete Halbtage VM/NM einzeln in der Bemerkung
+    // ausweisen (VM = 4h, NM = 4h, ganzer Tag = 8h). Ein per Absenz gesperrter Halbtag wird
+    // nicht ausgewiesen; SOFT_ABS (inkl. ZS) = TN (teilweise) anwesend.
+    {
+      const _hardAbs=rawAbs&&!SOFT_ABS_SET.has(rawAbs);
+      const _vmAbs=_hardAbs||rawAbs==='UA-VM'||rawAbs==='KR-VM'||rawAbs==='BA-VM'||rawAbs==='UN-VM';
+      const _nmAbs=_hardAbs||rawAbs==='UA-NM'||rawAbs==='KR-NM'||rawAbs==='BA-NM'||rawAbs==='UN-NM';
+      const _ind=[];
+      if(!_vmAbs&&isIndivWs(plan.vm)) _ind.push('VM: '+plan.vm);
+      if(!_nmAbs&&isIndivWs(plan.nm)) _ind.push('NM: '+plan.nm);
+      if(_ind.length) bem = bem ? bem+' · '+_ind.join(' · ') : _ind.join(' · ');
     }
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
     if(absTxt) bem=absTxt+(bem&&bem!==absTxt?' · '+bem:'');
