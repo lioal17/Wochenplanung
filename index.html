@@ -3542,8 +3542,8 @@ function genWeekPDF(){
     if(plan.sw==='S.EX') return 'SL';
     const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
     const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
-    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsFull(plan.vm):blk.vmB?blk.vmL:wsFull(plan.vm||'');
-    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsFull(plan.nm):blk.nmB?blk.nmL:wsFull(plan.nm||'');
+    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsMoAbbr(plan.vm):blk.vmB?blk.vmL:wsMoAbbr(plan.vm||'');
+    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsMoAbbr(plan.nm):blk.nmB?blk.nmL:wsMoAbbr(plan.nm||'');
     return (vm||'·')+'\n'+(nm||'·');
   };
   // Ist an diesem Tag ein individueller ("Anders")-Code aktiv? (für violette PDF-Zelle)
