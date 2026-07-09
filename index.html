@@ -2371,7 +2371,7 @@ function renderWBTN(){
       </div>
       <div class="wb-card-actions">
         <button class="btn btn-sm wb-btn-ag ${ag?'done':'btn-secondary'}" onclick="wbInformAG('${id}')">${ag?'✓ Arbeitsagoge informiert':'Arbeitsagoge informiert'}</button>
-        <button class="btn btn-success btn-sm" onclick="wbMarkDone('${id}')">Job Coach informiert</button>
+        <button class="btn btn-success btn-sm" onclick="wbMarkDone('${id}')">Job Coach erledigt</button>
       </div>
     </div>`;
   }).join('') : `<div class="empty-state" style="padding:26px;text-align:center;color:var(--g6)">Keine aktiven Teilnehmenden mit anstehenden Wirkungsberichten.</div>`;
