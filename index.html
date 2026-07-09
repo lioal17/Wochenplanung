@@ -405,6 +405,7 @@ input,select,textarea{font-family:inherit}
 .mo-tbl td.c-stat{background:var(--g1);font-weight:700;color:var(--navy);padding:4px 2px}
 .mo-tbl .mo-sep,.mo-tbl th.mo-sep{border-left:3px solid var(--navy) !important}
 .moc-work{background:#dcfce7;color:#15803d}
+.moc-indiv{background:#f3e8ff;color:#7c3aed;font-weight:700}
 .moc-abs{background:var(--red-bg);color:var(--red);font-weight:700}
 .moc-sch{background:var(--blue-bg);color:var(--blue);font-weight:600}
 .moc-prk{background:#dcfce7;color:#15803d;font-weight:700}
@@ -1534,7 +1535,7 @@ const BLK_LABEL = {
 const WS_LEGEND = [
   ['BW','Bewerben'],['Crea','Crea'],['FL','Feldeinsatz'],['H','Holzwerkstatt'],
   ['Lernen','Lernen'],['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
-  ['NEO','Neophyten'],['Sport','Sport'],
+  ['NEO','Neophyten'],['Sport','Sport'],['Anders','Individuell (Freitext)'],
 ];
 // Absenz-Codes: Basis aus ABS-Array
 function legendAbs(){ return ABS.filter(a=>a.c).map(a=>[a.c, a.l.replace(/^[^–]*–\s*/,'')]); }
@@ -2128,9 +2129,9 @@ function buildBlockedCell(label, type){
 }
 
 function buildWsCell(pid, slot, val){
-  // Schul-Codes sind ebenfalls per Slot wählbar → nicht als „Anderes…"-Freitext behandeln.
-  const isCustom = val && !WS.includes(val) && val!=='Sport' && !SCHOOL_TYPES.includes(val);
-  const extra    = isCustom ? `<input class="ws-custom" value="${esc(val)}" placeholder="Werkstatt…"
+  // Individueller Freitext-Code ("Anders"). Schul-/Sport-/Standard-Codes zählen nicht dazu.
+  const isCustom = isIndivWs(val);
+  const extra    = isCustom ? `<input class="ws-custom" value="${esc(val)}" placeholder="Individuell (z. B. CMBB)"
       onchange="setPlan('${curDay}','${esc(pid)}',{${slot}:this.value})">` : '';
   return `<div>
     <select class="ws-sel"  onchange="onWsCh(this,'${esc(pid)}','${slot}')">
@@ -2140,7 +2141,7 @@ function buildWsCell(pid, slot, val){
       <optgroup label="Schule">
         ${SCHOOL_TYPES.map(s=>`<option value="${s}"${val===s?' selected':''}>${BLK_LABEL[s]||s}</option>`).join('')}
       </optgroup>
-      <option value="__custom"${isCustom?' selected':''}>Anderes…</option>
+      <option value="__custom"${isCustom?' selected':''}>Anders (Individuell)…</option>
     </select>
     ${extra}
   </div>`;
@@ -2152,7 +2153,7 @@ function onWsCh(sel, pid, slot){
     let inp=sel.nextElementSibling;
     if(!inp||inp.tagName!=='INPUT'){
       inp=document.createElement('input');
-      inp.className='ws-custom';inp.placeholder='Werkstatt eingeben…';
+      inp.className='ws-custom';inp.placeholder='Individuell (z. B. CMBB)';
       inp.onchange=()=>{ setPlan(curDay,pid,{[slot]:inp.value}); };
       sel.insertAdjacentElement('afterend',inp);
     }
@@ -2617,11 +2618,13 @@ function renderMonthly(){
       // Werkstatt-Einteilung kann einen geplanten Schul-/Sport-Block übersteuern (plan.vm/nm)
       const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
       const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
-      const vmCls=(isUAvm||isKRvm||isBAvm||isUNvm)?'moc-abs':vmOver?'moc-work':blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?'moc-work':'');
-      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':isUNvm?'UN':vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-      const nmCls=(isUAnm||isKRnm||isBAnm||isUNnm)?'moc-abs':nmOver?'moc-work':blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?'moc-work':'');
-      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':isUNnm?'UN':nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
-      if(vmCls==='moc-work'||nmCls==='moc-work') at++;
+      // Individueller ("Anders")-Code: violettes Kästchen (moc-indiv), 3-Buchstaben-Kürzel.
+      const vmInd=isIndivWs(plan.vm), nmInd=isIndivWs(plan.nm);
+      const vmCls=(isUAvm||isKRvm||isBAvm||isUNvm)?'moc-abs':vmOver?(vmInd?'moc-indiv':'moc-work'):blk.vmB?((blk.vmL==='PA'||blk.vmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.vm?(vmInd?'moc-indiv':'moc-work'):'');
+      const vmTxt=isUAvm?'UA':isKRvm?'KR':isBAvm?'BA':isUNvm?'UN':vmOver?wsMoAbbr(plan.vm):blk.vmB?blk.vmL:wsMoAbbr(plan.vm||'');
+      const nmCls=(isUAnm||isKRnm||isBAnm||isUNnm)?'moc-abs':nmOver?(nmInd?'moc-indiv':'moc-work'):blk.nmB?((blk.nmL==='PA'||blk.nmL==='PA+LS')?'moc-prk':'moc-sch'):(plan.nm?(nmInd?'moc-indiv':'moc-work'):'');
+      const nmTxt=isUAnm?'UA':isKRnm?'KR':isBAnm?'BA':isUNnm?'UN':nmOver?wsMoAbbr(plan.nm):blk.nmB?blk.nmL:wsMoAbbr(plan.nm||'');
+      if(vmCls==='moc-work'||vmCls==='moc-indiv'||nmCls==='moc-work'||nmCls==='moc-indiv') at++;
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
     tbody+=`<tr><td class="td-name">${esc(p.vorname)} ${esc(p.nachname)}</td>${tds}
@@ -2784,6 +2787,12 @@ function isSchulferien(date){
 }
 // Werkstatt-Wert = belegt, aber kein Schul-Code.
 function isWorkshopVal(v){ return !!v && !SCHOOL_TYPES.includes(v); }
+// Individueller Werkstatt-Code = Freitext-Werkstatt ("Anders"): kein Standard-Code, kein Sport, keine Schule.
+function isIndivWs(v){ return isWorkshopVal(v) && !WS.includes(v) && v!=='Sport'; }
+// Bildschirm-Monatsübersicht: individuelle Codes auf 3 Grossbuchstaben kürzen, sonst Standard-Kürzel.
+function wsMoAbbr(v){ return isIndivWs(v) ? String(v).slice(0,3).toUpperCase() : wsAbbr(v); }
+// PDFs (Wochenplan + Monatsübersicht): individuelle Codes voll ausschreiben, sonst Standard-Kürzel.
+function wsFull(v){ return isIndivWs(v) ? String(v) : wsAbbr(v); }
 
 function getRptRows(p,year,month){
   const holidays=tgHolidays(year);
@@ -2846,6 +2855,9 @@ function getRptRows(p,year,month){
       } else if(vmCode||nmCode||isZS){
         // Reine Werkstatt-/Sport-Einteilung (oder ZS): voller Arbeitstag.
         az='8';
+        // Individueller ("Anders")-Code: voller Freitext als Notiz in die Bemerkung.
+        const ind=[...new Set([plan.vm,plan.nm].filter(isIndivWs))];
+        if(ind.length) bem=ind.join(' / ');
       }
     }
     // Manuelle Abwesenheits-Bemerkung hat immer Vorrang / wird immer angehängt
@@ -3356,8 +3368,8 @@ function genWeekPDF(){
       // ZS (Zu spät): TN ist trotzdem da → echte Einteilung anzeigen, nicht ZS
       if(plan.abwesenheit&&plan.abwesenheit!=='ZS'){row.push(plan.abwesenheit,plan.abwesenheit);return;}
       // Slot-Eintrag (plan.vm/nm) übersteuert immer den geplanten Block (Sport/Schule).
-      const vmCell=plan.vm?wsAbbr(plan.vm):(blk.vmB?blk.vmL:'');
-      const nmCell=plan.nm?wsAbbr(plan.nm):(blk.nmB?blk.nmL:'');
+      const vmCell=plan.vm?wsFull(plan.vm):(blk.vmB?blk.vmL:'');
+      const nmCell=plan.nm?wsFull(plan.nm):(blk.nmB?blk.nmL:'');
       // Schule-Code «S» ausgeschrieben darstellen
       row.push(vmCell==='S'?'Schule':vmCell,nmCell==='S'?'Schule':nmCell);
     });
@@ -3432,7 +3444,10 @@ function genWeekPDF(){
       const pl=getPlan(curDay,p.id);
       const bl=getBlocks(p,dayDate);
       const{vm,nm}=slotEff(pl,bl);
-      return WS.includes(vm)||WS.includes(nm);
+      // Individuelle ("Anders")-Codes ebenfalls einschließen; vm===pl.vm schützt vor
+      // Absenz-substituierten Slots (slotEff ersetzt abwesende Halbtage durch den Absenzcode).
+      const indiv=(vm===pl.vm&&isIndivWs(pl.vm))||(nm===pl.nm&&isIndivWs(pl.nm));
+      return WS.includes(vm)||WS.includes(nm)||indiv;
     })
     .sort((a,b)=>byName(a,b));
 
@@ -3527,9 +3542,19 @@ function genWeekPDF(){
     if(plan.sw==='S.EX') return 'SL';
     const vmOver=blk.vmB&&SCHOOL_TYPES.includes(blk.vmL)&&isWorkshopVal(plan.vm);
     const nmOver=blk.nmB&&(SCHOOL_TYPES.includes(blk.nmL)||blk.nmL==='Sport')&&isWorkshopVal(plan.nm);
-    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsAbbr(plan.vm):blk.vmB?blk.vmL:wsAbbr(plan.vm||'');
-    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsAbbr(plan.nm):blk.nmB?blk.nmL:wsAbbr(plan.nm||'');
+    const vm=isVMhalf?HALF_ABS_BASE[a]:vmOver?wsFull(plan.vm):blk.vmB?blk.vmL:wsFull(plan.vm||'');
+    const nm=isNMhalf?HALF_ABS_BASE[a]:nmOver?wsFull(plan.nm):blk.nmB?blk.nmL:wsFull(plan.nm||'');
     return (vm||'·')+'\n'+(nm||'·');
+  };
+  // Ist an diesem Tag ein individueller ("Anders")-Code aktiv? (für violette PDF-Zelle)
+  const moDayIndiv=(p,d)=>{
+    if(!isActiveOnDay(p,d)) return false;
+    const plan=getPlan(ds(d),p.id), a=plan.abwesenheit||'';
+    if((a==='ZS'||HALF_ABS_BASE[a])?false:!!a) return false;   // Ganztags-/Wochen-Absenz
+    if(plan.sw==='S.LW'||plan.sw==='S.EX') return false;
+    const vmHalf=a==='UA-VM'||a==='KR-VM'||a==='BA-VM'||a==='UN-VM';
+    const nmHalf=a==='UA-NM'||a==='KR-NM'||a==='BA-NM'||a==='UN-NM';
+    return (!vmHalf&&isIndivWs(plan.vm))||(!nmHalf&&isIndivWs(plan.nm));
   };
 
   const moHead=['Name',...moDays.map(d=>`${WD[d.getDay()]}\n${pad(d.getDate())}`),'UA','ZS'];
@@ -3565,7 +3590,12 @@ function genWeekPDF(){
       if(data.section!=='body') return;
       if(data.column.index===0){greenIfStatus(moPersons[data.row.index],data);return;}
       // «X» (ausserhalb Einsatzzeitraum) gedämpft grau darstellen
-      if(data.cell.raw==='X'){data.cell.styles.textColor=[150,150,150];data.cell.styles.fillColor=[238,238,238];}
+      if(data.cell.raw==='X'){data.cell.styles.textColor=[150,150,150];data.cell.styles.fillColor=[238,238,238];return;}
+      // Individueller ("Anders")-Code: violette Zelle (voller Text steht bereits im Zellinhalt)
+      const dayIdx=data.column.index-1;
+      if(dayIdx>=0&&dayIdx<moDays.length&&moDayIndiv(moPersons[data.row.index],moDays[dayIdx])){
+        data.cell.styles.fillColor=[243,232,255];data.cell.styles.textColor=[124,58,237];data.cell.styles.fontStyle='bold';
+      }
     },
   });
 
