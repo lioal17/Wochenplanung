@@ -2465,9 +2465,11 @@ function wbMarkDone(id){
   toast(`✓ Vorgang abgeschlossen · Runde ${done} erledigt`,'t-ok');
 }
 
-// Anzahl fälliger (🟡/🔴) Einträge als Badge am WB-TN-Button.
+// Badge am WB-TN-Button = Anzahl offener Arbeitsagoge-Wirkungsberichte (🔴):
+// so viele WBs muss die Arbeitsagoge noch ausfüllen (rote Ampel = Input AG erreicht,
+// Arbeitsagoge noch offen). 🟡 (nur noch Job Coach offen) zählt hier NICHT mit.
 function wbUpdateBadge(){
-  const due=wbEligible().filter(p=>wbStatus(p).cls!=='wb-green').length;
+  const due=wbEligible().filter(p=>wbStatus(p).cls==='wb-red').length;
   const tab=document.querySelector('.nav-btn[data-v="wbtn"]');
   tab?.querySelector('.n-badge')?.remove();
   if(due){
