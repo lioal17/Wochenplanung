@@ -2764,11 +2764,6 @@ function setEcFromMo(pid,dstr,done){
   renderMonthly();
 }
 
-function setEcFromRpt(pid,dstr,done){
-  setPlan(dstr,pid,{ecaseEntered:done});
-  buildRpt();
-}
-
 function chMonth(d){
   let{y,m}=curMonth; m+=d;
   if(m<0){m=11;y--;} if(m>11){m=0;y++;}
@@ -3018,29 +3013,12 @@ function buildRpt(){
     if(isOpenEcase(plan,p,d)) ecList.push({dstr,
       dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`, abs:plan.abwesenheit});
   });
+  // Anzahl offener eCase-Einträge dieses TN im Monat. Nur als Kennzahl (Stat-Kachel)
+  // – kein Quittieren im Rapport. Das Abhaken passiert im Wochenplan/der Monatsübersicht;
+  // die Zahl hier ist über dieselbe Regel (isOpenEcase) immer synchron dazu.
   const openEC=ecList.length;
 
   let html='';
-  if(openEC>0){
-    const ecRows=ecList.map(e=>`<tr>
-      <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
-      <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
-      <td style="padding:4px 10px;text-align:center">
-        <input type="checkbox" title="In eCase eingetragen"
-          onchange="setEcFromRpt('${esc(pid)}','${esc(e.dstr)}',this.checked)"></td></tr>`).join('');
-    html+=`<div class="ec-badge-wrap" style="display:inline-block;margin-bottom:12px">
-      <button class="warn-bar ec-badge-btn" style="margin:0" onclick="ecToggle('rpt',this)">
-        ⚠️ ${openEC} ${openEC===1?'eCase-Eintrag offen':'eCase-Einträge offen'} ▾</button>
-      <div class="ec-drop" style="display:${_ecOpen.rpt?'block':'none'}">
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-          <thead><tr style="background:var(--g1)">
-            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Datum</th>
-            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
-            <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
-          </tr></thead><tbody>${ecRows}</tbody></table>
-      </div></div>`;
-  }
-
   html+=`<div class="rpt-stats">
     <div class="rpt-stat"><div class="val" style="color:var(--blue)">${baDays}</div><div class="lbl">Bezahlte Absenz</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--red)">${uaDays}</div><div class="lbl">Unbezahlte Absenz</div></div>
