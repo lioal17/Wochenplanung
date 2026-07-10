@@ -50,8 +50,8 @@ hier ist die *Übergabe-Sicht*, `PROJEKT.md` ist das *technische Nachschlagewerk
 | `PROJEKT.md` | Vollständige technische Doku (Datenmodell, Codes, Regeln, Funktionen). | ⭐ kritisch |
 | `README.md` | Kurzbeschreibung & Schnellstart. | wichtig |
 | `UEBERGABE.md` | **Dieses Dokument** (Übergabe/Notfall). | ⭐ kritisch |
-| `PROJEKT-ZUSAMMENFASSUNG-2026-06-19.md` | Historischer Stands-Bericht (Snapshot). | Referenz |
-| `PROJEKT-ZUSAMMENFASSUNG-2026-07-03.md` | Historischer Stands-Bericht (Snapshot). | Referenz |
+| `docs/archiv/PROJEKT-ZUSAMMENFASSUNG-2026-06-19.md` | Historischer Stands-Bericht (Snapshot). | Referenz |
+| `docs/archiv/PROJEKT-ZUSAMMENFASSUNG-2026-07-03.md` | Historischer Stands-Bericht (Snapshot). | Referenz |
 | `.github/workflows/deploy-pages.yml` | Automatisches Veröffentlichen auf GitHub Pages. | wichtig |
 | `.nojekyll` | Verhindert, dass GitHub Pages die Datei umschreibt. | technisch |
 

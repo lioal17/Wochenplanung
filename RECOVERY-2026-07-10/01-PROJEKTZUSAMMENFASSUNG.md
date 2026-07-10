@@ -68,9 +68,10 @@ Wochenplanung/
 ├── CLAUDE.md                           # Verbindliche Projektregeln (Datenschutz-Gebot!)
 ├── PROJEKT.md                          # Vollständige fachlich-technische Beschreibung
 ├── UEBERGABE.md                        # Übergabe-/Betriebsdokument
-├── PROJEKT-ZUSAMMENFASSUNG-2026-06-19.md   # historischer Zwischenstand
-├── PROJEKT-ZUSAMMENFASSUNG-2026-07-03.md   # historischer Zwischenstand
-├── ANALYSE-BERICHT-2026-07-05.md           # historischer Analysebericht
+├── docs/archiv/                        # historische Doku-Stände (am 10.07. abends dorthin verschoben)
+│   ├── PROJEKT-ZUSAMMENFASSUNG-2026-06-19.md
+│   ├── PROJEKT-ZUSAMMENFASSUNG-2026-07-03.md
+│   └── ANALYSE-BERICHT-2026-07-05.md
 └── RECOVERY-2026-07-10/                # DIESES Recovery-Paket (neu)
 ```
 
