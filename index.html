@@ -705,8 +705,8 @@ input,select,textarea{font-family:inherit}
           <input type="month" class="fi" id="rptM" onchange="buildRpt()" style="width:155px">
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;width:260px">
-          <button class="btn btn-success" onclick="genPDF()" style="width:100%;justify-content:center">📄 Monatsrapport generieren</button>
-          <button class="btn btn-success" onclick="genAllRapportsPDF()" style="width:100%;justify-content:center">📄 Alle Monatsrapporte generieren</button>
+          <button class="btn btn-success" onclick="genPDF()" style="width:100%;justify-content:flex-start">📄 Monatsrapport generieren</button>
+          <button class="btn btn-success" onclick="genAllRapportsPDF()" style="width:100%;justify-content:flex-start">📄 Alle Monatsrapporte generieren</button>
         </div>
       </div>
       <div id="rptArea"></div>
@@ -2311,7 +2311,7 @@ function toggleArchive(){ _showArchive=!_showArchive; renderPersons(); }
 // Offen-Zustand der eCase-Dropdowns (Wochenplan / Monatsübersicht). Bleibt über
 // Re-Renders erhalten, damit das Fenster beim Abhaken offen bleibt; ein Klick
 // ausserhalb schliesst es (siehe Outside-Click-Listener in init()).
-let _ecOpen={plan:false,mo:false};
+let _ecOpen={plan:false,mo:false,rpt:false};
 function ecToggle(which,btn){
   _ecOpen[which]=!_ecOpen[which];
   const d=btn.nextElementSibling;
@@ -2756,6 +2756,11 @@ function setEcFromMo(pid,dstr,done){
   renderMonthly();
 }
 
+function setEcFromRpt(pid,dstr,done){
+  setPlan(dstr,pid,{ecaseEntered:done});
+  buildRpt();
+}
+
 function chMonth(d){
   let{y,m}=curMonth; m+=d;
   if(m<0){m=11;y--;} if(m>11){m=0;y++;}
@@ -2781,8 +2786,17 @@ function isRapportArchived(p){
 
 function renderRapport(){
   const sel=document.getElementById('rptP');
-  const sorted=DB.participants.filter(p=>!isRapportArchived(p)).sort(byName);
-  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}</option>`).join('');
+  // Reihenfolge wie Monatsübersicht (Praktikum/Prakt+Lehre nach unten, sonst alphabetisch);
+  // ausgetretene (aber noch in der 14-Tage-Frist sichtbare) TN rutschen ganz ans Listenende.
+  const isBottom=p=>p.status==='praktikum'||p.status==='prklehr';
+  const sorted=DB.participants.filter(p=>!isRapportArchived(p)).sort((a,b)=>{
+    const aA=isArchived(a)?1:0, bA=isArchived(b)?1:0;
+    if(aA!==bA) return aA-bA;
+    const aB=isBottom(a)?1:0, bB=isBottom(b)?1:0;
+    if(aB!==bB) return aB-bB;
+    return byName(a,b);
+  });
+  sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}${isArchived(p)?' · ausgetreten':''}</option>`).join('');
   const now=new Date();
   document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   buildRpt();
@@ -2976,20 +2990,54 @@ function buildRpt(){
   const p=DB.participants.find(x=>x.id===pid); if(!p)return;
 
   const rows=getRptRows(p,y,month);
-  // Unbezahlt = nur UA (inkl. Wochencode UA-W). Alle übrigen Absenz-Codes
-  // (BA/BA-W, KR, UN/Unfall, FE, MI …) gelten als bezahlte Absenz.
+  // Unbezahlt = nur UA (inkl. Wochencode UA-W). KR (Krank) wird separat gezählt und NICHT
+  // mehr zur bezahlten Absenz gerechnet. Übrige Codes (BA/BA-W, UN, FE, MI …) = bezahlte Absenz.
   const UNPAID_ABS=new Set(['UA','UA-W']);
+  const isKR=c=>c==='KR'||c==='KR-VM'||c==='KR-NM'||c==='KR-W';
   // Schultage (r.school) sind keine Absenz und brauchen keinen eCase-Eintrag.
-  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!UNPAID_ABS.has(r.ac)).length;
+  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!UNPAID_ABS.has(r.ac)&&!isKR(r.ac)).length;
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&UNPAID_ABS.has(r.ac)).length;
-  const openEC  =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!r.ecDone&&!r.schnuppertag).length;
+  // KR-Zähler: jede KR-Zeile = 1 (KR ganzer Tag = 1, KR-VM/KR-NM = je 1, KR-W füllt Mo–Fr → 5).
+  const krDays =rows.filter(r=>!r.we&&!r.inactive&&isKR(r.ac)).length;
+  // ZS erscheint nicht in r.ac (getRptRows setzt ac=''), daher – wie die eCase-Liste – aus dem
+  // Rohplan zählen (Muster analog renderMonthly). eCase-Erkennung über die gemeinsame Regel
+  // isOpenEcase → konsistent zu Wochenplan-Badge und Monatsübersicht.
+  let zsDays=0; const ecList=[];
+  monthDays(y,month).forEach(d=>{
+    if(isWE(d)||!isActiveOnDay(p,d)) return;
+    const dstr=ds(d); const plan=getPlan(dstr,p.id);
+    if(plan.abwesenheit==='ZS') zsDays++;
+    if(isOpenEcase(plan,p,d)) ecList.push({dstr,
+      dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`, abs:plan.abwesenheit});
+  });
+  const openEC=ecList.length;
 
   let html='';
-  if(openEC>0) html+=`<div class="warn-bar">⚠️ ${openEC} eCase-Einträge noch offen – bitte erst in eCase erfassen, bevor der Rapport generiert wird.</div>`;
+  if(openEC>0){
+    const ecRows=ecList.map(e=>`<tr>
+      <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
+      <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
+      <td style="padding:4px 10px;text-align:center">
+        <input type="checkbox" title="In eCase eingetragen"
+          onchange="setEcFromRpt('${esc(pid)}','${esc(e.dstr)}',this.checked)"></td></tr>`).join('');
+    html+=`<div class="ec-badge-wrap" style="display:inline-block;margin-bottom:12px">
+      <button class="warn-bar ec-badge-btn" style="margin:0" onclick="ecToggle('rpt',this)">
+        ⚠️ ${openEC} ${openEC===1?'eCase-Eintrag offen':'eCase-Einträge offen'} ▾</button>
+      <div class="ec-drop" style="display:${_ecOpen.rpt?'block':'none'}">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead><tr style="background:var(--g1)">
+            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Datum</th>
+            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
+            <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
+          </tr></thead><tbody>${ecRows}</tbody></table>
+      </div></div>`;
+  }
 
   html+=`<div class="rpt-stats">
     <div class="rpt-stat"><div class="val" style="color:var(--blue)">${baDays}</div><div class="lbl">Bezahlte Absenz</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--red)">${uaDays}</div><div class="lbl">Unbezahlte Absenz</div></div>
+    <div class="rpt-stat"><div class="val" style="color:var(--navy)">${krDays}</div><div class="lbl">Krank (KR)</div></div>
+    <div class="rpt-stat"><div class="val" style="color:var(--amber)">${zsDays}</div><div class="lbl">Zu spät (ZS)</div></div>
     <div class="rpt-stat"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
   </div>`;
 
@@ -4204,11 +4252,11 @@ document.getElementById('impPreviewOverlay').addEventListener('click',e=>{
   if(e.target===e.currentTarget) closeImportPreview();
 });
 
-// eCase-Dropdowns (Wochenplan + Monatsübersicht) bei Klick ausserhalb schliessen.
+// eCase-Dropdowns (Wochenplan + Monatsübersicht + Monatsrapport) bei Klick ausserhalb schliessen.
 // Klick auf Button/Checkbox liegt innerhalb .ec-badge-wrap → schliesst nicht.
 document.addEventListener('click',e=>{
   if(!e.target.closest('.ec-badge-wrap')){
-    _ecOpen.plan=false; _ecOpen.mo=false;
+    _ecOpen.plan=false; _ecOpen.mo=false; _ecOpen.rpt=false;
     document.querySelectorAll('.ec-drop').forEach(d=>{d.style.display='none';});
   }
 });
