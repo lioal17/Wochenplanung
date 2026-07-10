@@ -34,11 +34,17 @@ Alternativ (ohne Git): eine `index.html` mit obigem SHA-256 verwenden → bit-ge
 | **`sicherung-2026-07-10-1755`** | **Wiederherstellungspunkt HEUTE** | eingefroren |
 | `sicherung-2026-07-09-1935` | Wiederherstellungspunkt Vortag | eingefroren |
 
-**Entfernt** (waren vollständig in `main` gemerged, daher gefahrlos gelöscht):
+**Zur Löschung vorgesehen** (vollständig in `main` gemerged → gefahrlos entfernbar):
 - `claude/ecase-button-sync-zazxy6`
 - `claude/wb-tn-layout-5pcdbu`
 - `claude/serene-fermi-qrc682`
 - `claude/layout-redesign-ui-only-p9j1lb`
+
+> ⚠️ **Manueller Schritt nötig:** Die automatische Löschung ist in dieser Ausführungs-
+> umgebung **blockiert** (HTTP 403 auf Branch-Löschung – dieselbe Sperre wie bei Git-Tags).
+> Bitte in GitHub löschen: **Repo → „branches" → bei jedem der vier Branches auf das
+> 🗑️-Symbol klicken**. `main`, `sicherung-2026-07-10-1755` und `sicherung-2026-07-09-1935`
+> **behalten**.
 
 Offene Pull Requests: **keine**.
 
