@@ -1833,6 +1833,27 @@ function isOpenEcase(pl, p, date){
   return !NO_ECASE.includes(abs);
 }
 
+// Sammelt ALLE noch offenen eCase-Einträge über ALLE Tage/Wochen/Monate hinweg
+// (älteste zuerst). Gemeinsame Quelle für das Wochenplan-Badge UND das
+// Monatsübersicht-Badge → beide Zähler sind global und immer identisch.
+// Quittieren an einer Stelle entfernt den Eintrag automatisch aus beiden Listen.
+function collectOpenEcase(){
+  const list=[];
+  Object.keys(DB.plans).sort().forEach(dstr=>{
+    const dayPlans=DB.plans[dstr]; if(!dayPlans) return;
+    const dt=pd(dstr); if(!dt) return;
+    Object.keys(dayPlans).forEach(pid=>{
+      const pl=dayPlans[pid];
+      const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+      if(isOpenEcase(pl, p, dt)){
+        list.push({pid, name:`${p.vorname} ${p.nachname}`, abs:pl.abwesenheit, dstr,
+          dateLabel:`${pad(dt.getDate())}.${pad(dt.getMonth()+1)}. ${WD[dt.getDay()]}`});
+      }
+    });
+  });
+  return list;
+}
+
 // Zählt pro Teilnehmer und Tag MAXIMAL 1: sobald 'Neophyten' im VM ODER NM
 // effektiv eingeteilt ist, zählt der Tag mit 1 (keine Doppelzählung bei VM+NM).
 // Logik der Monatsübersicht-Zelle: Ganz-/Halbtags-Absenzen, S.LW/S.EX und
@@ -2091,22 +2112,10 @@ function renderDayPlan(){
   // eCase badge (compact, in header): sammelt ALLE noch offenen (nicht erfassten)
   // eCase-Einträge über ALLE Tage/Wochen – auch vergessene aus früheren Wochen –,
   // damit sie zentral abgehakt werden können. Sortiert nach Datum (älteste zuerst).
-  // Nutzt dieselbe Regel (isOpenEcase) wie die Monatsübersicht → beide Listen synchron.
-  let openEC=0;
-  const ecEntries=[];
-  Object.keys(DB.plans).sort().forEach(dstr=>{
-    const dayPlans=DB.plans[dstr]; if(!dayPlans) return;
-    const dt=pd(dstr); if(!dt) return;
-    Object.keys(dayPlans).forEach(pid=>{
-      const pl=dayPlans[pid];
-      const p=DB.participants.find(x=>x.id===pid); if(!p) return;
-      if(isOpenEcase(pl, p, dt)){
-        openEC++;
-        ecEntries.push({pid, name:`${p.vorname} ${p.nachname}`, abs:pl.abwesenheit, dstr,
-          dateLabel:`${pad(dt.getDate())}.${pad(dt.getMonth()+1)}. ${WD[dt.getDay()]}`});
-      }
-    });
-  });
+  // Nutzt dieselbe globale Quelle (collectOpenEcase) wie die Monatsübersicht →
+  // beide Zähler zeigen dieselbe Zahl, Quittieren wirkt in beiden Ansichten.
+  const ecEntries=collectOpenEcase();
+  const openEC=ecEntries.length;
   const badge=document.getElementById('planEcBadge');
   if(badge){
     if(openEC>0){
@@ -2633,9 +2642,6 @@ function renderMonthly(){
     document.getElementById('moHint').innerHTML=''; return;
   }
 
-  let totalOpen=0;
-  const moEcList=[];
-
   // Only weekdays (Sa/So entfernt), Montag = Wochentrennlinie
   const wd=days.filter(d=>!isWE(d));
   // r0 = KW (über jeder Woche zentriert), r1 = Tag, r2 = Wochentag, r3 = VM/NM
@@ -2675,9 +2681,6 @@ function renderMonthly(){
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
-      // eCase-Erfassung: identische Regel wie im Wochenplan-Badge (isOpenEcase) → synchron.
-      if(isOpenEcase(plan,p,d)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
-        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM'||rawAbs==='UA-W') ua++;
       if(rawAbs==='ZS') zs++;
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
@@ -2723,6 +2726,11 @@ function renderMonthly(){
       <thead>${r0}${r1}${r2}${r3}</thead><tbody>${tbody}</tbody>
     </table></div>${legend}`;
 
+  // Badge global: dieselbe Quelle wie der Wochenplan (collectOpenEcase) → beide
+  // Zähler zeigen dieselbe Zahl über ALLE Monate. Quittieren hier wirkt sofort
+  // auch im Wochenplan (gemeinsames Datenfeld ecaseEntered).
+  const moEcList=collectOpenEcase();
+  const totalOpen=moEcList.length;
   if(totalOpen>0){
     const ecRows=moEcList.map(e=>`<tr>
       <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
@@ -2734,7 +2742,7 @@ function renderMonthly(){
       </td></tr>`).join('');
     document.getElementById('moHint').innerHTML=`<div class="ec-badge-wrap">
       <button class="warn-bar ec-badge-btn" style="margin-bottom:0" onclick="ecToggle('mo',this)">
-        ⚠️ ${totalOpen} ${totalOpen===1?'offener eCase-Eintrag':'offene eCase-Einträge'} in ${MON[m]} ▾
+        ⚠️ ${totalOpen} ${totalOpen===1?'eCase-Eintrag offen':'eCase-Einträge offen'} ▾
       </button>
       <div class="ec-drop" style="display:${_ecOpen.mo?'block':'none'}">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
