@@ -3002,21 +3002,18 @@ function buildRpt(){
   const uaDays =rows.filter(r=>!r.we&&!r.inactive&&UNPAID_ABS.has(r.ac)).length;
   // KR-Zähler: jede KR-Zeile = 1 (KR ganzer Tag = 1, KR-VM/KR-NM = je 1, KR-W füllt Mo–Fr → 5).
   const krDays =rows.filter(r=>!r.we&&!r.inactive&&isKR(r.ac)).length;
-  // ZS erscheint nicht in r.ac (getRptRows setzt ac=''), daher – wie die eCase-Liste – aus dem
-  // Rohplan zählen (Muster analog renderMonthly). eCase-Erkennung über die gemeinsame Regel
-  // isOpenEcase → konsistent zu Wochenplan-Badge und Monatsübersicht.
-  let zsDays=0; const ecList=[];
+  // ZS (Zu spät) erscheint nicht in r.ac (getRptRows setzt ac=''), daher aus dem
+  // Rohplan zählen (Muster analog renderMonthly) – monatsbezogen wie die übrigen Kennzahlen.
+  let zsDays=0;
   monthDays(y,month).forEach(d=>{
     if(isWE(d)||!isActiveOnDay(p,d)) return;
-    const dstr=ds(d); const plan=getPlan(dstr,p.id);
-    if(plan.abwesenheit==='ZS') zsDays++;
-    if(isOpenEcase(plan,p,d)) ecList.push({dstr,
-      dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`, abs:plan.abwesenheit});
+    if(getPlan(ds(d),p.id).abwesenheit==='ZS') zsDays++;
   });
-  // Anzahl offener eCase-Einträge dieses TN im Monat. Nur als Kennzahl (Stat-Kachel)
-  // – kein Quittieren im Rapport. Das Abhaken passiert im Wochenplan/der Monatsübersicht;
-  // die Zahl hier ist über dieselbe Regel (isOpenEcase) immer synchron dazu.
-  const openEC=ecList.length;
+  // eCase-Kachel: bewusst NICHT monatsbezogen, sondern ALLE noch offenen eCase-Einträge
+  // DIESES Teilnehmers über alle Monate (global) – damit die Zahl exakt dem eCase-Button
+  // in Wochenplan/Monatsübersicht entspricht. Quittieren dort senkt sie sofort (isOpenEcase,
+  // gemeinsames Feld ecaseEntered). Nur Kennzahl – kein Quittieren im Rapport.
+  const openEC=collectOpenEcase().filter(e=>e.pid===p.id).length;
 
   let html='';
   html+=`<div class="rpt-stats">
@@ -3024,7 +3021,7 @@ function buildRpt(){
     <div class="rpt-stat"><div class="val" style="color:var(--red)">${uaDays}</div><div class="lbl">Unbezahlte Absenz</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--navy)">${krDays}</div><div class="lbl">Krank (KR)</div></div>
     <div class="rpt-stat"><div class="val" style="color:var(--amber)">${zsDays}</div><div class="lbl">Zu spät (ZS)</div></div>
-    <div class="rpt-stat"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
+    <div class="rpt-stat" title="Offene eCase-Einträge dieses TN gesamt (alle Monate) – wie der eCase-Button"><div class="val" style="color:${openEC?'var(--amber)':'var(--green)'}">${openEC||'✓'}</div><div class="lbl">eCase</div></div>
   </div>`;
 
   html+=`<div class="fg" style="margin-top:4px;margin-bottom:16px">
