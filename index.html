@@ -209,7 +209,7 @@ input,select,textarea{font-family:inherit}
 .plan-tbl tr.row-schnupper td{background:#fafafa}
 
 /* Name cell */
-.cell-name{font-weight:600;font-size:13px;white-space:nowrap}
+.cell-name{font-weight:600;font-size:13px;line-height:1.25;overflow-wrap:anywhere}
 .cell-name-green{color:var(--green);font-weight:700}
 .bw-yvi{background:#be185d}
 .blocked-prk{background:#dcfce7;color:#15803d;font-weight:700;font-size:11px;text-align:center;border-radius:4px;padding:7px 4px;display:flex;align-items:center;justify-content:center;letter-spacing:.3px;white-space:nowrap}
@@ -238,8 +238,8 @@ input,select,textarea{font-family:inherit}
 
 /* Werkstatt select */
 .ws-sel{
-  border:1px solid var(--g3);border-radius:5px;padding:7px 7px;
-  font-size:12px;background:#fff;color:var(--g8);width:100%;box-sizing:border-box;
+  border:1px solid var(--g3);border-radius:5px;padding:8px 9px;
+  font-size:12.5px;background:#fff;color:var(--g8);width:100%;box-sizing:border-box;
 }
 .ws-sel:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 2px rgba(20,20,20,.15)}
 .ws-custom{
@@ -265,8 +265,8 @@ input,select,textarea{font-family:inherit}
 /* Absence */
 .abs-wrap{display:flex;flex-direction:column;gap:3px}
 .abs-sel{
-  border:1px solid var(--g3);border-radius:5px;padding:5px 6px;
-  font-size:12px;width:100%;min-width:90px;
+  border:1px solid var(--g3);border-radius:5px;padding:8px 9px;
+  font-size:12.5px;width:100%;box-sizing:border-box;background:#fff;color:var(--g8);
 }
 .abs-txt{
   border:1px solid var(--g3);border-radius:5px;padding:4px 6px;
@@ -287,7 +287,7 @@ input,select,textarea{font-family:inherit}
 }
 .bem-inp:focus{outline:none;border-color:var(--navy-light)}
 .bem-wrap{display:flex;flex-direction:column;gap:4px}
-.bem-sel{font-family:inherit;font-size:12px;border:1px solid var(--g3);border-radius:5px;padding:4px 6px;background:#fff;color:var(--g9);cursor:pointer;width:100%}
+.bem-sel{font-family:inherit;font-size:12.5px;border:1px solid var(--g3);border-radius:5px;padding:8px 9px;background:#fff;color:var(--g9);cursor:pointer;width:100%;box-sizing:border-box}
 .bem-sel:focus{outline:none;border-color:var(--navy-light)}
 .legend-box{margin-top:18px;padding:14px 16px;background:var(--g1,#f6f8fb);border:1px solid var(--g2,#e6eaf0);border-radius:8px}
 .legend-box .lg-grp{margin-bottom:8px}
@@ -2051,7 +2051,7 @@ function renderDayPlan(){
 
     rows+=`<tr class="${rowCls}">
       <td><span class="cell-name${nameGreen?' cell-name-green':''}">${esc(p.vorname)} ${esc(p.nachname)}</span>${chip}</td>
-      <td>${jcBadge}</td>
+      <td style="text-align:center">${jcBadge}</td>
       <td style="text-align:center;font-size:11px;font-weight:600">${p.iiz==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
       <td style="text-align:center">${bwDot}</td>
       <td>${vmCell}</td>
@@ -2112,15 +2112,15 @@ function renderDayPlan(){
     <div class="tbl-wrap plan-tbl-wrap">
       <table class="plan-tbl">
         <thead><tr>
-          <th style="width:155px">Name</th>
-          <th style="width:62px">JC</th>
-          <th style="width:42px">IIZ</th>
-          <th style="width:34px;text-align:center">BW</th>
-          <th style="width:170px;text-align:center">VM 08:15–12:00</th>
-          <th style="width:170px;text-align:center">NM 13:15–17:00</th>
-          <th style="min-width:155px;text-align:center">Abwesenheit</th>
-          <th style="width:58px;text-align:center">eCase</th>
-          <th style="min-width:120px">Schnuppern</th>
+          <th style="min-width:180px">Name</th>
+          <th style="width:62px;text-align:center">JC</th>
+          <th style="width:44px;text-align:center">IIZ</th>
+          <th style="width:38px;text-align:center">BW</th>
+          <th style="width:186px;text-align:center">VM 08:15–12:00</th>
+          <th style="width:186px;text-align:center">NM 13:15–17:00</th>
+          <th style="width:186px;text-align:center">Abwesenheit</th>
+          <th style="width:60px;text-align:center">eCase</th>
+          <th style="width:186px;text-align:center">Schnuppern</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
