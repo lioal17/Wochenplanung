@@ -2072,28 +2072,33 @@ function renderDayPlan(){
       <div class="sum-slot"><span class="sum-slot-lbl">NM</span>${nmChips||'<span class="sum-empty">– keine Einteilung –</span>'}</div>
     </div>`;
 
-  // eCase badge (compact, in header)
+  // eCase badge (compact, in header): sammelt ALLE noch offenen (nicht erfassten)
+  // eCase-Einträge über ALLE Tage/Wochen – auch vergessene aus früheren Wochen –,
+  // damit sie zentral abgehakt werden können. Sortiert nach Datum (älteste zuerst).
+  // Eigenes Konzept „keine eCase-Pflicht": bewusst OHNE ZS und OHNE BA-VM/BA-NM
+  // (beide sind eCase-pflichtig), aber MIT PA – daher nicht mit SOFT_ABS/HALF_ABS mergen.
   let openEC=0;
   const ecEntries=[];
-  active.forEach(p=>{
-    const pl=getPlan(curDay,p.id);
-    // Eigenes Konzept „keine eCase-Pflicht": bewusst OHNE ZS und OHNE BA-VM/BA-NM
-    // (beide sind eCase-pflichtig), aber MIT PA – daher nicht mit SOFT_ABS/HALF_ABS mergen.
-    const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
-    if(pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
-      openEC++;
-      ecEntries.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,abs:pl.abwesenheit,dstr:curDay});
-    }
+  const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
+  Object.keys(DB.plans).sort().forEach(dstr=>{
+    const dayPlans=DB.plans[dstr]; if(!dayPlans) return;
+    const dt=pd(dstr); if(!dt) return;
+    Object.keys(dayPlans).forEach(pid=>{
+      const pl=dayPlans[pid];
+      if(pl&&pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
+        const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+        openEC++;
+        ecEntries.push({pid, name:`${p.vorname} ${p.nachname}`, abs:pl.abwesenheit, dstr,
+          dateLabel:`${pad(dt.getDate())}.${pad(dt.getMonth()+1)}. ${WD[dt.getDay()]}`});
+      }
+    });
   });
   const badge=document.getElementById('planEcBadge');
   if(badge){
     if(openEC>0){
-      // Datums-Label wie in der Monatsübersicht (z. B. "07.07. Di").
-      const cd=pd(curDay);
-      const dateLabel=`${pad(cd.getDate())}.${pad(cd.getMonth()+1)}. ${WD[cd.getDay()]}`;
       const rows=ecEntries.map(e=>`<tr>
         <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
-        <td style="padding:4px 10px;color:var(--g6)">${dateLabel}</td>
+        <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
         <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
         <td style="padding:4px 10px;text-align:center">
           <input type="checkbox" title="In eCase eingetragen"
