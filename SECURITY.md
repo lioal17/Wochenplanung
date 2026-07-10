@@ -67,6 +67,30 @@ die beide CDNs unverändert ausliefern.
 | jsPDF + AutoTable | 2.5.1 / 3.8.2 | MIT | CVE-2025-29907 (ReDoS via `addImage`) – hier nicht ausnutzbar, da keine fremden Bild-URLs. |
 | SheetJS (xlsx) | 0.18.5 | Apache-2.0 | CVE-2023-30533 / CVE-2024-22363 – Upgrade nur über `cdn.sheetjs.com` (nicht npm); als langfristige Empfehlung geführt. |
 
+## Sicherheits-Audit vom 10.07.2026 (Ergebnis)
+
+Unabhängige Nachprüfung der oben beschriebenen Maßnahmen:
+
+- **SRI-Hashes verifiziert ✅** – beide `integrity`-Werte in `index.html` wurden aus den
+  kanonischen npm-Artefakten **neu berechnet** und stimmen exakt überein:
+  - `pdfjs-dist@3.11.174/build/pdf.min.js` → `sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e`
+  - `mammoth@1.6.0/mammoth.browser.min.js` → `sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz`
+  Ein etwaiges Abdriften der CDNs ist dadurch unkritisch: Bei abweichenden Bytes
+  verweigert der Browser die Ausführung (SRI); der Import fällt sichtbar aus, statt
+  kompromittiert zu laufen.
+- **pdf.js-Härtung aktiv ✅** – `isEvalSupported:false` ist im Import-Pfad gesetzt
+  (entschärft CVE-2024-4367).
+- **SheetJS 0.18.5 (eingebettet) – Bewertung:** Die bekannten CVEs bleiben bestehen
+  (CVE-2023-30533 Prototype Pollution, behoben ab 0.19.3; CVE-2024-22363 ReDoS,
+  behoben ab 0.20.2). **Exposition gering:** Die Bibliothek verarbeitet ausschließlich
+  Excel-Dateien, die die Nutzerin **selbst lokal auswählt** – kein Server, keine fremden
+  Uploads; ein Angriff erfordert, dass eine präparierte Datei aktiv importiert wird.
+  **Empfehlung (unverändert, nicht dringend):** Bei nächster Gelegenheit auf
+  ≥ 0.20.2 aktualisieren – Bezug **nur** über `cdn.sheetjs.com` (npm liefert keine
+  aktuellen Versionen), danach den eingebetteten Block ersetzen und den Excel-Import
+  manuell gegentesten. Kein Upgrade ohne ausdrückliche Freigabe, da der Block groß
+  und tief eingebettet ist.
+
 ## Eine Schwachstelle melden
 
 Da es sich um ein internes Tool ohne öffentliche Angriffsfläche (kein Server)
