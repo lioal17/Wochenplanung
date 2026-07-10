@@ -5,8 +5,8 @@
 > (ersetzt aber nicht) die Datei `index.html`, welche selbst die zuverlässigste
 > Sicherung ist (reiner Text/HTML, einfach im Browser öffnen).
 >
-> Stand: 2026-07-03 (Details zu Zwischenständen siehe die datierten
-> `PROJEKT-ZUSAMMENFASSUNG-*.md`-Dateien)
+> Stand: 2026-07-10 (Details zu Zwischenständen siehe die datierten
+> `PROJEKT-ZUSAMMENFASSUNG-*.md`-Dateien im Archiv unter `docs/archiv/`)
 
 ---
 
@@ -61,6 +61,7 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
 | `iiz` | string | IIZ-Feld |
 | `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
+| `wbAgInformed` | bool | „Arbeitsagoge informiert" der **laufenden** WB-Runde (Ampel 🔴→🟡; wird bei Rundenabschluss/-reset auf `false` gesetzt) |
 | `bemerkung` | string | Freitext |
 | `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schultage (unverändert) |
 | `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen (kein Wochentag) |
@@ -153,6 +154,15 @@ Einheitliches Schema (wie Absenz-Codes): **Basis = ganzer Tag**, `-VM` = Vormitt
 - **Kein eCase-Auftrag:** `SL` (Schnupperlehre/-tag) und `PA` (Praktikum) erzeugen
   **keinen** offenen eCase-Eintrag (weder im Tages-/Wochenplan, im Badge noch im Monatsplan).
 
+- **eCase-Badges (global, seit 10.07.2026):** Wochenplan **und** Monatsübersicht speisen ihr
+  „⚠️ N eCase-Einträge offen"-Badge aus der **gemeinsamen** Quelle `collectOpenEcase()`
+  (Regel `isOpenEcase`), die **alle** offenen Einträge über **alle Monate** sammelt → beide
+  zeigen stets dieselbe Zahl/Liste; Quittieren (Feld `ecaseEntered`) wirkt sofort in beiden.
+  Der **Monatsrapport** hat **kein** interaktives eCase-Dropdown mehr – dort erscheint eCase
+  nur als Kennzahl-Kachel: **Gesamtzahl offener Einträge des gewählten TN über alle Monate**
+  (identisch zum Badge, nach TN gefiltert). Quittiert wird ausschließlich im Wochenplan bzw.
+  in der Monatsübersicht.
+
 - **Halbtags-Absenzen** (`SOFT_ABS`): ZS, UA-VM/NM, KR-VM/NM, BA-VM/NM, UN-VM/NM –
   Werkstatt-Einteilung des nicht betroffenen Slots bleibt möglich.
 - **Wochencodes** BA-W / FE-W / KR-W / UA-W / UN-W: nur am **Montag** einsteuerbar, füllen
@@ -215,8 +225,16 @@ vorliegt – die Tagesplanung hat immer Vorrang vor dem hinterlegten Sporttermin
 - `copyPrev` – Vorwoche kopieren. `clearCurrentDay` – Tag leeren.
 - **WB-TN (Wirkungsberichte)** – eigener Bereich (`renderWBTN`, Button „📅 WB-TN"). Übersicht
   aller aktiven TN, sortiert nach nächstfälligem Wirkungsbericht. Termine deterministisch ab
-  `einsatzVon`: `WB(r) = Eintritt + 10W + (r-1)×12W`, `InputAG(r) = WB(r) − 2W`; `wbMarkDone`
-  schliesst eine Runde ab (`wbRounds++`) und startet automatisch die nächste. `wbCheckReminders`
+  `einsatzVon`: `WB(r) = Eintritt + 10W + (r-1)×12W`; `InputAG(r) = WB(r) − 2W`, anschliessend
+  per `toMonday()` auf den **Montag derselben Woche** gelegt (passend zur Montags-Teamsitzung;
+  Vorlauf bis zum WB bleibt ≥ 2 Wochen). **Ampel** (`wbStatus`): 🔴 = `heute ≥ InputAG` und
+  Arbeitsagoge offen · 🟡 = `wbAgInformed` gesetzt, Job Coach offen · 🟢 = nicht fällig.
+  **Aktionen:** `wbInformAG` (Toggle 🔴↔🟡), `wbMarkDone` schliesst die Runde ab
+  (`wbRounds++`, `wbAgInformed=false`) und startet automatisch die nächste; der
+  **„Runde X."-Button** (`wbResetRound`) setzt den Zyklus des TN mit Sicherheitsabfrage auf
+  **Runde 1** zurück (`wbRounds=0`, `wbAgInformed=false`) – danach rechnet alles wieder ab
+  Eintritt. **Badge** am WB-TN-Nav-Button (`wbUpdateBadge`) = Anzahl **roter** Einträge
+  (offene Arbeitsagoge-WBs); 🟡 zählt nicht mit. `wbCheckReminders`
   zeigt beim App-Start ein Erinnerungs-Pop-up für Yvi, sobald der Input Arbeitsagoge fällig ist
   (Buttons „Erledigt" / „Später erinnern"). **Kein Mailversand, keine Mailvorlage.**
 
