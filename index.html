@@ -193,7 +193,7 @@ input,select,textarea{font-family:inherit}
 .plan-tbl th:first-child{border-radius:6px 0 0 0}
 .plan-tbl th:last-child{border-radius:0 6px 0 0}
 .plan-tbl td{
-  padding:7px 9px;border-bottom:1px solid var(--g2);
+  padding:9px 10px;border-bottom:1px solid var(--g2);
   vertical-align:middle;
 }
 .plan-tbl tbody tr:last-child td{border-bottom:none}
@@ -224,7 +224,7 @@ input,select,textarea{font-family:inherit}
 .chip-schn{background:var(--g5);color:#fff}
 
 /* JC badge */
-.jc{display:inline-block;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700}
+.jc{display:inline-block;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:700;min-width:40px;text-align:center;box-sizing:border-box}
 .jc-lio{background:#e07a5f;color:#fff}
 .jc-tom{background:#6b8fc9;color:#fff}
 .jc-yvi{background:#d8ae4a;color:#fff}
@@ -2112,13 +2112,13 @@ function renderDayPlan(){
     <div class="tbl-wrap plan-tbl-wrap">
       <table class="plan-tbl">
         <thead><tr>
-          <th style="min-width:155px">Name</th>
-          <th style="width:55px">JC</th>
+          <th style="width:155px">Name</th>
+          <th style="width:62px">JC</th>
           <th style="width:42px">IIZ</th>
-          <th style="width:32px">BW</th>
-          <th style="width:170px">VM 08:15–12:00</th>
-          <th style="width:170px">NM 13:15–17:00</th>
-          <th style="min-width:155px">Abwesenheit</th>
+          <th style="width:34px;text-align:center">BW</th>
+          <th style="width:170px;text-align:center">VM 08:15–12:00</th>
+          <th style="width:170px;text-align:center">NM 13:15–17:00</th>
+          <th style="min-width:155px;text-align:center">Abwesenheit</th>
           <th style="width:58px;text-align:center">eCase</th>
           <th style="min-width:120px">Schnuppern</th>
         </tr></thead>
