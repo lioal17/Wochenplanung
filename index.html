@@ -2825,9 +2825,17 @@ function renderRapport(){
     if(aB!==bB) return aB-bB;
     return byName(a,b);
   });
+  // Auswahl über Ansichtswechsel hinweg beibehalten: zuvor gewählter TN bleibt
+  // selektiert (sofern noch in der Liste), der Monat wird nur beim ERSTEN Öffnen
+  // mit dem aktuellen Monat vorbelegt und danach nicht mehr überschrieben.
+  const prevP=sel.value;
   sel.innerHTML=sorted.map(p=>`<option value="${esc(p.id)}">${esc(p.vorname)} ${esc(p.nachname)}${isArchived(p)?' · ausgetreten':''}</option>`).join('');
-  const now=new Date();
-  document.getElementById('rptM').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  if(prevP && sorted.some(p=>p.id===prevP)) sel.value=prevP;
+  const mEl=document.getElementById('rptM');
+  if(!mEl.value){
+    const now=new Date();
+    mEl.value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  }
   buildRpt();
 }
 
