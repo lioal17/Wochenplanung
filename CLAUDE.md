@@ -62,3 +62,21 @@ Siehe auch `SECURITY.md`.
   Environment blockiert, daher Branch).
 - Änderungen über einen Branch + Pull Request nach `main` (kein direkter Push auf
   `main`). Keine PRs ohne ausdrücklichen Auftrag.
+
+## Best Service (verbindliche Definition)
+
+Wenn ausdrücklich **„Best Service"** verlangt wird, gehört – zusätzlich zur eigentlichen
+Aufgabe – **immer** Folgendes dazu (ohne erneute Nachfrage):
+
+1. **ZIP-Datei für den Nutzer:** Ein Wiederherstellungs-ZIP des aktuellen Stands erzeugen
+   und dem Nutzer **direkt aushändigen**. Erzeugung **immer** per `git archive` (nur
+   getrackte Dateien) → damit garantiert **keine** TN-/Datendateien (`*.json` etc.) enthalten
+   sind. Dateiname mit Datum, z. B. `Wochenplanung-Wiederherstellung-JJJJ-MM-TT.zip`.
+2. **Link zu den löschbaren, gemergten Branches:** Dem Nutzer den GitHub-Branches-Link
+   (`https://github.com/lioal17/Wochenplanung/branches`) geben **und** die vollständig in
+   `main` gemergten `claude/*`-Branches auflisten, die er löschen kann. (Branch-Löschung ist
+   in der Umgebung blockiert → **manueller** Nutzer-Schritt.) **Behalten:** `main` und die
+   `sicherung-*`-Restore-Branches.
+
+> Datenschutz bleibt oberstes Gebot: Das ZIP darf **niemals** TN-Daten enthalten – nur
+> getrackte Repo-Dateien; Export-`*.json` sind per `.gitignore` ohnehin ausgeschlossen.
