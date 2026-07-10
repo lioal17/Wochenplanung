@@ -72,19 +72,22 @@ input,select,textarea{font-family:inherit}
    LAYOUT
 ═══════════════════════════════════════════ */
 .app-header{
-  background:#fff;color:var(--g9);
+  background:var(--navy);color:#fff;
   padding:0 24px;height:58px;
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:300;
-  border-bottom:2px solid var(--navy);box-shadow:var(--sh1);
+  border-bottom:3px solid var(--accent);box-shadow:var(--sh2);
 }
 .app-logo{display:flex;flex-direction:column;gap:1px}
-.app-logo h1{font-size:16px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+.app-logo h1{font-size:16px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;color:#fff}
 .app-logo h1::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block;flex-shrink:0}
-.app-logo small{font-size:10px;opacity:.85;letter-spacing:.5px;text-transform:uppercase;color:var(--g6);padding-left:17px}
+.app-logo small{font-size:10px;opacity:.85;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.65);padding-left:17px}
 .header-right{display:flex;align-items:center;gap:10px}
-.save-info{text-align:right;font-size:10px;color:var(--g6);line-height:1.5}
-.save-info strong{display:block;color:var(--g8)}
+.save-info{text-align:right;font-size:10px;color:rgba(255,255,255,.65);line-height:1.5}
+.save-info strong{display:block;color:rgba(255,255,255,.9)}
+/* Kopf-Buttons einheitlich: schwarz + gelbe Schrift (wie «Speichern»), dezenter Rahmen zur Abgrenzung vom schwarzen Balken */
+.app-header .btn{background:var(--navy);color:var(--accent);border:1px solid rgba(255,255,255,.22);font-weight:700}
+.app-header .btn:hover{background:#000;border-color:rgba(255,237,0,.55);color:var(--accent)}
 
 .nav{
   background:#fff;border-bottom:1px solid var(--g3);
@@ -172,8 +175,8 @@ input,select,textarea{font-family:inherit}
 }
 .day-btn:hover{border-color:var(--navy-light);color:var(--navy)}
 .day-btn.active{background:#141414;color:#fff;border-color:#141414}
-.day-btn.today{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
-.day-btn.today.active{background:#141414;color:#fff;border-color:#141414}
+.day-btn.today{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.day-btn.today.active{background:#141414;color:#fff;border-color:var(--accent)}
 
 /* ═══════════════════════════════════════════
    PLAN TABLE
@@ -183,7 +186,7 @@ input,select,textarea{font-family:inherit}
 .plan-tbl-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--g3)}
 .plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
 .plan-tbl th{
-  background:var(--g9);color:#fff;padding:9px 10px;
+  background:var(--g9);color:var(--accent);padding:9px 10px;
   text-align:left;font-size:11px;font-weight:600;letter-spacing:.5px;
   white-space:nowrap;
 }
@@ -405,7 +408,7 @@ input,select,textarea{font-family:inherit}
 .mo-wrap{overflow-x:auto;width:100%}
 .mo-tbl{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px}
 .mo-tbl th{
-  background:var(--g9);color:#fff;padding:5px 2px;
+  background:var(--g9);color:var(--accent);padding:5px 2px;
   text-align:center;font-size:11px;font-weight:600;white-space:nowrap;
 }
 .mo-tbl .th-name{text-align:left;width:160px;min-width:120px;padding-left:10px}
@@ -458,7 +461,7 @@ input,select,textarea{font-family:inherit}
 .rpt-stat .lbl{font-size:10px;color:var(--g6);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
 .rpt-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
 .rpt-tbl th{
-  background:var(--g9);color:#fff;padding:8px 12px;text-align:left;font-size:11px;
+  background:var(--g9);color:var(--accent);padding:8px 12px;text-align:left;font-size:11px;
 }
 .rpt-tbl td{padding:6px 12px;border-bottom:1px solid var(--g2)}
 .rpt-tbl tr.rw{background:var(--g1);color:var(--g5)}
@@ -538,7 +541,7 @@ input,select,textarea{font-family:inherit}
 }
 .imp-png-preview{max-width:100%;max-height:300px;border-radius:8px;margin:12px 0;border:1px solid var(--g3)}
 .imp-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.imp-tbl th{background:var(--g9);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap}
+.imp-tbl th{background:var(--g9);color:var(--accent);padding:8px 10px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap}
 .imp-tbl td{padding:6px 9px;border-bottom:1px solid var(--g2);vertical-align:middle}
 .imp-tbl tbody tr:hover td{background:var(--g1)}
 .imp-tbl tr.imp-exists td{background:#f0fdf8}
@@ -3059,7 +3062,7 @@ function drawRapportPage(doc,p,y,month){
       3:{cellWidth:27,halign:'center'},
       4:{cellWidth:78},
     },
-    headStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:8.5},
+    headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:8.5},
     bodyStyles:{fontSize:8},
     didParseCell:(d)=>{
       if(d.section!=='body') return;
@@ -3274,10 +3277,10 @@ function genRapportPDF(){
   let yp=mg;
 
   // Header bar
-  doc.setFillColor(20,20,20);
+  doc.setFillColor(236,236,236);
   doc.rect(mg,yp,W-2*mg,15,'F');
   doc.setFillColor(255,237,0);doc.rect(mg+4,yp+5.5,4,4,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(51,51,51);
   doc.text('Teilnehmer-Rapport',W/2,yp+10,{align:'center'});
   doc.setFontSize(8.5);doc.setFont('helvetica','normal');
   doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
@@ -3331,7 +3334,7 @@ function genRapportPDF(){
       lineColor:[230,235,245],lineWidth:.25,overflow:'linebreak',
     },
     headStyles:{
-      fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:8.5,
+      fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:8.5,
       cellPadding:{top:3,right:6,bottom:3,left:6},
     },
     columnStyles:{
@@ -3344,7 +3347,7 @@ function genRapportPDF(){
       const txt=d.row.raw[0];
       const isSec=['ABWESENHEITEN','SCHULE','LERNWERKSTATT','SCHNUPPERLEHRE'].includes(txt);
       if(isSec){
-        d.cell.styles.fillColor=[20,20,20];d.cell.styles.textColor=[255,255,255];
+        d.cell.styles.fillColor=[224,224,224];d.cell.styles.textColor=[34,34,34];
         d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=8.5;
         d.cell.styles.cellPadding={top:3,right:6,bottom:3,left:6};
       } else if(txt==='Total Schul-Lektionen'){
@@ -3454,7 +3457,7 @@ function genWeekPDF(){
     head:[head1],body:body1,startY:17,margin:{left:mg,right:mg,bottom:8},
     theme:'grid',
     styles:{fontSize:fs1,cellPadding:cp1,overflow:'ellipsize',lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:fs1,halign:'center',lineColor:[20,20,20],lineWidth:0.3},
+    headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:fs1,halign:'center',lineColor:[200,200,200],lineWidth:0.3},
     columnStyles:cs1,
     alternateRowStyles:{fillColor:[218,238,243]},
     didParseCell:(data)=>{
@@ -3551,7 +3554,7 @@ function genWeekPDF(){
       head:head2,body:body2,startY:17,margin:{left:mg,right:mg,bottom:10},
       theme:'grid',
       styles:{fontSize:fs2,cellPadding:cp2,overflow:'ellipsize',lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-      headStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:fs2,lineColor:[20,20,20],lineWidth:0.3},
+      headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:fs2,lineColor:[200,200,200],lineWidth:0.3},
       columnStyles:cs2,
       alternateRowStyles:{fillColor:[218,238,243]},
       didParseCell:(data)=>{
@@ -3646,7 +3649,7 @@ function genWeekPDF(){
     head:[moHead],body:moBody,startY:17,margin:{left:mg,right:mg,bottom:8},
     theme:'grid',
     styles:{fontSize:moFs,cellPadding:moCp,overflow:'hidden',halign:'center',valign:'middle',lineColor:[210,210,210],lineWidth:0.2,textColor:[20,20,20]},
-    headStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:moFs,halign:'center',lineColor:[20,20,20],lineWidth:0.2},
+    headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:moFs,halign:'center',lineColor:[200,200,200],lineWidth:0.2},
     columnStyles:moCs,
     alternateRowStyles:{fillColor:[218,238,243]},
     didParseCell:(data)=>{
@@ -3784,11 +3787,11 @@ function genNeophytPDF(){
     body,
     theme:'grid',
     styles:{fontSize:11,cellPadding:2.5,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:11,halign:'left'},
+    headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:11,halign:'left'},
     alternateRowStyles:{fillColor:[218,238,243]},
     columnStyles:{0:{cellWidth:24},1:{cellWidth:40},2:{cellWidth:50},3:{cellWidth:'auto',halign:'center',fontStyle:'bold'}},
     foot:[[`Total Jahr ${Y}`,'',`${dayCount} Tag${dayCount===1?'':'e'}`,String(yearTotal)]],
-    footStyles:{fillColor:[20,20,20],textColor:255,fontStyle:'bold',fontSize:12,halign:'left',lineColor:[20,20,20],lineWidth:0.3},
+    footStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:12,halign:'left',lineColor:[200,200,200],lineWidth:0.3},
     showFoot:'lastPage',
     didParseCell:(data)=>{
       if(data.column.index===3) data.cell.styles.halign='center';
@@ -3870,7 +3873,7 @@ function genTNPDF(){
     body,
     theme:'grid',
     styles:{fontSize:12,cellPadding:3,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:BLUE,textColor:255,fontStyle:'bold',fontSize:12,halign:'left'},
+    headStyles:{fillColor:[236,236,236],textColor:[51,51,51],fontStyle:'bold',fontSize:12,halign:'left'},
     columnStyles:{0:{cellWidth:'auto'},1:{cellWidth:32,halign:'center',fontStyle:'bold'}},
     didParseCell:(data)=>{
       if(data.section!=='body') return;
