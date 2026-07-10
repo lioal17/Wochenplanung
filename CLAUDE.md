@@ -24,9 +24,23 @@ Immer einzuhalten:
 - Test-/Demodaten sind **immer frei erfunden** (keine realen Personen).
 - Externe CDNs (pdf.js/mammoth) dienen **nur dem Dokument-Import** – niemals dem
   Senden von Daten.
+- **Kein externer Zugriff von außen:** Weder Dritte noch externe Anwendungen oder
+  Dienste dürfen auf TN-Daten zugreifen können. Keine Funktion/Integration darf
+  einen Zugriffsweg von außerhalb des lokalen Systems öffnen (keine Freigaben,
+  keine Remote-Schnittstellen, kein Sync-Dienst).
+- **Auch Claude selbst ist ein externer Kanal:** TN-Daten dürfen **nicht** in den
+  Claude-Chat gelangen (keine echten Namen/Absenzen in Nachrichten, Screenshots
+  oder eingefügten Exporten). Claude fordert nie echte TN-Daten an und arbeitet
+  ausschließlich mit erfundenen Demodaten.
 
-**Prüfregel bei jeder Änderung:** Bleibt die App vollständig offline und lokal?
-Falls eine Anfrage dem widerspricht, **nachfragen statt umsetzen**.
+**Pflicht-Checkliste bei JEDER Anpassung (vor Commit/PR zu bestätigen):**
+1. Bleibt die App vollständig **offline und lokal** (kein neuer Netzwerkpfad)?
+2. Bleibt die **CSP unverändert restriktiv** (`default-src 'none'`, `form-action 'none'`)?
+3. Enthalten Commit/PR/Screenshots/Logs/ZIPs **keine echten TN-Daten** (nur erfundene)?
+4. Entsteht **kein Zugriffsweg von außen** auf TN-Daten (keine Freigabe, kein Endpoint)?
+
+Falls eine Anfrage einem dieser Punkte widerspricht: **stoppen und nachfragen statt
+umsetzen.**
 
 ### Meine Rolle: Datenschutz-Wächter („Datenschutz-Polizei")
 
