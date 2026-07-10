@@ -3021,12 +3021,16 @@ function drawRapportPage(doc,p,y,month){
   });
   yp+=29;
 
-  // Header
-  doc.setFont('helvetica','bold');doc.setFontSize(11);
-  doc.text(`Monat ${MON[month]} ${y}`,mg,yp);
-  doc.setFontSize(10);doc.setFont('helvetica','normal');
-  doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
-  yp+=8;
+  // Header (Wochenplan-Stil: gelbes Akzent-Quadrat + Titel links + Untertitel rechts + Linie)
+  doc.setFillColor(255,237,0);doc.rect(mg,yp-3.2,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(20,20,20);
+  doc.text(`Monatsrapport – ${p.vorname} ${p.nachname}`,mg+5,yp);
+  doc.setFontSize(9.5);doc.setFont('helvetica','normal');doc.setTextColor(102);
+  doc.text(`${MON[month]} ${y}`,W-mg,yp,{align:'right'});
+  yp+=2.5;
+  doc.setDrawColor(20,20,20);doc.setLineWidth(0.4);doc.line(mg,yp,W-mg,yp);
+  doc.setTextColor(0);
+  yp+=5.5;
 
   // Freitext-Bemerkung direkt unter dem Namen
   const rptNote=getRptNote(p.id,y,month);
@@ -3276,22 +3280,15 @@ function genRapportPDF(){
   const W=210, mg=16;
   let yp=mg;
 
-  // Header bar
-  doc.setFillColor(236,236,236);
-  doc.rect(mg,yp,W-2*mg,15,'F');
-  doc.setFillColor(255,237,0);doc.rect(mg+4,yp+5.5,4,4,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(51,51,51);
-  doc.text('Teilnehmer-Rapport',W/2,yp+10,{align:'center'});
-  doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-  doc.text(rangeLabel,W-mg-3,yp+10,{align:'right'});
-  yp+=21;
-
-  // Name (ohne Jobcoach-Kürzel)
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);
-  doc.text(`${p.vorname} ${p.nachname}`,W/2,yp,{align:'center'});
+  // Kopf im Wochenplan-Stil: gelbes Akzent-Quadrat + Titel links + Untertitel rechts + Linie
+  doc.setFillColor(255,237,0);doc.rect(mg,yp,3.2,3.2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(20,20,20);
+  doc.text('Teilnehmer-Rapport',mg+5.5,yp+3.2);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(102);
+  doc.text(`${p.vorname} ${p.nachname}  ·  ${rangeLabel}`,W-mg,yp+3.2,{align:'right'});
   yp+=7;
-  doc.setDrawColor(210,210,210);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
-  yp+=7;
+  doc.setDrawColor(20,20,20);doc.setLineWidth(0.5);doc.line(mg,yp,W-mg,yp);
+  yp+=8;
 
   // Zahl hübsch: ganze Zahlen ohne Dezimalstelle, halbe Tage mit .5
   const fmtN=v=>Number.isInteger(v)?`${v}`:v.toFixed(1);
