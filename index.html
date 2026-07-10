@@ -1817,6 +1817,22 @@ function schultagAktiv(s, date){
 // Schnuppertag = Absenz SL ohne Schnupperwoche. Keine echte Absenz → kein eCase-Eintrag nötig.
 function isSchnuppertag(pl){ return !!pl && pl.abwesenheit==='SL' && !pl.sw; }
 
+// Absenz-Codes OHNE eCase-Pflicht: halbtags UA/KR/UN (TN bleibt teilweise da),
+// PA (Praktikum) und SL (Schnupperlehre/-tag). ZS sowie BA-VM/BA-NM sind eCase-pflichtig.
+const NO_ECASE = ['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA','SL'];
+
+// EINZIGE Quelle der Wahrheit: Ist für diesen (Plan, TN, Tag) ein eCase-Eintrag offen?
+// Wird SOWOHL vom Wochenplan-Badge ALS AUCH von der Monatsübersicht verwendet, damit
+// beide Listen immer synchron sind. p/date optional (isActiveOnDay-Prüfung nur wenn beides da).
+function isOpenEcase(pl, p, date){
+  if(!pl || pl.ecaseEntered) return false;
+  const abs = pl.abwesenheit||'';
+  if(!abs) return false;
+  if(p && date && !isActiveOnDay(p, date)) return false;   // Tag ausserhalb Einsatzzeitraum
+  if(isSchnuppertag(pl)) return false;
+  return !NO_ECASE.includes(abs);
+}
+
 // Zählt pro Teilnehmer und Tag MAXIMAL 1: sobald 'Neophyten' im VM ODER NM
 // effektiv eingeteilt ist, zählt der Tag mit 1 (keine Doppelzählung bei VM+NM).
 // Logik der Monatsübersicht-Zelle: Ganz-/Halbtags-Absenzen, S.LW/S.EX und
@@ -2075,18 +2091,16 @@ function renderDayPlan(){
   // eCase badge (compact, in header): sammelt ALLE noch offenen (nicht erfassten)
   // eCase-Einträge über ALLE Tage/Wochen – auch vergessene aus früheren Wochen –,
   // damit sie zentral abgehakt werden können. Sortiert nach Datum (älteste zuerst).
-  // Eigenes Konzept „keine eCase-Pflicht": bewusst OHNE ZS und OHNE BA-VM/BA-NM
-  // (beide sind eCase-pflichtig), aber MIT PA – daher nicht mit SOFT_ABS/HALF_ABS mergen.
+  // Nutzt dieselbe Regel (isOpenEcase) wie die Monatsübersicht → beide Listen synchron.
   let openEC=0;
   const ecEntries=[];
-  const NO_ECASE=['UA-VM','UA-NM','KR-VM','KR-NM','UN-VM','UN-NM','PA'];
   Object.keys(DB.plans).sort().forEach(dstr=>{
     const dayPlans=DB.plans[dstr]; if(!dayPlans) return;
     const dt=pd(dstr); if(!dt) return;
     Object.keys(dayPlans).forEach(pid=>{
       const pl=dayPlans[pid];
-      if(pl&&pl.abwesenheit&&pl.abwesenheit!=='SL'&&!pl.ecaseEntered&&!NO_ECASE.includes(pl.abwesenheit)&&!isSchnuppertag(pl)){
-        const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+      const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+      if(isOpenEcase(pl, p, dt)){
         openEC++;
         ecEntries.push({pid, name:`${p.vorname} ${p.nachname}`, abs:pl.abwesenheit, dstr,
           dateLabel:`${pad(dt.getDate())}.${pad(dt.getMonth()+1)}. ${WD[dt.getDay()]}`});
@@ -2661,6 +2675,9 @@ function renderMonthly(){
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
+      // eCase-Erfassung: identische Regel wie im Wochenplan-Badge (isOpenEcase) → synchron.
+      if(isOpenEcase(plan,p,d)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
+        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM'||rawAbs==='UA-W') ua++;
       if(rawAbs==='ZS') zs++;
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
@@ -2669,16 +2686,10 @@ function renderMonthly(){
       const isUNvm=rawAbs==='UN-VM', isUNnm=rawAbs==='UN-NM';
       // Full-day absence (not ZS, not half-day codes)
       const effAbs=(rawAbs==='ZS'||isUAvm||isUAnm||isKRvm||isKRnm||isBAvm||isBAnm||isUNvm||isUNnm)?'':rawAbs;
-      if(rawAbs==='ZS'&&!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
-        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(effAbs){
         abs++;
-        if(!plan.ecaseEntered&&effAbs!=='SL'&&effAbs!=='PA'&&!isSchnuppertag(plan)){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
-          dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:effAbs});}
         tds+=`<td colspan="2" class="moc-abs${sep}">${effAbs}</td>`;return;
       }
-      if((isBAvm||isBAnm)&&!plan.ecaseEntered){totalOpen++;moEcList.push({pid:p.id,name:`${p.vorname} ${p.nachname}`,dstr,
-        dateLabel:`${pad(d.getDate())}.${pad(d.getMonth()+1)}. ${WD[d.getDay()]}`,abs:rawAbs});}
       if(plan.sw==='S.LW'){at++;tds+=`<td colspan="2" class="moc-work${sep}">S.LW</td>`;return;}
       if(plan.sw==='S.EX'){tds+=`<td colspan="2" class="moc-slw${sep}">SL</td>`;return;}
       // Individual VM + NM cells (with partial absences)
