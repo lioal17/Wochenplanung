@@ -1705,6 +1705,9 @@ function pd(s){ if(!s)return null; const[y,m,d]=s.split('-').map(Number); return
 function fd(s){ if(!s)return ''; const d=pd(s); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
 function isWE(d){ const w=d.getDay(); return w===0||w===6; }
 function addWeeks(iso,n){ const d=pd(iso); d.setDate(d.getDate()+n*7); return ds(d); }
+// Auf den Montag DERSELBEN Woche zurücklegen (Montag am/​vor dem Datum).
+// getDay(): So=0 … Sa=6 → (day+6)%7 = Tage seit Montag.
+function toMonday(iso){ const d=pd(iso); if(!d) return iso; d.setDate(d.getDate()-((d.getDay()+6)%7)); return ds(d); }
 
 function isoWeek(date){
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
@@ -2380,7 +2383,10 @@ function renderPersons(){
 function wbDates(p){
   const round=(p.wbRounds||0)+1;
   const wb=addWeeks(p.einsatzVon, 10 + (round-1)*12);
-  const inputAG=addWeeks(wb, -2);
+  // «Input Arbeitsagoge» immer auf einen Montag legen (Montag-Teamsitzung → Chefin kann
+  // den Wirkungsbericht direkt anstossen). Montag der Woche, in die -2 Wochen fallen →
+  // Vorlauf bleibt >= 2 Wochen bis zum WB Job Coach.
+  const inputAG=toMonday(addWeeks(wb, -2));
   return { round, inputAG, wb };
 }
 
