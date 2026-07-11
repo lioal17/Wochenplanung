@@ -3124,7 +3124,7 @@ function pdfHead(doc,{W,mg,title,sub,y=14}){
 // Logo «LERNWERKSTATT BASISJOB» unten rechts (fett, gesperrt – wie Referenz
 // «Bewerbungswerkstatt»). Kein Zeitstempel.
 function pdfFoot(doc,{W,mg,y}){
-  const logo='LERNWERKSTATT BASISJOB', cs=1.2;   // gesperrte Schrift wie Referenz
+  const logo='LERNWERKSTATT', cs=1.2;   // gesperrte Schrift wie Referenz
   const pageCount=doc.getNumberOfPages();
   for(let i=1;i<=pageCount;i++){
     doc.setPage(i);
@@ -3162,7 +3162,7 @@ function drawRapportPage(doc,p,y,month){
     const yy=yp+6+i*5.5;
     doc.text(t1,x1,yy);doc.text(t2,x2,yy);
   });
-  yp+=29;
+  yp+=33;
 
   // Einheitlicher Haupttitel (gelber Würfel + Titel + Untertitel + Linie)
   yp=pdfHead(doc,{W,mg,title:`Monatsrapport – ${p.vorname} ${p.nachname}`,sub:`${MON[month]} ${y}`,y:yp-4.5});
@@ -3181,11 +3181,12 @@ function drawRapportPage(doc,p,y,month){
     yp+=1;
   }
 
-  // Table
+  // Table – Tag-Spalte mit abgekürztem Wochentag (Mo 01.)
+  const dayLbl=r=>`${WD[new Date(y,month,r.tag).getDay()]} ${pad(r.tag)}.`;
   const body=rows.map(r=>{
-    if(r.we)       return[`${pad(r.tag)}.`,'','','','',true,false,false];
-    if(r.inactive)return[`${pad(r.tag)}.`,'','','','nicht aktiv',false,true,false];
-    return[`${pad(r.tag)}.`,r.az||'',r.as||'',r.ac||'',r.bem||'',false,false,r.ac==='UA'];
+    if(r.we)       return[dayLbl(r),'','','','',true,false,false];
+    if(r.inactive)return[dayLbl(r),'','','','nicht aktiv',false,true,false];
+    return[dayLbl(r),r.az||'',r.as||'',r.ac||'',r.bem||'',false,false,r.ac==='UA'];
   });
 
   doc.autoTable({
@@ -3195,11 +3196,11 @@ function drawRapportPage(doc,p,y,month){
     // Kompakt, damit der ganze Monat (bis 31 Tage) + Unterschriften auf EINE Seite passt
     styles:{fontSize:8,cellPadding:{top:1.1,right:2,bottom:1.1,left:2},lineColor:[220,220,220],lineWidth:.2,overflow:'linebreak'},
     columnStyles:{
-      0:{cellWidth:15,halign:'center',fontStyle:'bold'},
+      0:{cellWidth:20,halign:'center',fontStyle:'bold'},
       1:{cellWidth:33,halign:'center'},
       2:{cellWidth:27,halign:'center'},
       3:{cellWidth:27,halign:'center'},
-      4:{cellWidth:78},
+      4:{cellWidth:73},
     },
     headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:8.5},
     bodyStyles:{fontSize:8},
@@ -3394,8 +3395,9 @@ function genRapportPDF(){
   const tg=v=>`${fmtN(v)} ${v===1?'Tag':'Tage'}`;     // Tage
   const lk=v=>`${fmtN(v)} Lektionen`;                 // Lektionen
   // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
-  const rows=[
-    ['ABWESENHEITEN',''],
+  // Jede Einheit (Abwesenheiten/Schule/Lernwerkstatt/Schnupperlehren) ist eine
+  // eigene, klar gerahmte Tabelle; der Einheits-Titel steht in der Kopfzeile.
+  const secAbw=[
     ['Bezahlte Absenz (BA)',        tg(stats.ba)],
     ...(stats.fe>0?[['Ferien (FE)',  tg(stats.fe)]]:[]),
     ['Krankheit (KR)',              tg(stats.kr)],
@@ -3403,61 +3405,66 @@ function genRapportPDF(){
     ['Unbezahlte Absenz (UA)',      tg(stats.ua)],
     ['Unfall (UN)',                 tg(stats.un)],
     ['Zu spät (ZS)',               `${stats.zs}×`],
-    ['',''],
-    ['SCHULE',''],
+  ];
+  const secSchule=[
     ['Schultage (S)',               lk(s_lek)],
     ['DAZ – Deutsch als Zweitsprache', lk(daz_lek)],
     ['FöA – Förderatelier',         lk(foa_lek)],
     ...(stats.dk>0?[['DK – Deutschkurs Migros', lk(dk_lek)]]:[]),
     ...(stats.ikpc>0?[['IKPC – Informatik/PC', lk(ikpc_lek)]]:[]),
     ['Total Schul-Lektionen',       lk(total_sch)],
-    ['',''],
-    ['LERNWERKSTATT',''],
+  ];
+  const secLw=[
     ['Sport',                       lk(sport_lek)],
     ['Bewerben (BW)',               lk(bw_lek)],
-    ['',''],
-    ['SCHNUPPERLEHRE',''],
+  ];
+  const secSl=[
     ['Schnuppertag',                tg(stats.schnuppertag)],
     ['Schnupperlehre (ganze Woche)',tg(stats.schnupperwoche)],
   ];
 
-  doc.autoTable({
-    startY:yp,
-    head:[['Bereich', 'Total']],
-    body:rows,
-    styles:{
-      fontSize:9.5,cellPadding:{top:2.8,right:6,bottom:2.8,left:6},
-      lineColor:[230,235,245],lineWidth:.25,overflow:'linebreak',
-    },
-    headStyles:{
-      fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:8.5,
-      cellPadding:{top:3,right:6,bottom:3,left:6},
-    },
-    columnStyles:{
-      0:{cellWidth:126},
-      1:{cellWidth:56,halign:'right',fontStyle:'bold'},
-    },
-    didParseCell:(d)=>{
-      if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='right';return;}
-      if(d.section!=='body') return;
-      const txt=d.row.raw[0];
-      const isSec=['ABWESENHEITEN','SCHULE','LERNWERKSTATT','SCHNUPPERLEHRE'].includes(txt);
-      if(isSec){
-        d.cell.styles.fillColor=PDF_HEAD_BG;d.cell.styles.textColor=[0,0,0];
-        d.cell.styles.fontStyle='bold';d.cell.styles.fontSize=8.5;
-        d.cell.styles.cellPadding={top:3,right:6,bottom:3,left:6};
-      } else if(txt==='Total Schul-Lektionen'){
-        d.cell.styles.fillColor=PDF_HEAD_BG;d.cell.styles.fontStyle='bold';
-        d.cell.styles.textColor=[0,0,0];
-      } else if(txt===''){
-        d.cell.styles.minCellHeight=1.5;d.cell.styles.fillColor=[245,245,245];
-        d.cell.styles.cellPadding={top:0,right:0,bottom:0,left:0};
-      } else if(d.row.index%2===0){
-        d.cell.styles.fillColor=PDF_ZEBRA;
-      }
-    },
-    margin:{left:mg,right:mg},
-  });
+  const secTable=(title,rowsSec,totalLbl)=>{
+    const y0=yp;
+    doc.autoTable({
+      startY:yp,
+      head:[[title, totalLbl]],
+      body:rowsSec,
+      theme:'grid',
+      styles:{
+        fontSize:9.5,cellPadding:{top:2.8,right:6,bottom:2.8,left:6},
+        lineColor:[230,235,245],lineWidth:.25,overflow:'linebreak',
+      },
+      headStyles:{
+        fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:8.5,
+        cellPadding:{top:3,right:6,bottom:3,left:6},
+      },
+      columnStyles:{
+        0:{cellWidth:126},
+        1:{cellWidth:56,halign:'right',fontStyle:'bold'},
+      },
+      didParseCell:(d)=>{
+        if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='right';return;}
+        if(d.section!=='body') return;
+        if(d.row.raw[0]==='Total Schul-Lektionen'){
+          d.cell.styles.fillColor=PDF_HEAD_BG;d.cell.styles.fontStyle='bold';
+          d.cell.styles.textColor=[0,0,0];
+        } else if(d.row.index%2===1){
+          d.cell.styles.fillColor=PDF_ZEBRA;
+        }
+      },
+      margin:{left:mg,right:mg},
+    });
+    // Deutlicher Rahmen um die Einheit
+    const y1=doc.lastAutoTable.finalY;
+    doc.setDrawColor(140,140,140);doc.setLineWidth(0.35);
+    doc.rect(mg,y0,W-2*mg,y1-y0);
+    yp=y1+7;
+  };
+
+  secTable('ABWESENHEITEN',secAbw,'Total');
+  secTable('SCHULE',secSchule,'');
+  secTable('LERNWERKSTATT',secLw,'');
+  secTable('SCHNUPPERLEHREN',secSl,'');
 
   // Einheitliche Fusszeile (Seitenzahl links, Logo rechts, kein Zeitstempel)
   pdfFoot(doc,{W,mg,y:287});
@@ -3506,10 +3513,10 @@ function genWeekPDF(){
   // ══════════════════════════════════════════
   // SEITE 1 – Wochenübersicht
   // ══════════════════════════════════════════
-  pdfTitle(doc,`Wochenplan KW ${pad(w)} · ${y}  –  Wochenübersicht`,`${weekRange}   ·   Lernwerkstatt BASISJOB`);
+  pdfTitle(doc,`Wochenplan KW ${pad(w)} · ${y}  –  Wochenübersicht`,weekRange);
 
   const head1=['Name','JC','BW'];
-  days.forEach(d=>head1.push(`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.\nVM`,`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}.\nNM`));
+  days.forEach(d=>head1.push(`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}. VM`,`${WD[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth()+1)}. NM`));
 
   const body1=allActive.map(p=>{
     const bwJC=p.bewerbenJC||p.jobCoach||'';
@@ -3538,16 +3545,18 @@ function genWeekPDF(){
   const fs1=Math.min(9,Math.max(5,Math.floor((rH1-cp1*2)/0.406)));
 
   const cs1={0:{cellWidth:40,overflow:'ellipsize',fontStyle:'bold'},1:{cellWidth:10},2:{cellWidth:10}};
-  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:20,halign:'center'};cs1[4+i*2]={cellWidth:20,halign:'center'};});
+  days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:21.7,halign:'center'};cs1[4+i*2]={cellWidth:21.7,halign:'center'};});
 
   doc.autoTable({
     head:[head1],body:body1,startY:TOP,margin:{left:mg,right:mg,bottom:8},
     theme:'grid',
     styles:{fontSize:fs1,cellPadding:cp1,overflow:'ellipsize',lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:fs1,halign:'center',lineColor:[200,200,200],lineWidth:0.3},
+    // Kopf: kleinere Schrift + weniger Padding, damit «Mo 06.07. VM» auf EINER Zeile bleibt
+    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:Math.min(fs1,7.5),cellPadding:1.2,halign:'center',lineColor:[200,200,200],lineWidth:0.3},
     columnStyles:cs1,
     alternateRowStyles:{fillColor:PDF_ZEBRA},
     didParseCell:(data)=>{
+      if(data.section==='head'){if(data.column.index===0)data.cell.styles.halign='left';return;}
       if(data.section!=='body') return;
       const p=allActive[data.row.index];
       if(data.column.index===0){greenIfStatus(p,data);return;}
@@ -3573,7 +3582,7 @@ function genWeekPDF(){
   doc.addPage();
   const dayDate=pd(curDay);
   const dayLabel=`${WDL[dayDate.getDay()]}, ${pad(dayDate.getDate())}.${pad(dayDate.getMonth()+1)}.${dayDate.getFullYear()}`;
-  pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}   ·   Lernwerkstatt BASISJOB`);
+  pdfTitle(doc,`Tagesübersicht  –  ${dayLabel}`,`KW ${pad(w)} · ${y}`);
 
   // Effektiver Wert je Slot: Halbtags-/Ganztags-Absenz > manueller Plan-Eintrag > geplanter
   // Block (Sport/Schule) – mirrors renderDayPlan()'s vmAbsent/nmAbsent + Slot-Override-Logik.
@@ -3673,7 +3682,7 @@ function genWeekPDF(){
   // KW-Spanne des Monats (erster bis letzter Werktag) für den Untertitel
   const moKwFrom=isoWeek(moDays[0]).w, moKwTo=isoWeek(moDays[moDays.length-1]).w;
   const moKwLbl=moKwFrom===moKwTo?`KW ${pad(moKwFrom)}`:`KW ${pad(moKwFrom)} – KW ${pad(moKwTo)}`;
-  pdfTitle(doc,`Monatsübersicht  –  ${MON[mM]} ${mY}`,`${moKwLbl} · ${mY}   ·   Lernwerkstatt BASISJOB`);
+  pdfTitle(doc,`Monatsübersicht  –  ${MON[mM]} ${mY}`,`${moKwLbl} · ${mY}`);
 
   // Reihenfolge wie in der Monatsübersicht-Ansicht (Praktikum/Lehre ans Ende)
   const moBottom=p=>p.status==='praktikum'||p.status==='prklehr';
@@ -3740,6 +3749,7 @@ function genWeekPDF(){
     columnStyles:moCs,
     alternateRowStyles:{fillColor:PDF_ZEBRA},
     didParseCell:(data)=>{
+      if(data.section==='head'){if(data.column.index===0)data.cell.styles.halign='left';return;}
       if(data.section!=='body') return;
       if(data.column.index===0){greenIfStatus(moPersons[data.row.index],data);return;}
       // «X» (ausserhalb Einsatzzeitraum) gedämpft grau darstellen
@@ -3756,7 +3766,7 @@ function genWeekPDF(){
   // SEITE 4 – Legende (Einteilungs- und Absenzcodes)
   // ══════════════════════════════════════════
   doc.addPage();
-  pdfTitle(doc,'Kürzel-Legende','Lernwerkstatt BASISJOB');
+  pdfTitle(doc,'Kürzel-Legende','');
 
   const lgX=mg, lgW=W-2*mg;
   let lgY=TOP+2;
@@ -3840,44 +3850,66 @@ function genNeophytPDF(){
   const yearTotal=dayData.reduce((s,r)=>s+r.cnt,0);
   const dayCount=dayData.length;
 
-  // Tabellen-Body mit Monats-Zwischensummen aufbauen
+  // Tabellen-Body mit Saison-Abschnitten (Sommer Jan–Aug, Herbst Sep–Dez)
+  // und Monats-Zwischensummen aufbauen
   const body=[];
-  const subRows=new Set();
-  let curM=-1, mSum=0, mDays=0;
+  const subRows=new Set();          // Monats-Zwischensummen
+  const seasonHeadRows=new Set();   // Saison-Titelzeilen
+  const seasonTotalRows=new Set();  // Saison-Totalzeilen
+  const seasonOf=m=>m<8?'Sommer':'Herbst';
+  let curM=-1, mSum=0, mDays=0, curSeason='', sSum=0, sDays=0;
   const pushSub=()=>{ if(curM>=0){ body.push([`Summe ${MON[curM]}`,'',`${mDays} Tag${mDays===1?'':'e'}`,String(mSum)]); subRows.add(body.length-1); } };
+  const pushSeasonTotal=()=>{ if(curSeason){ body.push([`Total ${curSeason}`,'',`${sDays} Tag${sDays===1?'':'e'}`,String(sSum)]); seasonTotalRows.add(body.length-1); } };
   dayData.forEach(({d,cnt})=>{
+    const season=seasonOf(d.getMonth());
+    if(season!==curSeason){
+      pushSub(); curM=-1;
+      pushSeasonTotal();
+      curSeason=season; sSum=0; sDays=0;
+      body.push([{content:`${season} Neophyten-Einsatz`,colSpan:4}]);
+      seasonHeadRows.add(body.length-1);
+    }
     if(d.getMonth()!==curM){ pushSub(); curM=d.getMonth(); mSum=0; mDays=0; }
     const{w:kw}=isoWeek(d);
     body.push([`KW ${pad(kw)}`,`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`,WDL[d.getDay()],String(cnt)]);
-    mSum+=cnt; mDays++;
+    mSum+=cnt; mDays++; sSum+=cnt; sDays++;
   });
   pushSub();
+  pushSeasonTotal();
   if(!body.length) body.push(['—','—','Keine Neophyten-Einteilungen','0']);
 
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,mg=14;
 
-  // Einheitlicher Haupttitel (Seite 1)
+  // Einheitlicher Haupttitel (Seite 1) – ohne Monatsnennung
   const topY=pdfHead(doc,{W,mg,title:'Neophyten-Einsatz',
-    sub:`Januar–Dezember ${Y} · ${yearTotal} Einteilungen an ${dayCount} Tag${dayCount===1?'':'en'}`});
+    sub:`${Y} · ${yearTotal} Einteilungen an ${dayCount} Tag${dayCount===1?'':'en'}`});
 
-  // Tabelle: KW · Datum · Wochentag · Anzahl Teilnehmende (auto-paginiert)
+  // Tabelle: KW · Datum · Wochentag · Anzahl Teilnehmende (alles zentriert, auto-paginiert)
   doc.autoTable({
     startY:topY,margin:{left:mg,right:mg,top:18},
     head:[['KW','Datum','Wochentag','Anzahl Teilnehmende']],
     body,
     theme:'grid',
-    styles:{fontSize:11,cellPadding:2.5,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:11,halign:'left'},
+    styles:{fontSize:11,cellPadding:2.5,halign:'center',lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:11,halign:'center'},
     alternateRowStyles:{fillColor:PDF_ZEBRA},
-    columnStyles:{0:{cellWidth:44,fontStyle:'bold'},1:{cellWidth:40},2:{cellWidth:40},3:{cellWidth:'auto',halign:'center',fontStyle:'bold'}},
+    columnStyles:{0:{cellWidth:44,fontStyle:'bold'},1:{cellWidth:40},2:{cellWidth:40},3:{cellWidth:'auto',fontStyle:'bold'}},
     foot:[[`Total Jahr ${Y}`,'',`${dayCount} Tag${dayCount===1?'':'e'}`,String(yearTotal)]],
-    footStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:12,halign:'left',lineColor:[200,200,200],lineWidth:0.3},
+    footStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:12,halign:'center',lineColor:[200,200,200],lineWidth:0.3},
     showFoot:'lastPage',
     didParseCell:(data)=>{
-      if(data.column.index===3) data.cell.styles.halign='center';
-      // Monats-Zwischensummen hervorheben (Kopfgrau + fett, Konzept-Farbschema)
-      if(data.section==='body'&&subRows.has(data.row.index)){
+      if(data.section!=='body') return;
+      // Saison-Titelzeile («Sommer/Herbst Neophyten-Einsatz»)
+      if(seasonHeadRows.has(data.row.index)){
+        data.cell.styles.fillColor=PDF_HEAD_BG;
+        data.cell.styles.fontStyle='bold';
+        data.cell.styles.fontSize=12;
+        data.cell.styles.textColor=[0,0,0];
+        return;
+      }
+      // Monats-Zwischensummen & Saison-Totale hervorheben (Kopfgrau + fett)
+      if(subRows.has(data.row.index)||seasonTotalRows.has(data.row.index)){
         data.cell.styles.fillColor=PDF_HEAD_BG;
         data.cell.styles.fontStyle='bold';
         data.cell.styles.textColor=[0,0,0];
