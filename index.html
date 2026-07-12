@@ -2991,11 +2991,10 @@ function getRptRows(p,year,month){
         }
         bem=SCHOOL_LABEL[ac]||'Schule';
       } else if(vmCode||nmCode||isZS){
-        // Reine Werkstatt-/Sport-Einteilung (oder ZS): voller Arbeitstag.
-        // Ausnahme «Anders» (individuell): ist NUR ein Halbtag belegt und dessen
-        // Code individuell, zählt der Tag 4h (VM wie NM je 4h); ZS = TN anwesend → 8h.
-        const halfIndiv=!isZS&&((vmCode&&!nmCode&&isIndivWs(vmCode))||(nmCode&&!vmCode&&isIndivWs(nmCode)));
-        az=halfIndiv?'4':'8';
+        // VM = 4h, NM = 4h – gilt für ALLE Einteilungscodes: nur wenn beide
+        // Halbtage belegt sind, zählt der volle Arbeitstag (8h); ist nur ein
+        // Halbtag eingeteilt, zählen 4h. ZS ohne Einteilung: TN anwesend → 8h.
+        az=(vmCode&&nmCode)||(!vmCode&&!nmCode)?'8':'4';
       }
     }
     // Bemerkung nach Halbtagen ordnen: Vormittag (VM) immer zuerst, dann Nachmittag (NM).
