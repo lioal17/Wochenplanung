@@ -2992,7 +2992,10 @@ function getRptRows(p,year,month){
         bem=SCHOOL_LABEL[ac]||'Schule';
       } else if(vmCode||nmCode||isZS){
         // Reine Werkstatt-/Sport-Einteilung (oder ZS): voller Arbeitstag.
-        az='8';
+        // Ausnahme «Anders» (individuell): ist NUR ein Halbtag belegt und dessen
+        // Code individuell, zählt der Tag 4h (VM wie NM je 4h); ZS = TN anwesend → 8h.
+        const halfIndiv=!isZS&&((vmCode&&!nmCode&&isIndivWs(vmCode))||(nmCode&&!vmCode&&isIndivWs(nmCode)));
+        az=halfIndiv?'4':'8';
       }
     }
     // Bemerkung nach Halbtagen ordnen: Vormittag (VM) immer zuerst, dann Nachmittag (NM).
@@ -3181,8 +3184,8 @@ function drawRapportPage(doc,p,y,month){
     yp+=1;
   }
 
-  // Table – Tag-Spalte mit abgekürztem Wochentag (Mo 01.)
-  const dayLbl=r=>`${WD[new Date(y,month,r.tag).getDay()]} ${pad(r.tag)}.`;
+  // Table – Tag-Spalte: Datumstag, dann abgekürzter Wochentag (01. Mi)
+  const dayLbl=r=>`${pad(r.tag)}. ${WD[new Date(y,month,r.tag).getDay()]}`;
   const body=rows.map(r=>{
     if(r.we)       return[dayLbl(r),'','','','',true,false,false];
     if(r.inactive)return[dayLbl(r),'','','','nicht aktiv',false,true,false];
@@ -3202,7 +3205,7 @@ function drawRapportPage(doc,p,y,month){
       3:{cellWidth:27,halign:'center'},
       4:{cellWidth:73},
     },
-    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:8.5},
+    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:8.5,halign:'center'},
     bodyStyles:{fontSize:8},
     alternateRowStyles:{fillColor:PDF_ZEBRA},
     didParseCell:(d)=>{
@@ -3544,7 +3547,7 @@ function genWeekPDF(){
   const cp1=Math.min(2.0,Math.max(1.0,rH1*0.26));
   const fs1=Math.min(9,Math.max(5,Math.floor((rH1-cp1*2)/0.406)));
 
-  const cs1={0:{cellWidth:40,overflow:'ellipsize',fontStyle:'bold'},1:{cellWidth:10},2:{cellWidth:10}};
+  const cs1={0:{cellWidth:40,overflow:'ellipsize',fontStyle:'bold'},1:{cellWidth:10,halign:'center'},2:{cellWidth:10,halign:'center'}};
   days.forEach((_,i)=>{cs1[3+i*2]={cellWidth:21.7,halign:'center'};cs1[4+i*2]={cellWidth:21.7,halign:'center'};});
 
   doc.autoTable({
@@ -3570,7 +3573,7 @@ function genWeekPDF(){
       }
       if(data.column.index>=3){
         const v=data.cell.raw;
-        if(v==='PA'||v==='PA+LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
+        if(v==='PA'||v==='PA+LS'||v==='LS'){data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';}
         else if(['Schule','S','DAZ','FöA','DK','IKPC','Sport','SL'].includes(v)){data.cell.styles.textColor=[0,0,0];data.cell.styles.fontStyle='bold';}
       }
     },
@@ -3638,7 +3641,7 @@ function genWeekPDF(){
   const rowH=availH/(n2+2);
   const cp2=Math.min(2.0,Math.max(0.8,rowH*0.24));
   const fs2=Math.min(9,Math.max(5,Math.floor((rowH-cp2*2)/0.406)));
-  const cs2={0:{cellWidth:50,overflow:'ellipsize',fontStyle:'bold'},1:{cellWidth:12},2:{cellWidth:14},
+  const cs2={0:{cellWidth:50,overflow:'ellipsize',fontStyle:'bold'},1:{cellWidth:12,halign:'center'},2:{cellWidth:14,halign:'center'},
              3:{cellWidth:43},4:{cellWidth:43},5:{cellWidth:36},6:{cellWidth:'auto'}};
 
   if(!n2){
@@ -3654,6 +3657,7 @@ function genWeekPDF(){
       columnStyles:cs2,
       alternateRowStyles:{fillColor:PDF_ZEBRA},
       didParseCell:(data)=>{
+        if(data.section==='head'){if(data.column.index===1||data.column.index===2)data.cell.styles.halign='center';return;}
         if(data.section!=='body') return;
         const p=dayActive[data.row.index];
         if(data.column.index===0){greenIfStatus(p,data);return;}
@@ -3758,6 +3762,12 @@ function genWeekPDF(){
       const dayIdx=data.column.index-1;
       if(dayIdx>=0&&dayIdx<moDays.length&&moDayIndiv(moPersons[data.row.index],moDays[dayIdx])){
         data.cell.styles.fillColor=[243,232,255];data.cell.styles.textColor=[124,58,237];data.cell.styles.fontStyle='bold';
+        return;
+      }
+      // Praktikum/Lehrstelle (PA, PA+LS, LS) → dunkelgrün + fett wie in der Wochenübersicht
+      const gl=String(data.cell.raw||'').split('\n').filter(v=>v&&v!=='·');
+      if(gl.length&&gl.every(v=>v==='PA'||v==='PA+LS'||v==='LS')){
+        data.cell.styles.textColor=[13,75,38];data.cell.styles.fontStyle='bold';
       }
     },
   });
