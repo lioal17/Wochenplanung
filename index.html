@@ -463,9 +463,10 @@ input,select,textarea{font-family:inherit}
 .rpt-stat .lbl{font-size:10px;color:var(--g6);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
 .rpt-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
 .rpt-tbl th{
-  background:var(--g9);color:var(--accent);padding:8px 12px;text-align:left;font-size:11px;
+  background:var(--g9);color:var(--accent);padding:8px 12px;text-align:center;font-size:11px;
 }
 .rpt-tbl td{padding:6px 12px;border-bottom:1px solid var(--g2)}
+.rpt-tbl td:first-child,.rpt-tbl th:first-child{white-space:nowrap}
 .rpt-tbl tr.rw{background:var(--g1);color:var(--g5)}
 .rpt-tbl tr.ra{background:#fff8f0}
 .rpt-tbl tr.ri{background:var(--g1);color:var(--g4)}
@@ -3074,7 +3075,7 @@ function buildRpt(){
   </div>`;
 
   html+=`<table class="rpt-tbl"><thead><tr>
-    <th style="width:55px">Tag</th>
+    <th style="width:72px">Tag</th>
     <th style="width:120px">Arbeitszeit Std.</th>
     <th style="width:100px">Absenz Std.</th>
     <th style="width:100px">Absenz Code</th>
@@ -3082,11 +3083,11 @@ function buildRpt(){
   </tr></thead><tbody>`;
 
   rows.forEach(r=>{
-    if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}.</td><td></td><td></td><td></td><td style="color:var(--g5);font-size:11px">${r.dow}</td></tr>`;
-    else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}.</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
+    if(r.we) html+=`<tr class="rw"><td style="text-align:center">${pad(r.tag)}. ${r.dow}</td><td></td><td></td><td></td><td></td></tr>`;
+    else if(r.inactive) html+=`<tr class="ri"><td style="text-align:center">${pad(r.tag)}. ${r.dow}</td><td colspan="4" style="font-size:11px">nicht aktiv</td></tr>`;
     else{
       html+=`<tr>
-        <td style="text-align:center;font-weight:700">${pad(r.tag)}.</td>
+        <td style="text-align:center;font-weight:700">${pad(r.tag)}. ${r.dow}</td>
         <td class="rpt-num">${r.az}</td>
         <td class="rpt-num" style="font-weight:${r.as?700:400}">${r.as||''}</td>
         <td class="rpt-num ${r.ac?'rpt-code':''}">${r.ac||''}</td>
