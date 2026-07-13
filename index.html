@@ -1752,10 +1752,6 @@ function setPlan(date,pid,patch){
 function getBlocks(p, date){
   if(p.status==='schnupper')
     return {vmB:false,nmB:false,fullB:false,vmL:'',nmL:''};
-  if(p.status==='praktikum')
-    return {vmB:true,nmB:true,fullB:true,vmL:'PA',nmL:'PA'};
-  if(p.status==='prklehr')
-    return {vmB:true,nmB:true,fullB:true,vmL:'PA+LS',nmL:'PA+LS'};
   // Schnupperwoche (extern, S.EX) → ganze Woche blockiert wie Schule, Code SL (Schnupperlehre).
   if(getPlan(ds(date),p.id).sw==='S.EX')
     return {vmB:true,nmB:true,fullB:true,vmL:'SL',nmL:'SL'};
@@ -1792,6 +1788,16 @@ function getBlocks(p, date){
   // Offizielle Schulferien (TG): kein Schul-/Sport-Block – der TN ist in der
   // Lernwerkstatt. Feiertage bleiben orthogonal (tgHolidays/holiSet).
   if(isSchulferien(date)){ vmB=nmB=fullB=false; vmL=nmL=''; }
+  // Praktikum / Praktikum+Lehre: TN ist extern platziert, besucht die Schule aber weiter
+  // (z. B. 1x/Woche). Die oben ermittelten Schul-/Sport-Halbtage bleiben Schule; alle übrigen
+  // Halbtage werden Praktikum (PA) bzw. Praktikum+Lehre (PA+LS) – konsistent in Rapport UND
+  // Ansichten (z. B. 4 Tage PA + 1 Tag Schule). In den Schulferien greift kein Schulblock → ganz PA.
+  if(p.status==='praktikum'||p.status==='prklehr'){
+    const paL=p.status==='prklehr'?'PA+LS':'PA';
+    if(!vmL) vmL=paL;
+    if(!nmL) nmL=paL;
+    return {vmB:true,nmB:true,fullB:true,vmL,nmL};
+  }
   return {vmB,nmB,fullB,vmL,nmL};
 }
 
