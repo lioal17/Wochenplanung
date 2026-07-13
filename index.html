@@ -3299,11 +3299,26 @@ function genRapportPDF(){
       if(!planMax||dt>planMax) planMax=dt;
     }
   });
-  startDate = p.einsatzVon ? new Date(p.einsatzVon) : (planMin||new Date());
-  endDate   = p.einsatzBis ? new Date(p.einsatzBis) : (planMax||new Date());
-  // Nur bis und mit heute (Generierungstag) zählen – zukünftige, erst geplante Tage ausnehmen.
+  // WICHTIG: Datumsgrenzen mit pd() (LOKALE Mitternacht) bilden – exakt wie Plan-Schlüssel
+  // (ds()), planMin/planMax und der restliche Code. Früher wurde hier new Date('YYYY-MM-DD')
+  // benutzt, das den String als UTC-Mitternacht parst → in der Schweiz 01:00/02:00 LOKAL.
+  // Dadurch trugen alle Schleifentage 01:00/02:00, während das Enddatum (z. B. planMax bei
+  // laufendem Einsatz ohne "Einsatz bis") auf lokal 00:00 lag – der LETZTE eingeteilte Tag
+  // fiel so aus dem Zähl-Loop und seine KPIs (Absenzen/Einteilung) wurden nicht gezählt.
+  startDate = p.einsatzVon ? pd(p.einsatzVon) : (planMin||new Date());
+  endDate   = p.einsatzBis ? pd(p.einsatzBis) : (planMax||new Date());
+  // Endzeitpunkt: bereits EINGESTEUERTE Planung wird IMMER mitgezählt (Kernanforderung des
+  // Rapports). Grundregel bleibt: bis heute (Generierung) bzw. bis Austritt (Einsatz bis).
+  // ZUSÄTZLICH aber mindestens bis zum letzten tatsächlich eingesteuerten Planungstag (planMax):
+  // Wird die Planung im Voraus über den ZV-Zeitraum eingesteuert und der Rapport früh generiert,
+  // lagen sonst fast alle geplanten Tage NACH heute und fielen durch die alte harte
+  // "nur bis heute"-Begrenzung komplett aus dem Rapport (→ fast alle KPIs 0). Noch ungeplante,
+  // leere Zukunftstage zählen ohnehin 0. Obergrenze bleibt der Einsatzzeitraum (einsatzBis via
+  // isActiveOnDay im Zähl-Loop).
   const todayEnd=new Date(); todayEnd.setHours(23,59,59,999);
-  if(endDate>todayEnd) endDate=todayEnd;
+  let cutoff=todayEnd;
+  if(planMax && planMax>cutoff) cutoff=planMax;   // eingesteuerte Zukunftsplanung einschliessen
+  if(endDate>cutoff) endDate=cutoff;
   rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
 
   // Collect all weekdays in range where TN is active
