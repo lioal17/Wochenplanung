@@ -2529,7 +2529,11 @@ function closePM(){ document.getElementById('pmOverlay').classList.remove('open'
 
 function onSt(){
   const s=document.getElementById('f_st').value;
-  document.getElementById('pmExtra').style.display=(s==='schnupper'||s==='prklehr')?'none':'block';
+  // Schulfeld (Schultage/Sport/Kurse) auch bei Praktikum (PA) UND Praktikum+Lehre (PA+LS)
+  // sichtbar lassen: Diese TN besuchen weiterhin die Schule (z. B. 1x/Woche), der Schultag
+  // muss editierbar bleiben und beim Statuswechsel erhalten bleiben. Nur beim Schnuppern
+  // (externe Schnupperwoche) bleibt der Bereich ausgeblendet.
+  document.getElementById('pmExtra').style.display=(s==='schnupper')?'none':'block';
   // Stammwerkstatt bleibt immer ausgeblendet (Hintergrund-Info, für TN nicht relevant)
   document.getElementById('f_sw_g').style.display='none';
 }
