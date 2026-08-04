@@ -17,7 +17,7 @@
 | **Commit-Titel** | Merge pull request #164 (PDF-Zebrafarbe) |
 | **Live-URL** | https://lioal17.github.io/Wochenplanung/ |
 | **Letztes erfolgreiches Deployment** | 2026-07-16, 06:25 UTC – Status `success`, aus Commit `48dcb40` |
-| **Commits in der Historie** | 400 (erster Commit 2026-06-05) |
+| **Commits in der Historie** | rund 400 (erster Commit 2026-06-05) |
 | **Branches im Repository** | 8 (`main`, 5× `sicherung-*`, Arbeitsbranches) |
 
 ### Zustand der Anwendungsdatei
@@ -136,7 +136,7 @@ form-action 'none'
 
 - XSS-Härtung: alle in HTML gerenderten Nutzerdaten laufen über `esc()`
 - Kein Tracking, keine Telemetrie, kein Cloud-Sync, kein Backend
-- **Datenschutzprüfung der Baseline:** In allen 400 Commits der Historie wurde
+- **Datenschutzprüfung der Baseline:** In der gesamten Historie (rund 400 Commits) wurde
   **nie** eine `*.json`, `*.csv` oder `*.xlsx` committet – das Repository ist
   frei von Teilnehmerdaten. ✅
 
