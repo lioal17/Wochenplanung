@@ -51,7 +51,7 @@ in der **einen Datei `index.html`** (1,5 MB).
 
 | Datei | Zweck |
 |---|---|
-| `_git-repo/Wochenplanung-repo.bundle` | **Gesamte Git-Historie** (135 Commits, alle Branches inkl. aller `sicherung-*`-Stände) – siehe Abschnitt 6 |
+| `_git-repo/Wochenplanung-repo.bundle` | **Gesamte Git-Historie** (400 Commits, alle Branches inkl. aller `sicherung-*`-Stände) – siehe Abschnitt 6 |
 
 ---
 
@@ -204,7 +204,7 @@ Reines Vanilla-HTML/CSS/JavaScript.
 ## 6. Komplettes Repository aus dem Git-Bundle wiederherstellen
 
 Im Paket liegt `_git-repo/Wochenplanung-repo.bundle` – die **vollständige
-Git-Historie** mit 135 Commits und allen Branches (inklusive der
+Git-Historie** mit 400 Commits und allen Branches (inklusive der
 `sicherung-*`-Wiederherstellungspunkte).
 
 ```bash
