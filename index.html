@@ -3120,12 +3120,13 @@ const PDF_ZEBRA=[255,249,214];     // #fff9d6 – abwechselnde Tabellenzeilen
 
 // Einheitlicher Haupttitel: gelber Würfel + Titel (15 pt, fett, schwarz) +
 // Untertitel (9 pt, grau, rechtsbündig) + Trennlinie. Gibt Start-Y des Inhalts zurück.
-function pdfHead(doc,{W,mg,title,sub,y=14}){
+// `subSize` erlaubt einen grösseren Untertitel (Monatsrapport: gleich gross wie der Titel).
+function pdfHead(doc,{W,mg,title,sub,y=14,subSize=9}){
   doc.setFillColor(255,237,0);doc.rect(mg,y,3.2,3.2,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(0);
   doc.text(title,mg+5.5,y+3.2);
   if(sub){
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(102);
+    doc.setFont('helvetica','normal');doc.setFontSize(subSize);doc.setTextColor(102);
     doc.text(sub,W-mg,y+3.2,{align:'right'});
   }
   doc.setDrawColor(20,20,20);doc.setLineWidth(0.5);doc.line(mg,y+7,W-mg,y+7);
@@ -3178,7 +3179,7 @@ function drawRapportPage(doc,p,y,month){
   yp+=33;
 
   // Einheitlicher Haupttitel (gelber Würfel + Titel + Untertitel + Linie)
-  yp=pdfHead(doc,{W,mg,title:`Monatsrapport – ${p.vorname} ${p.nachname}`,sub:`${MON[month]} ${y}`,y:yp-4.5});
+  yp=pdfHead(doc,{W,mg,title:`Monatsrapport – ${p.vorname} ${p.nachname}`,sub:`${MON[month]} ${y}`,y:yp-4.5,subSize:15});
 
   // Freitext-Bemerkung direkt unter dem Namen
   const rptNote=getRptNote(p.id,y,month);
