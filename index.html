@@ -710,6 +710,7 @@ input,select,textarea{font-family:inherit}
         <div style="display:flex;flex-direction:column;gap:10px;width:260px">
           <button class="btn btn-success" onclick="genPDF()" style="width:100%;justify-content:flex-start">📄 Monatsrapport generieren</button>
           <button class="btn btn-success" onclick="genAllRapportsPDF()" style="width:100%;justify-content:flex-start">📄 Alle Monatsrapporte generieren</button>
+          <button class="btn btn-success" onclick="genBasisjobZIP(this)" style="width:100%;justify-content:flex-start">📦 Monatsrapporte für Sekretariat</button>
         </div>
       </div>
       <div id="rptArea"></div>
@@ -3280,6 +3281,155 @@ function genAllRapportsPDF(){
 
   doc.save(`Monatsrapporte_${MON[month]}_${y}.pdf`);
   toast(`📄 ${persons.length} Monatsrapporte zusammengeführt & heruntergeladen`,'t-ok');
+}
+
+// ────────────────────────────────────────────
+// MONATSRAPPORTE FÜR DAS SEKRETARIAT (ZIP)
+// Erzeugt pro Teilnehmer/in ein EIGENES PDF – exakt dieselbe Rapport-Logik wie
+// genPDF()/genAllRapportsPDF() (drawRapportPage + pdfFoot) – und packt alle
+// Dateien ohne Unterordner in eine ZIP-Datei zum Herunterladen.
+// Läuft vollständig offline und lokal: eigener, minimaler ZIP-Writer im
+// Verfahren STORE (ohne Kompression – PDFs sind bereits komprimiert). Bewusst
+// KEINE externe Bibliothek und kein Netzwerkzugriff; die CSP bleibt unberührt.
+// Kein Versand, kein E-Mail – nur Download für den manuellen Weiterversand.
+// ────────────────────────────────────────────
+
+// CRC32 (Polynom 0xEDB88320) – für die ZIP-Einträge zwingend.
+const _CRC_TBL=(()=>{
+  const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}
+  return t;
+})();
+function _crc32(buf){
+  let c=0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++) c=_CRC_TBL[(c^buf[i])&0xFF]^(c>>>8);
+  return (c^0xFFFFFFFF)>>>0;
+}
+
+// Baut aus [{name, data:Uint8Array}] ein ZIP-Archiv (Uint8Array).
+// Verfahren STORE (Methode 0). Dateinamen als UTF-8 mit gesetztem
+// General-Purpose-Bit 11 (0x0800) – nur so bleiben Umlaute erhalten
+// (z. B. «Müller» oder der Monat «März»).
+function _zipStore(files){
+  const enc=new TextEncoder();
+  const now=new Date();
+  // DOS-Zeit/-Datum (Sekunden in 2er-Schritten, Jahr ab 1980)
+  const dTime=((now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1))&0xFFFF;
+  const dDate=(((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate())&0xFFFF;
+
+  const local=[], central=[];
+  let offset=0;
+  files.forEach(f=>{
+    const nameB=enc.encode(f.name), data=f.data;
+    const crc=_crc32(data), size=data.length;
+
+    const lh=new Uint8Array(30+nameB.length);
+    const lv=new DataView(lh.buffer);
+    lv.setUint32(0,0x04034b50,true);   // Local File Header
+    lv.setUint16(4,20,true);           // Version needed
+    lv.setUint16(6,0x0800,true);       // Flags: UTF-8-Dateiname
+    lv.setUint16(8,0,true);            // Methode 0 = STORE
+    lv.setUint16(10,dTime,true);
+    lv.setUint16(12,dDate,true);
+    lv.setUint32(14,crc,true);
+    lv.setUint32(18,size,true);        // komprimierte Grösse
+    lv.setUint32(22,size,true);        // unkomprimierte Grösse
+    lv.setUint16(26,nameB.length,true);
+    lv.setUint16(28,0,true);           // Extra-Feld-Länge
+    lh.set(nameB,30);
+    local.push(lh,data);
+
+    const ch=new Uint8Array(46+nameB.length);
+    const cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);   // Central Directory Header
+    cv.setUint16(4,20,true);           // Version made by
+    cv.setUint16(6,20,true);           // Version needed
+    cv.setUint16(8,0x0800,true);       // Flags: UTF-8-Dateiname
+    cv.setUint16(10,0,true);           // Methode 0 = STORE
+    cv.setUint16(12,dTime,true);
+    cv.setUint16(14,dDate,true);
+    cv.setUint32(16,crc,true);
+    cv.setUint32(20,size,true);
+    cv.setUint32(24,size,true);
+    cv.setUint16(28,nameB.length,true);
+    cv.setUint16(30,0,true);           // Extra
+    cv.setUint16(32,0,true);           // Kommentar
+    cv.setUint16(34,0,true);           // Datenträger
+    cv.setUint16(36,0,true);           // interne Attribute
+    cv.setUint32(38,0,true);           // externe Attribute
+    cv.setUint32(42,offset,true);      // Offset des Local Headers
+    ch.set(nameB,46);
+    central.push(ch);
+
+    offset+=lh.length+size;
+  });
+
+  const cdSize=central.reduce((n,c)=>n+c.length,0);
+  const eocd=new Uint8Array(22);
+  const ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054b50,true);     // End of Central Directory
+  ev.setUint16(8,files.length,true);   // Einträge auf diesem Datenträger
+  ev.setUint16(10,files.length,true);  // Einträge total
+  ev.setUint32(12,cdSize,true);
+  ev.setUint32(16,offset,true);        // Offset des Central Directory
+  ev.setUint16(20,0,true);             // Kommentarlänge
+
+  const parts=[...local,...central,eocd];
+  const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));
+  let pos=0; parts.forEach(p=>{out.set(p,pos);pos+=p.length;});
+  return out;
+}
+
+// Dateiname eines Rapports im ZIP: «Vorname Nachname Monat.pdf».
+// `used` sammelt bereits vergebene Namen, damit ein identischer Vor- UND
+// Nachname nicht zu einem doppelten Eintrag führt.
+function _bjFileName(p,month,used){
+  const clean=t=>String(t||'').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
+  const base=`${clean(p.vorname)} ${clean(p.nachname)} ${MON[month]}`.replace(/\s+/g,' ').trim();
+  let name=`${base}.pdf`, n=2;
+  while(used[name]) name=`${base} (${n++}).pdf`;
+  used[name]=true;
+  return name;
+}
+
+// Erzeugt für jeden im gewählten Monat aktiven Teilnehmer ein einzelnes
+// Rapport-PDF und lädt alle zusammen als ZIP herunter.
+function genBasisjobZIP(btn){
+  const mv=document.getElementById('rptM').value;
+  if(!mv){ toast('Bitte zuerst einen Monat auswählen','t-warn'); return; }
+  const[y,m]=mv.split('-').map(Number); const month=m-1;
+  const persons=monthlyOrderedParticipants(y,month);
+  if(!persons.length){ toast('Keine Teilnehmer in diesem Monat aktiv','t-warn'); return; }
+  if(typeof jspdf==='undefined'){ toast('jsPDF nicht geladen – bitte Seite neu laden','t-err'); return; }
+
+  if(btn) btn.disabled=true;
+  toast(`\u{1F4E6} ${persons.length} Monatsrapporte werden erstellt…`,'t-ok');
+
+  // kurz warten, damit der Toast erscheint, bevor die Erzeugung blockiert
+  setTimeout(()=>{
+    try{
+      const{jsPDF}=window.jspdf;
+      const used=Object.create(null), files=[];
+      persons.forEach(p=>{
+        const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+        drawRapportPage(doc,p,y,month);
+        pdfFoot(doc,{W:210,mg:14,y:287});
+        files.push({name:_bjFileName(p,month,used),data:new Uint8Array(doc.output('arraybuffer'))});
+      });
+
+      const blob=new Blob([_zipStore(files)],{type:'application/zip'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`Monatsrapporte_Basisjob_${MON[month]}_${y}.zip`;
+      a.click(); URL.revokeObjectURL(a.href);
+      toast(`\u{1F4E6} ${files.length} Monatsrapporte als ZIP heruntergeladen`,'t-ok');
+    }catch(e){
+      console.error(e);
+      toast('Fehler beim Erstellen der ZIP-Datei','t-err');
+    }finally{
+      if(btn) btn.disabled=false;
+    }
+  },50);
 }
 
 // ────────────────────────────────────────────
