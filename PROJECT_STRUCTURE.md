@@ -138,6 +138,11 @@ Insgesamt **177 Funktionen**. Die für die Wiederherstellung wichtigsten:
 | `genTNPDF` | Teilnehmerbezogenes PDF |
 | `genRapportPDF` | Monatsrapport (BASISJOB-Format) |
 | `genAllRapportsPDF` | Sammel-PDF aller Rapporte |
+| `genBasisjobZIP` | «Monatsrapporte für Sekretariat»: je TN ein eigenes PDF, gebündelt als ZIP |
+| `_zipStore` / `_crc32` | Minimaler ZIP-Writer (Verfahren STORE, UTF-8-Dateinamen) – bewusst ohne externe Bibliothek, damit die App offline bleibt und die CSP unberührt ist |
+| `_bjFileName` | Dateiname «Vorname Nachname Monat.pdf» inkl. eindeutiger Namen bei Namensdoppel |
+| `schultagAktiv` | Prüft, ob ein Schultag/Kurs an einem Datum in einem erfassten Zeitraum liegt |
+| `_mergeSchZeit` | Erhält beim Dokument-Import die erfassten Schultag-Zeiträume (Typ + Wochentag) |
 | `genNeophytPDF` | PDF für Neueintritte |
 | `drawRapportPage` | Seitenaufbau des Rapports |
 | `pdfHead`, `pdfFoot` | Kopf-/Fußzeilen-Layout |

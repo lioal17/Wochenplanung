@@ -171,7 +171,59 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
-*(Noch keine Einträge – die Baseline ist der aktuelle Stand.)*
+### 2026-09-21 – Kurse: ein Zeitraum je Eintrag
+- **Commit:** `7bfbc42`
+- **Was:** Der Bereich „Kurse – manuell, mit Zeiträumen" zeigt nur noch ein Feldpaar
+  «Zeitraum – Von / Bis» statt drei. Mehrere Zeiträume werden als mehrere Einträge erfasst
+  und sind dadurch nicht mehr auf drei begrenzt; jeder lässt sich einzeln entfernen.
+- **Warum:** Nachgemessen: ein Eintrag mit drei Zeiträumen und drei Einträge mit je einem
+  liefern über alle 365 Tage identische `getBlocks()`-Ergebnisse und Feld für Feld
+  identische `getRptRows()`-Daten. Die zusätzlichen Feldpaare waren also überflüssig.
+- **Betroffen:** Teilnehmer-Formular (HTML), `Z_FIELDS`, `addKurs()`. Datenmodell und
+  Rechenlogik unverändert – bestehende Kurse mit mehreren Zeiträumen wirken weiter.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
+### 2026-09-21 – Schultage: ein Zeitraum je Eintrag + Import-Lücke geschlossen
+- **Commit:** `4d5d829`
+- **Was:** Schultage-Maske auf ein Feldpaar «Zeitraum – Von / Bis» verschlankt.
+  `_mergeSchZeit()` führt beim Dokument-Import jetzt **alle** Zeiträume einer Kombination
+  Typ + Wochentag zusammen, statt nur einen zu behalten.
+- **Warum:** Mehrere Zeiträume lassen sich gleichwertig als mehrere Tags erfassen. Ohne die
+  Korrektur hätte ein Import bei aufgeteilten Einträgen still einen Zeitraum gelöscht.
+- **Betroffen:** Teilnehmer-Formular (HTML), `SZ_FIELDS`, `addSch()`, `_mergeSchZeit()`.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
+### 2026-09-21 – Schultage mit eigenem Zeitraum (Fehlerbehebung Statistik)
+- **Commit:** `41bbbb6`
+- **Was:** Schultage tragen ein optionales `zeit`-Array. `getBlocks()` prüft zusätzlich
+  `schultagAktiv(s,date)`; `sanitizeDB()` lässt das neue Feld durch; das Formular erhält
+  Zeitraumfelder, der Chip zeigt den Zeitraum. Ohne Zeitraum gilt ein Schultag wie bisher
+  unbefristet (Altbestand und Importe unverändert).
+- **Warum:** Ein Schultag galt bisher unbegrenzt rückwirkend. War ein TN seit 01.01. im
+  Einsatz, besuchte die Schule aber erst ab 02.03., zählte jeder Montag ab Einsatzbeginn –
+  mit falschen Werten in Wochenplan, Monatsrapport und Statistik.
+- **Betroffen:** `getBlocks()`, `sanitizeDB()`, Teilnehmer-Formular, `renderTags()`,
+  `_mergeSchZeit()` (neu). Alle 13 `getBlocks`-Konsumenten erben die Logik automatisch.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
+### 2026-09-03 – Monatsrapport: Button «Monatsrapporte für Sekretariat» (ZIP)
+- **Commit:** `e491452`
+- **Was:** Neuer Button in der Rubrik Monatsrapport. Erzeugt für den gewählten Monat je
+  Teilnehmer/in ein **eigenes** PDF und lädt alle als ZIP herunter
+  (`Monatsrapporte_Basisjob_<Monat>_<Jahr>.zip`, Einträge «Vorname Nachname Monat.pdf»,
+  ohne Unterordner). Kein Versand, kein E-Mail – nur Download.
+- **Warum:** Für die Weitergabe ans Sekretariat wird pro TN eine eigene Datei gebraucht;
+  das bestehende Sammel-PDF fasst alle Rapporte in einem Dokument zusammen.
+- **Betroffen:** `genBasisjobZIP()`, `_zipStore()`, `_crc32()`, `_bjFileName()` (alle neu),
+  ein zusätzlicher Button. Rein additiv – bestehende Exporte unverändert. Der ZIP-Writer
+  ist bewusst selbst gebaut (Verfahren STORE, UTF-8-Dateinamen): keine externe Bibliothek,
+  damit die App offline bleibt und die CSP nicht aufgeweicht werden muss.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
+---
+
+**Wiederherstellungspunkt nach diesen Änderungen:** Branch `sicherung-2026-09-21-1221`
+(entspricht `main` / `b7c8b7c`).
 
 ---
 

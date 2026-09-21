@@ -63,8 +63,8 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
 | `wbAgInformed` | bool | „Arbeitsagoge informiert" der **laufenden** WB-Runde (Ampel 🔴→🟡; wird bei Rundenabschluss/-reset auf `false` gesetzt) |
 | `bemerkung` | string | Freitext |
-| `schultage` | array | `[{typ, wochentag}]` – fixe wöchentliche Schultage (unverändert) |
-| `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeiträumen (kein Wochentag) |
+| `schultage` | array | `[{typ, wochentag, zeit}]` – wöchentliche Schultage mit optionalem Zeitraum |
+| `kurse` | array | `[{typ, erfasstAm, zeit}]` – manuell erfasste Kurse mit Zeitraum (kein Wochentag) |
 | `sporttermine` | array | `[wochentag,…]` – fixe Sport-NM-Termine (max. 2/Woche) |
 
 `schultage[].typ` ∈ `S`, `DAZ`, `DAZ-VM`, `DAZ-NM`, `FöA`, `FöA-VM`, `FöA-NM` (manuell wählbar).
@@ -72,8 +72,18 @@ Einheitliches Schema: **Basis-Code = ganzer Tag**, `-VM` = Vormittag, `-NM` = Na
 Importe schreiben zusätzlich `DK-VM`/`IKPC-VM` (bzw. `-NM`) in `schultage` (½ Tag, unverändertes
 Verhalten). `wochentag`: 1=Mo … 5=Fr.
 
-**Schultage** verhalten sich wie bisher: wöchentlich wiederkehrend, ohne Datumsgrenze
-(außer `einsatzVon`/`einsatzBis`), inkl. rückwirkend.
+**Schultage** gelten an einem Datum nur, wenn **beides** zutrifft: das Datum liegt auf dem
+hinterlegten `wochentag` **und** innerhalb eines erfassten Zeitraums (`zeit`, geprüft über
+`schultagAktiv`). Der Einsatzzeitraum (`einsatzVon`/`einsatzBis`) ist **kein** Schulbeginn
+mehr – vor dem ersten Zeitraum wird keine Schule rückwirkend gerechnet.
+
+- `zeit: [{von, bis}, …]` – **ein** Zeitraum je Eintrag über die Oberfläche; mehrere
+  Zeiträume werden als **mehrere Einträge** derselben Kombination Typ + Wochentag erfasst
+  (rechnerisch identisch, da `getBlocks` über alle Einträge läuft).
+- **Ohne Zeitraum** gilt der Schultag unbefristet wöchentlich – wie vor der Umstellung.
+  Damit bleiben Altbestand und importierte Schultage unverändert gültig.
+- Halboffene Zeiträume sind erlaubt: nur „Von" = ab diesem Datum unbefristet,
+  nur „Bis" = bis zu diesem Datum.
 
 **Kurse** (`kurse`) sind ein **eigener Bereich** im Fenster „Teilnehmer bearbeiten"
 (analog Sporttermine), ausschließlich **manuell** erfasst. `kurse[].typ` ∈ `DK`, `DK-VM`, `DK-NM`,
@@ -81,16 +91,20 @@ Verhalten). `wochentag`: 1=Mo … 5=Fr.
 der Kurs gilt an jedem Werktag (Mo–Fr) innerhalb seiner
 aktiven Zeiträume; der Rapport zählt die DK-Lektionen entsprechend pro Werktag. Jeder Eintrag trägt:
 - `erfasstAm: 'YYYY-MM-DD'` – Erfassungsdatum (= Standard-Startdatum).
-- `zeit: [{von, bis}, …]` – bis zu **3** unabhängige Zeiträume (Von/Bis je `YYYY-MM-DD`).
+- `zeit: [{von, bis}, …]` – **ein** Zeitraum je Eintrag über die Oberfläche (Von/Bis je
+  `YYYY-MM-DD`); mehrere Zeiträume werden als mehrere Kurs-Einträge erfasst. Das Feld bleibt
+  ein Array, ältere Einträge mit mehreren Zeiträumen wirken unverändert weiter.
 
 Gültigkeit eines Kurses an einem Datum (`schultagAktiv`):
 - **Kein Zeitraum gesetzt** → gilt ab `erfasstAm` unbefristet (Vergangenheit bleibt unberührt).
 - **Nur „Von"** → ab diesem Datum unbefristet. **„Von"+„Bis"** → nur in diesem Zeitraum.
 - Aktiv, sobald das Datum in **einen** der Zeiträume fällt; sonst ist der Slot frei planbar.
 
-> **Importe** schreiben nie in `kurse`. Damit bleibt das gesamte Import-Verhalten
-> (inkl. importiertem `DK-VM`/`IKPC-VM` in `schultage`) unverändert; die Zeitraum-Logik gilt
-> ausschließlich für manuell erfasste Kurse.
+> **Importe** schreiben nie in `kurse`. Importierte Schultage tragen keinen Zeitraum und
+> gelten damit unbefristet – ihr Verhalten bleibt unverändert. Ersetzt ein Dokument-Import
+> die Schultage eines TN, hält `_mergeSchZeit()` die von Hand erfassten Zeiträume je
+> Kombination Typ + Wochentag fest (mehrere Einträge werden dabei zu einem Eintrag mit
+> allen Zeiträumen zusammengeführt).
 
 ### 2.3 Plan-Eintrag (`plans[date][pid]`)
 | Feld | Bedeutung |
@@ -136,7 +150,9 @@ Einheitliches Schema (wie Absenz-Codes): **Basis = ganzer Tag**, `-VM` = Vormitt
 
 > Beim **Import** entstehen Schul-Codes weiterhin als Halbtag im Feld `schultage`
 > (Standard `-VM`, „Nachmittag" → `-NM`; `DMA` → `S` Ganztag). Verhalten unverändert.
-> Die Zeitraum-Logik gilt **nur** für den manuell befüllten Bereich „Kurse" (`kurse`).
+> Die Zeitraum-Logik gilt für **beide** manuell befüllten Bereiche – „Schultage"
+> (`schultage`) und „Kurse" (`kurse`). Importierte Einträge tragen keinen Zeitraum und
+> bleiben damit unbefristet gültig.
 >
 > **Migration (einmalig, automatisch beim Laden):** Bisher bedeutete der Basis-Code
 > `DAZ`/`FöA`/`DK`/`IKPC` „½ Tag VM". Alte Einträge werden auf `…-VM` umgeschrieben und
@@ -205,7 +221,8 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
   - Suffix `-VM` → nur VM-Slot · Suffix `-NM` → nur NM-Slot (Label = Basis-Code).
   - **Basis-Code ohne Suffix** (z. B. `DAZ`, `DK`, `IKPC`) → VM **und** NM (ganzer Tag,
     Label = Basis-Code; `fullB` bleibt `false`, nur `S` setzt `fullB`).
-- Aus `p.schultage` (gefiltert nach Wochentag, ohne Datums-/Zeitraum-Filter): `applyBlk(s.typ)`.
+- Aus `p.schultage` (gefiltert nach Wochentag **und** `schultagAktiv(s,date)`; ohne
+  erfassten Zeitraum unbefristet gültig): `applyBlk(s.typ)`.
 - Aus `p.kurse` (gefiltert nur über `schultagAktiv(k,date)` – kein Wochentag; gilt an jedem
   Werktag im Zeitraum; außerhalb gültiger Zeiträume zählt der Kurs **nicht**): `applyBlk(k.typ)`.
 - Aus `p.sporttermine` → NM-Slot Label `Sport`.
@@ -305,6 +322,15 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
 - **`genWeekPDF`** – Wochenplan: Seite 1 Wochenübersicht, Seite 2 Tagesübersicht,
   Seite 3 Monatsübersicht (Querformat, Monat der berichteten Woche), Seite 4 Legende.
 - **`genPDF` / `buildRpt`** – Monatsrapport (BASISJOB-Format, inkl. Freitext-Notizen).
+- **`genAllRapportsPDF`** – alle Monatsrapporte eines Monats in **einem** PDF.
+- **`genBasisjobZIP`** – «Monatsrapporte für Sekretariat»: je TN ein **eigenes** PDF,
+  gebündelt als ZIP `Monatsrapporte_Basisjob_<Monat>_<Jahr>.zip` mit Einträgen
+  «Vorname Nachname Monat.pdf» (ohne Unterordner). Nutzt dieselbe Rapport-Logik
+  (`drawRapportPage` + `pdfFoot`) und denselben Teilnehmerkreis
+  (`monthlyOrderedParticipants`) wie das Sammel-PDF. Der ZIP-Writer (`_zipStore`,
+  Verfahren STORE, mit `_crc32`) ist bewusst selbst gebaut: keine externe Bibliothek,
+  kein Netzwerkzugriff, CSP unberührt. Dateinamen UTF-8 (Flag 0x0800) wegen Umlauten.
+  Kein Versand, kein E-Mail – nur Download.
 - **`genNeophytPDF`** – Liste „Anzahl Teilnehmende pro Tag" (KW, Datum) übers ganze Jahr.
 - **`genTNPDF`** (Kennzahlen aus `tnStats`) – Teilnehmer-Statistik als PDF: aktive
   Teilnehmende (exkl. Schnuppern), Anzahl mit aktivem IIZ, Aufschlüsselung nach Status
