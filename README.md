@@ -106,13 +106,14 @@ Die Anwendung gliedert sich in sechs Ansichten (Umschaltung über `show('<view>'
 | **Personen** | `view-person` | Teilnehmerverwaltung, Stammdaten, Fixpräferenzen für wiederkehrende Werkstatt-Zuweisungen |
 | **WB-TN** | `view-wbtn` | Wirkungsberichte: Übersicht, Erinnerungen, fortlaufender Runden-Zyklus ab Eintrittsdatum |
 | **Monat** | `view-monthly` | Monatsübersicht als Aggregation der Wochenpläne |
-| **Rapport** | `view-rapport` | Monatsrapport im BASISJOB-Format inkl. Archivierung |
+| **Rapport** | `view-rapport` | Monatsrapport im BASISJOB-Format inkl. Archivierung und ZIP-Export fürs Sekretariat |
 | **Import** | `view-import` | Datenübernahme aus Excel, PDF, Word sowie JSON-Datensicherung |
 
 ### Zentrale Funktionsgruppen
 
 - **PDF-Erzeugung** (offline): `genWeekPDF` (Wochenplan), `genRapportPDF`
-  (Monatsrapport), `genAllRapportsPDF` (Sammel-PDF), `genTNPDF`
+  (Monatsrapport), `genAllRapportsPDF` (Sammel-PDF), `genBasisjobZIP`
+  (je TN ein eigenes PDF, gebündelt als ZIP fürs Sekretariat), `genTNPDF`
   (teilnehmerbezogen), `genNeophytPDF` (Neueintritte); einheitliche Kopf-/
   Fußzeilen über `pdfHead` / `pdfFoot`.
 - **Import**: `doImportFSA` (Excel, offline), `_impParsePDF` (PDF, CDN),
@@ -132,10 +133,15 @@ Eine vollständige Aufschlüsselung steht in
 
 - Wochenplan mit VM/NM-Einteilung, Abwesenheitscodes, eCase-Tracking
 - Automatische Sperrung von Schultagen und Sportterminen
+- Schultage und Kurse mit eigenem Zeitraum (Von/Bis) – gezählt wird nur innerhalb
+  des Zeitraums, keine rückwirkende Schule ab Einsatzbeginn; mehrere Zeiträume
+  werden als mehrere Einträge erfasst, ohne Zeitraum gilt der Eintrag unbefristet
 - Fixpräferenzen für wiederkehrende Werkstatt-Zuweisung
 - Wirkungsberichte (Bereich „WB-TN"): Übersicht & Erinnerung an Yvi,
   fortlaufender Runden-Zyklus ab Eintrittsdatum
 - Monatsübersicht und Monatsrapport als PDF (BASISJOB-Format)
+- «Monatsrapporte für Sekretariat»: je Teilnehmer/in ein eigenes PDF, gebündelt als
+  ZIP zum manuellen Weiterversand (kein E-Mail-Versand aus der App)
 - Export / Import als JSON-Datensicherung
 
 ---
