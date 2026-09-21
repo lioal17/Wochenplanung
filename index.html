@@ -919,12 +919,8 @@ input,select,textarea{font-family:inherit}
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addKurs()">+ Hinzufügen</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
-        <div class="fg"><label>Zeitraum 1 – Von</label><input type="date" class="fi" id="kz1_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 1 – Bis</label><input type="date" class="fi" id="kz1_bis" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Von</label><input type="date" class="fi" id="kz2_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Bis</label><input type="date" class="fi" id="kz2_bis" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 3 – Von</label><input type="date" class="fi" id="kz3_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 3 – Bis</label><input type="date" class="fi" id="kz3_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum – Von</label><input type="date" class="fi" id="kz1_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum – Bis</label><input type="date" class="fi" id="kz1_bis" style="width:150px"></div>
       </div>
       <div class="tag-row" id="kursTags"></div>
     </div>
@@ -2575,15 +2571,15 @@ function addSpt(){
   tSpt.push(t); renderTags();
 }
 
-// Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC) mit bis zu 3 Zeiträumen.
-const Z_FIELDS=['kz1_von','kz1_bis','kz2_von','kz2_bis','kz3_von','kz3_bis'];
+// Kurse – manuell erfasst (DK VM/NM/Ganztag, IKPC) mit einem Zeitraum je
+// Eintrag. Mehrere Zeiträume werden als mehrere Einträge erfasst (ein Tag je
+// Zeitraum), die sich dann auch einzeln wieder entfernen lassen.
+const Z_FIELDS=['kz1_von','kz1_bis'];
 function addKurs(){
   const g=id=>document.getElementById(id);
-  // Bis zu 3 Zeiträume; leere Felder werden verworfen.
+  // Leeres Feldpaar wird verworfen; halboffene Zeiträume sind erlaubt.
   const zeit=[
     {von:g('kz1_von').value,bis:g('kz1_bis').value},
-    {von:g('kz2_von').value,bis:g('kz2_bis').value},
-    {von:g('kz3_von').value,bis:g('kz3_bis').value},
   ].filter(z=>z.von||z.bis);
   if(zeit.some(z=>z.von&&z.bis&&pd(z.bis)<pd(z.von))){
     toast('Zeitraum ungültig: «Bis» liegt vor «Von»','t-err'); return;
