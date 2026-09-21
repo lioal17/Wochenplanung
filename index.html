@@ -895,6 +895,12 @@ input,select,textarea{font-family:inherit}
         </div>
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addSch()">+ Hinzufügen</button>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
+        <div class="fg"><label>Zeitraum 1 – Von</label><input type="date" class="fi" id="sz1_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 1 – Bis</label><input type="date" class="fi" id="sz1_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 2 – Von</label><input type="date" class="fi" id="sz2_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum 2 – Bis</label><input type="date" class="fi" id="sz2_bis" style="width:150px"></div>
+      </div>
       <div class="tag-row" id="schTags"></div>
     </div>
 
@@ -1619,7 +1625,9 @@ function sanitizeDB(d){
         wbRounds: Number.isInteger(p.wbRounds) ? p.wbRounds : (p.wb10 ? 1 : 0),
         wbAgInformed: !!p.wbAgInformed,
         schultage:(Array.isArray(p.schultage)?p.schultage:[]).filter(s=>s&&typeof s==='object')
-          .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag)})),
+          .map(s=>({typ:_str(s.typ),wochentag:_str(s.wochentag),
+            zeit:(Array.isArray(s.zeit)?s.zeit:[]).filter(z=>z&&typeof z==='object')
+              .map(z=>({von:_dstr2(z.von),bis:_dstr2(z.bis)}))})),
         sporttermine:(Array.isArray(p.sporttermine)?p.sporttermine:[]).map(_str),
         kurse:(Array.isArray(p.kurse)?p.kurse:[]).filter(k=>k&&typeof k==='object')
           .map(k=>({typ:_str(k.typ),erfasstAm:_dstr2(k.erfasstAm),
@@ -1771,9 +1779,12 @@ function getBlocks(p, date){
     else if(suf==='VM'){ vmB=true; if(!vmL) vmL=base; }
     else { vmB=nmB=true; if(!vmL) vmL=base; if(!nmL) nmL=base; }   // Basis = ganzer Tag
   };
-  // Schultage – wochentagbasiert (DAZ/FöA/S).
+  // Schultage – wochentagbasiert (DAZ/FöA/S) und – sofern erfasst – nur
+  // innerhalb ihrer Zeiträume. Ohne Zeitraum gilt der Schultag wie bisher
+  // unbefristet (Altbestand und Importe bleiben damit unverändert gültig).
   for(const s of (p.schultage||[])){
     if(+s.wochentag!==dow) continue;
+    if(!schultagAktiv(s,date)) continue;
     applyBlk(s.typ);
   }
   // Kurse – manuell erfasst (DK/IKPC) mit Zeiträumen; nur innerhalb ihrer Zeiträume
@@ -2521,7 +2532,7 @@ function openPM(id=null){
   g('f_iiz').value=p?.iiz||'nein';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tKurse=[...(p.kurse||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
-  Z_FIELDS.forEach(id=>{const el=g(id); if(el) el.value='';});
+  [...Z_FIELDS,...SZ_FIELDS].forEach(id=>{const el=g(id); if(el) el.value='';});
   onSt(); renderTags();
   document.getElementById('pmOverlay').classList.add('open');
 }
@@ -2539,9 +2550,22 @@ function onSt(){
   document.getElementById('f_sw_g').style.display='none';
 }
 
-// Schultage – unverändert (keine Zeiträume, kein manuell-Flag)
+// Schultage – Typ + Wochentag, dazu bis zu 2 optionale Zeiträume.
+// Ohne Zeitraum gilt der Schultag unbefristet wöchentlich (wie bisher);
+// mit Zeitraum zählt er nur an diesem Wochentag INNERHALB der Zeiträume.
+const SZ_FIELDS=['sz1_von','sz1_bis','sz2_von','sz2_bis'];
 function addSch(){
-  tSch.push({typ:document.getElementById('s_typ').value, wochentag:document.getElementById('s_wd').value});
+  const g=id=>document.getElementById(id);
+  // Leere Felder werden verworfen; halboffene Zeiträume sind erlaubt.
+  const zeit=[
+    {von:g('sz1_von').value,bis:g('sz1_bis').value},
+    {von:g('sz2_von').value,bis:g('sz2_bis').value},
+  ].filter(z=>z.von||z.bis);
+  if(zeit.some(z=>z.von&&z.bis&&pd(z.bis)<pd(z.von))){
+    toast('Zeitraum ungültig: «Bis» liegt vor «Von»','t-err'); return;
+  }
+  tSch.push({typ:g('s_typ').value, wochentag:g('s_wd').value, zeit});
+  SZ_FIELDS.forEach(id=>g(id).value='');
   renderTags();
 }
 // Sport
@@ -2588,7 +2612,7 @@ function schPeriodStr(k){
 }
 function renderTags(){
   document.getElementById('schTags').innerHTML=tSch.map((s,i)=>
-    `<span class="tag tag-sch">${esc(s.typ)} ${WD[+s.wochentag]}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
+    `<span class="tag tag-sch">${esc(s.typ)} ${WD[+s.wochentag]}${schPeriodStr(s)}<span class="tag-x" onclick="tSch.splice(${i},1);renderTags()">×</span></span>`
   ).join('');
   document.getElementById('kursTags').innerHTML=tKurse.map((k,i)=>
     `<span class="tag tag-sch">${esc(k.typ)}${schPeriodStr(k)}<span class="tag-x" onclick="tKurse.splice(${i},1);renderTags()">×</span></span>`
@@ -4753,6 +4777,15 @@ async function _impParseWord(file){
   return r.value;
 }
 
+// Importierte Schultage übernehmen, dabei aber die von Hand erfassten
+// Zeiträume derselben Kombination (Typ + Wochentag) beibehalten – sonst
+// würde ein Dokument-Import die Zeitraumangaben stillschweigend löschen.
+function _mergeSchZeit(alt,neu){
+  const map=Object.create(null);
+  (alt||[]).forEach(s=>{ if(s&&Array.isArray(s.zeit)&&s.zeit.length) map[`${s.typ}|${+s.wochentag}`]=s.zeit; });
+  return (neu||[]).map(s=>{ const z=map[`${s.typ}|${+s.wochentag}`]; return z?{...s,zeit:z}:s; });
+}
+
 function doImportDoc(){
   const cbs=document.querySelectorAll('.imp-cb');
   let added=0,updated=0;
@@ -4779,7 +4812,7 @@ function doImportDoc(){
       // Abweichende Werte nur übernehmen, wenn die Abweichung gezielt angekreuzt wurde.
       const ovr=overrides[i]||new Set();
       if(p.jc && (!existing.jobCoach || ovr.has('jobCoach'))) existing.jobCoach=p.jc;
-      if(p.sch.length && (!(existing.schultage&&existing.schultage.length) || ovr.has('schultage'))) existing.schultage=p.sch;
+      if(p.sch.length && (!(existing.schultage&&existing.schultage.length) || ovr.has('schultage'))) existing.schultage=_mergeSchZeit(existing.schultage,p.sch);
       if(p.spt.length && (!(existing.sporttermine&&existing.sporttermine.length) || ovr.has('sporttermine'))) existing.sporttermine=p.spt;
       if(p.von && (!existing.einsatzVon || ovr.has('einsatzVon'))) existing.einsatzVon=p.von;
       if(p.bis && (!existing.einsatzBis || ovr.has('einsatzBis'))) existing.einsatzBis=p.bis;
