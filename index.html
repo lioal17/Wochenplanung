@@ -896,10 +896,8 @@ input,select,textarea{font-family:inherit}
         <button class="btn btn-secondary btn-sm" style="height:37px" onclick="addSch()">+ Hinzufügen</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:flex-end">
-        <div class="fg"><label>Zeitraum 1 – Von</label><input type="date" class="fi" id="sz1_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 1 – Bis</label><input type="date" class="fi" id="sz1_bis" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Von</label><input type="date" class="fi" id="sz2_von" style="width:150px"></div>
-        <div class="fg"><label>Zeitraum 2 – Bis</label><input type="date" class="fi" id="sz2_bis" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum – Von</label><input type="date" class="fi" id="sz1_von" style="width:150px"></div>
+        <div class="fg"><label>Zeitraum – Bis</label><input type="date" class="fi" id="sz1_bis" style="width:150px"></div>
       </div>
       <div class="tag-row" id="schTags"></div>
     </div>
@@ -2550,16 +2548,17 @@ function onSt(){
   document.getElementById('f_sw_g').style.display='none';
 }
 
-// Schultage – Typ + Wochentag, dazu bis zu 2 optionale Zeiträume.
+// Schultage – Typ + Wochentag, dazu ein optionaler Zeitraum.
 // Ohne Zeitraum gilt der Schultag unbefristet wöchentlich (wie bisher);
-// mit Zeitraum zählt er nur an diesem Wochentag INNERHALB der Zeiträume.
-const SZ_FIELDS=['sz1_von','sz1_bis','sz2_von','sz2_bis'];
+// mit Zeitraum zählt er nur an diesem Wochentag INNERHALB des Zeitraums.
+// Mehrere Zeiträume werden als mehrere Einträge erfasst (ein Tag je Zeitraum),
+// die sich dann auch einzeln wieder entfernen lassen.
+const SZ_FIELDS=['sz1_von','sz1_bis'];
 function addSch(){
   const g=id=>document.getElementById(id);
-  // Leere Felder werden verworfen; halboffene Zeiträume sind erlaubt.
+  // Leeres Feldpaar wird verworfen; halboffene Zeiträume sind erlaubt.
   const zeit=[
     {von:g('sz1_von').value,bis:g('sz1_bis').value},
-    {von:g('sz2_von').value,bis:g('sz2_bis').value},
   ].filter(z=>z.von||z.bis);
   if(zeit.some(z=>z.von&&z.bis&&pd(z.bis)<pd(z.von))){
     toast('Zeitraum ungültig: «Bis» liegt vor «Von»','t-err'); return;
@@ -4780,10 +4779,19 @@ async function _impParseWord(file){
 // Importierte Schultage übernehmen, dabei aber die von Hand erfassten
 // Zeiträume derselben Kombination (Typ + Wochentag) beibehalten – sonst
 // würde ein Dokument-Import die Zeitraumangaben stillschweigend löschen.
+// Mehrere Einträge derselben Kombination (ein Tag je Zeitraum) werden dabei
+// zu einem Eintrag mit allen Zeiträumen zusammengeführt – rechnerisch
+// identisch, aber ohne Verlust.
 function _mergeSchZeit(alt,neu){
   const map=Object.create(null);
-  (alt||[]).forEach(s=>{ if(s&&Array.isArray(s.zeit)&&s.zeit.length) map[`${s.typ}|${+s.wochentag}`]=s.zeit; });
-  return (neu||[]).map(s=>{ const z=map[`${s.typ}|${+s.wochentag}`]; return z?{...s,zeit:z}:s; });
+  (alt||[]).forEach(s=>{
+    if(!s||!Array.isArray(s.zeit)||!s.zeit.length) return;
+    const k=`${s.typ}|${+s.wochentag}`;
+    (map[k]=map[k]||[]).push(...s.zeit);
+  });
+  const uniq=zs=>{const seen=Object.create(null);return zs.filter(z=>{
+    const k=`${z.von||''}|${z.bis||''}`; if(seen[k]) return false; seen[k]=true; return true;});};
+  return (neu||[]).map(s=>{ const z=map[`${s.typ}|${+s.wochentag}`]; return z?{...s,zeit:uniq(z)}:s; });
 }
 
 function doImportDoc(){
