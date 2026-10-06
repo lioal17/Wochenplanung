@@ -2728,7 +2728,10 @@ function renderMonthly(){
 
   let tbody='';
   persons.forEach(p=>{
-    let at=0,abs=0,ua=0,zs=0;
+    let at=0,abs=0;
+    // UA/ZS-Spalten: zentrale Zählung (identisch zu Teilnehmer-Rapport und Monatsrapport-Kacheln)
+    const _st=countPersonStats(p,new Date(y,m,1),new Date(y,m+1,0,23,59,59,999));
+    const ua=_st.ua, zs=_st.zs;
     let tds='';
     wd.forEach(d=>{
       const sep=d.getDay()===1?' mo-sep':'';
@@ -2738,8 +2741,6 @@ function renderMonthly(){
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
       const rawAbs=plan.abwesenheit||'';
-      if(rawAbs==='UA'||rawAbs==='UA-VM'||rawAbs==='UA-NM'||rawAbs==='UA-W') ua++;
-      if(rawAbs==='ZS') zs++;
       const isUAvm=rawAbs==='UA-VM', isUAnm=rawAbs==='UA-NM';
       const isKRvm=rawAbs==='KR-VM', isKRnm=rawAbs==='KR-NM';
       const isBAvm=rawAbs==='BA-VM', isBAnm=rawAbs==='BA-NM';
@@ -2766,7 +2767,7 @@ function renderMonthly(){
       tds+=`<td class="${vmCls}${sep}">${vmTxt}</td><td class="${nmCls}">${nmTxt}</td>`;
     });
     tbody+=`<tr><td class="td-name">${esc(p.vorname)} ${esc(p.nachname)}</td>${tds}
-      <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua||'–'}</td>
+      <td class="c-stat" style="color:${ua?'var(--red)':'var(--g5)'}">${ua?(Number.isInteger(ua)?ua:ua.toFixed(1)):'–'}</td>
       <td class="c-stat" style="color:${zs?'var(--amber)':'var(--g5)'}">${zs||'–'}</td>
     </tr>`;
   });
@@ -3060,22 +3061,15 @@ function buildRpt(){
   const p=DB.participants.find(x=>x.id===pid); if(!p)return;
 
   const rows=getRptRows(p,y,month);
-  // Unbezahlt = nur UA (inkl. Wochencode UA-W). KR (Krank) wird separat gezählt und NICHT
-  // mehr zur bezahlten Absenz gerechnet. Übrige Codes (BA/BA-W, UN, FE, MI …) = bezahlte Absenz.
-  const UNPAID_ABS=new Set(['UA','UA-W']);
-  const isKR=c=>c==='KR'||c==='KR-VM'||c==='KR-NM'||c==='KR-W';
-  // Schultage (r.school) sind keine Absenz und brauchen keinen eCase-Eintrag.
-  const baDays =rows.filter(r=>!r.we&&!r.inactive&&r.ac&&!r.school&&!UNPAID_ABS.has(r.ac)&&!isKR(r.ac)).length;
-  const uaDays =rows.filter(r=>!r.we&&!r.inactive&&UNPAID_ABS.has(r.ac)).length;
-  // KR-Zähler: jede KR-Zeile = 1 (KR ganzer Tag = 1, KR-VM/KR-NM = je 1, KR-W füllt Mo–Fr → 5).
-  const krDays =rows.filter(r=>!r.we&&!r.inactive&&isKR(r.ac)).length;
-  // ZS (Zu spät) erscheint nicht in r.ac (getRptRows setzt ac=''), daher aus dem
-  // Rohplan zählen (Muster analog renderMonthly) – monatsbezogen wie die übrigen Kennzahlen.
-  let zsDays=0;
-  monthDays(y,month).forEach(d=>{
-    if(isWE(d)||!isActiveOnDay(p,d)) return;
-    if(getPlan(ds(d),p.id).abwesenheit==='ZS') zsDays++;
-  });
+  // Kacheln kommen aus der zentralen Zählung (countPersonStats) – dieselbe Quelle wie
+  // Teilnehmer-Rapport und Monatsübersicht-Spalten. Halbtage = 0.5, Feiertage = BA.
+  // Bezahlte Absenz = BA + Unfall + Ferien + Militär (UA und KR werden separat gezählt).
+  const st=countPersonStats(p,new Date(y,month,1),new Date(y,month+1,0,23,59,59,999));
+  const fmtK=v=>Number.isInteger(v)?`${v}`:v.toFixed(1);
+  const baDays =fmtK(st.ba+st.un+st.fe+st.mi+st.schnuppertag+st.schnupperwoche);
+  const uaDays =fmtK(st.ua);
+  const krDays =fmtK(st.kr);
+  const zsDays =st.zs;
   // eCase-Kachel: bewusst NICHT monatsbezogen, sondern ALLE noch offenen eCase-Einträge
   // DIESES Teilnehmers über alle Monate (global) – damit die Zahl exakt dem eCase-Button
   // in Wochenplan/Monatsübersicht entspricht. Quittieren dort senkt sie sofort (isOpenEcase,
@@ -3306,7 +3300,7 @@ function genAllRapportsPDF(){
 // MONATSRAPPORTE FÜR DAS SEKRETARIAT (ZIP)
 // Erzeugt pro Teilnehmer/in ein EIGENES PDF – exakt dieselbe Rapport-Logik wie
 // genPDF()/genAllRapportsPDF() (drawRapportPage + pdfFoot) – und packt alle
-// Dateien ohne Unterordner in eine ZIP-Datei zum Herunterladen.
+// Dateien in einen Monatsordner («September 2026/») innerhalb von Monatsrapport.zip.
 // Läuft vollständig offline und lokal: eigener, minimaler ZIP-Writer im
 // Verfahren STORE (ohne Kompression – PDFs sind bereits komprimiert). Bewusst
 // KEINE externe Bibliothek und kein Netzwerkzugriff; die CSP bleibt unberührt.
@@ -3399,14 +3393,14 @@ function _zipStore(files){
   return out;
 }
 
-// Dateiname eines Rapports im ZIP: «Vorname Nachname Monat.pdf».
-// `used` sammelt bereits vergebene Namen, damit ein identischer Vor- UND
-// Nachname nicht zu einem doppelten Eintrag führt.
+// Dateiname eines Rapports im ZIP: «Vorname_Nachname.pdf» (der Monat steckt im
+// Ordnernamen). `used` sammelt bereits vergebene Namen, damit ein identischer
+// Vor- UND Nachname nicht zu einem doppelten Eintrag führt (→ «_2», «_3» …).
 function _bjFileName(p,month,used){
-  const clean=t=>String(t||'').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
-  const base=`${clean(p.vorname)} ${clean(p.nachname)} ${MON[month]}`.replace(/\s+/g,' ').trim();
+  const clean=t=>String(t||'').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,'_').trim();
+  const base=`${clean(p.vorname)}_${clean(p.nachname)}`.replace(/_+/g,'_').replace(/^_|_$/g,'')||'Teilnehmer';
   let name=`${base}.pdf`, n=2;
-  while(used[name]) name=`${base} (${n++}).pdf`;
+  while(used[name]) name=`${base}_${n++}.pdf`;
   used[name]=true;
   return name;
 }
@@ -3429,19 +3423,22 @@ function genBasisjobZIP(btn){
     try{
       const{jsPDF}=window.jspdf;
       const used=Object.create(null), files=[];
+      // Struktur: Monatsrapport.zip → «September 2026/» → Vorname_Nachname.pdf
+      const folder=`${MON[month]} ${y}`;
+      files.push({name:`${folder}/`,data:new Uint8Array(0)});   // expliziter Ordnereintrag
       persons.forEach(p=>{
         const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
         drawRapportPage(doc,p,y,month);
         pdfFoot(doc,{W:210,mg:14,y:287});
-        files.push({name:_bjFileName(p,month,used),data:new Uint8Array(doc.output('arraybuffer'))});
+        files.push({name:`${folder}/${_bjFileName(p,month,used)}`,data:new Uint8Array(doc.output('arraybuffer'))});
       });
 
       const blob=new Blob([_zipStore(files)],{type:'application/zip'});
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
-      a.download=`Monatsrapporte_Basisjob_${MON[month]}_${y}.zip`;
+      a.download='Monatsrapport.zip';
       a.click(); URL.revokeObjectURL(a.href);
-      toast(`\u{1F4E6} ${files.length} Monatsrapporte als ZIP heruntergeladen`,'t-ok');
+      toast(`\u{1F4E6} ${persons.length} Monatsrapporte als ZIP heruntergeladen`,'t-ok');
     }catch(e){
       console.error(e);
       toast('Fehler beim Erstellen der ZIP-Datei','t-err');
@@ -3464,45 +3461,11 @@ function closeRapportModal(){
   document.getElementById('rapportOverlay').classList.remove('open');
 }
 
-function genRapportPDF(){
-  const pid=document.getElementById('rptRP').value; if(!pid) return;
-  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
-
-  const fmtD=d=>`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
-  // Gesamtrapport: immer über die gesamte Teilnahmedauer
-  // (vom ersten Log-Eintrag "Einsatz von" bis zum letzten "Einsatz bis").
-  let startDate, endDate, rangeLabel;
-  let planMin=null, planMax=null;
-  Object.keys(DB.plans).forEach(dstr=>{
-    if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
-      const dt=pd(dstr);
-      if(!planMin||dt<planMin) planMin=dt;
-      if(!planMax||dt>planMax) planMax=dt;
-    }
-  });
-  // WICHTIG: Datumsgrenzen mit pd() (LOKALE Mitternacht) bilden – exakt wie Plan-Schlüssel
-  // (ds()), planMin/planMax und der restliche Code. Früher wurde hier new Date('YYYY-MM-DD')
-  // benutzt, das den String als UTC-Mitternacht parst → in der Schweiz 01:00/02:00 LOKAL.
-  // Dadurch trugen alle Schleifentage 01:00/02:00, während das Enddatum (z. B. planMax bei
-  // laufendem Einsatz ohne "Einsatz bis") auf lokal 00:00 lag – der LETZTE eingeteilte Tag
-  // fiel so aus dem Zähl-Loop und seine KPIs (Absenzen/Einteilung) wurden nicht gezählt.
-  startDate = p.einsatzVon ? pd(p.einsatzVon) : (planMin||new Date());
-  // Endzeitpunkt (mehrstufig):
-  //   Grundregel: bis heute (Generierung), höchstens bis Austritt (Einsatz bis), falls dieser
-  //   schon vergangen ist  →  endBase = min(heute, Einsatz bis). So werden bei laufendem Einsatz
-  //   mit künftigem Ende-ZV keine leeren Zukunftstage gezählt.
-  //   PLUS (Nutzerwunsch "Planung immer zählen"): eingesteuerte Planung IMMER mitzählen – auch
-  //   über heute UND über das Ende-ZV-Datum hinaus. Läuft das Ende-ZV ab, der TN gilt damit als
-  //   archiviert, wird aber weiter eingesteuert, fiel sonst diese ganze Planung raus (→ alles 0).
-  //   Daher den Endpunkt bis zum letzten tatsächlich eingesteuerten Planungstag (planMax) ziehen.
-  const todayEnd=new Date(); todayEnd.setHours(23,59,59,999);
-  let endBase=todayEnd;
-  if(p.einsatzBis){ const bis=pd(p.einsatzBis); if(bis<endBase) endBase=bis; }
-  endDate=endBase;
-  if(planMax && planMax>endDate) endDate=planMax;   // eingesteuerte Planung über heute/Austritt hinaus
-  rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
-
-  // Collect all weekdays in range where TN is active
+// ZENTRALE ZÄHLUNG je Teilnehmer über einen Datumsbereich (inkl. Grenzen).
+// Einzige Quelle für Teilnehmer-Rapport (Gesamtlaufzeit), Monatsübersicht-Spalten
+// und Kacheln des Monatsrapports – alle lesen dieselben Tagesplan-Daten (DB.plans).
+// Abwesenheiten in Tagen: ganzer Tag = 1, VM/NM = 0.5, Wochencodes (…-W) je Tag = 1.
+function countPersonStats(p,startDate,endDate){
   // Abwesenheiten in Tagen: ganzer Tag = 1, VM/NM = 0.5, Wochencodes (KR-W) je Tag = 1.
   const stats={
     ua:0, ba:0, kr:0, un:0, mi:0, fe:0, zs:0,
@@ -3510,7 +3473,7 @@ function genRapportPDF(){
     sport:0, bw:0,
     schnuppertag:0, schnupperwoche:0,
   };
-  // Feiertage/Brückentage über alle Jahre im Bereich – LW geschlossen, fällt NICHT in den Rapport
+  // Feiertage/Brückentage über alle Jahre im Bereich – zählen als bezahlte Absenz (BA)
   const holiSet={};
   for(let yr=startDate.getFullYear(); yr<=endDate.getFullYear(); yr++) Object.assign(holiSet, tgHolidays(yr));
 
@@ -3526,7 +3489,11 @@ function genRapportPDF(){
     const _afterVon=!p.einsatzVon||pd(p.einsatzVon)<=d;
     const _inRange=isActiveOnDay(p,d);
     const _plannedDay=((DB.plans[_dstr]||{})[p.id])!==undefined;
-    if(!isWE(d)&&_afterVon&&(_inRange||_plannedDay)&&!holiSet[_dstr]){
+    if(!isWE(d)&&_afterVon&&_inRange&&holiSet[_dstr]){
+      // Feiertag/Brückentag an einem Arbeitstag im Einsatz → bezahlte Absenz (BA),
+      // identisch zu getRptRows (Monatsrapport-Tabelle).
+      stats.ba+=1;
+    } else if(!isWE(d)&&_afterVon&&(_inRange||_plannedDay)&&!holiSet[_dstr]){
       const dstr=_dstr;
       const plan=getPlan(dstr,p.id);
       const blk=getBlocks(p,d);
@@ -3582,6 +3549,48 @@ function genRapportPDF(){
     }
     d.setDate(d.getDate()+1);
   }
+  return stats;
+}
+
+function genRapportPDF(){
+  const pid=document.getElementById('rptRP').value; if(!pid) return;
+  const p=DB.participants.find(x=>x.id===pid); if(!p) return;
+
+  const fmtD=d=>`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
+  // Gesamtrapport: immer über die gesamte Teilnahmedauer
+  // (vom ersten Log-Eintrag "Einsatz von" bis zum letzten "Einsatz bis").
+  let startDate, endDate, rangeLabel;
+  let planMin=null, planMax=null;
+  Object.keys(DB.plans).forEach(dstr=>{
+    if(DB.plans[dstr]&&DB.plans[dstr][p.id]!==undefined){
+      const dt=pd(dstr);
+      if(!planMin||dt<planMin) planMin=dt;
+      if(!planMax||dt>planMax) planMax=dt;
+    }
+  });
+  // WICHTIG: Datumsgrenzen mit pd() (LOKALE Mitternacht) bilden – exakt wie Plan-Schlüssel
+  // (ds()), planMin/planMax und der restliche Code. Früher wurde hier new Date('YYYY-MM-DD')
+  // benutzt, das den String als UTC-Mitternacht parst → in der Schweiz 01:00/02:00 LOKAL.
+  // Dadurch trugen alle Schleifentage 01:00/02:00, während das Enddatum (z. B. planMax bei
+  // laufendem Einsatz ohne "Einsatz bis") auf lokal 00:00 lag – der LETZTE eingeteilte Tag
+  // fiel so aus dem Zähl-Loop und seine KPIs (Absenzen/Einteilung) wurden nicht gezählt.
+  startDate = p.einsatzVon ? pd(p.einsatzVon) : (planMin||new Date());
+  // Endzeitpunkt (mehrstufig):
+  //   Grundregel: bis heute (Generierung), höchstens bis Austritt (Einsatz bis), falls dieser
+  //   schon vergangen ist  →  endBase = min(heute, Einsatz bis). So werden bei laufendem Einsatz
+  //   mit künftigem Ende-ZV keine leeren Zukunftstage gezählt.
+  //   PLUS (Nutzerwunsch "Planung immer zählen"): eingesteuerte Planung IMMER mitzählen – auch
+  //   über heute UND über das Ende-ZV-Datum hinaus. Läuft das Ende-ZV ab, der TN gilt damit als
+  //   archiviert, wird aber weiter eingesteuert, fiel sonst diese ganze Planung raus (→ alles 0).
+  //   Daher den Endpunkt bis zum letzten tatsächlich eingesteuerten Planungstag (planMax) ziehen.
+  const todayEnd=new Date(); todayEnd.setHours(23,59,59,999);
+  let endBase=todayEnd;
+  if(p.einsatzBis){ const bis=pd(p.einsatzBis); if(bis<endBase) endBase=bis; }
+  endDate=endBase;
+  if(planMax && planMax>endDate) endDate=planMax;   // eingesteuerte Planung über heute/Austritt hinaus
+  rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
+
+  const stats=countPersonStats(p,startDate,endDate);
 
   const s_lek    = stats.s_half * 4;   // je Schul-Halbtag 4 Lektionen
   const daz_lek  = stats.daz * 4;
