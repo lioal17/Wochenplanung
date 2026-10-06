@@ -1872,6 +1872,31 @@ function collectOpenEcase(){
   return list;
 }
 
+// Sortierung der eCase-Liste (Wochenplan + Monatsübersicht teilen sich den Zustand):
+// 'date' = nach Datum (älteste zuerst, Standard), 'name' = nach Teilnehmer (dann Datum).
+let _ecSort='date';
+function ecSorted(list){
+  const byDate=(a,b)=>a.dstr<b.dstr?-1:a.dstr>b.dstr?1:0;
+  const byNm=(a,b)=>a.name.localeCompare(b.name,'de');
+  return [...list].sort(_ecSort==='name'?(a,b)=>byNm(a,b)||byDate(a,b):(a,b)=>byDate(a,b)||byNm(a,b));
+}
+// Kopfzeile der eCase-Tabelle; «Teilnehmer» und «Datum» sind anklickbar (Sortierung).
+// stopPropagation: Das Neu-Rendern entfernt den Klick-Ziel-Knoten, der Outside-Click-
+// Listener würde das Dropdown sonst schliessen.
+function ecSetSort(mode,which,ev){
+  ev.stopPropagation(); _ecSort=mode;
+  if(which==='mo') renderMonthly(); else renderDayPlan();
+}
+function ecThead(which){
+  const th=(mode,lbl)=>`<th style="padding:5px 10px;text-align:left;font-size:11px;color:${_ecSort===mode?'var(--navy)':'var(--g6)'};cursor:pointer;user-select:none" title="Nach ${lbl} sortieren" onclick="ecSetSort('${mode}','${which}',event)">${lbl}${_ecSort===mode?' ▲':''}</th>`;
+  return `<thead><tr style="background:var(--g1)">
+    ${th('name','Teilnehmer')}
+    ${th('date','Datum')}
+    <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
+    <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
+  </tr></thead>`;
+}
+
 // Zählt pro Teilnehmer und Tag MAXIMAL 1: sobald 'Neophyten' im VM ODER NM
 // effektiv eingeteilt ist, zählt der Tag mit 1 (keine Doppelzählung bei VM+NM).
 // Logik der Monatsübersicht-Zelle: Ganz-/Halbtags-Absenzen, S.LW/S.EX und
@@ -2137,7 +2162,7 @@ function renderDayPlan(){
   const badge=document.getElementById('planEcBadge');
   if(badge){
     if(openEC>0){
-      const rows=ecEntries.map(e=>`<tr>
+      const rows=ecSorted(ecEntries).map(e=>`<tr>
         <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
         <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
         <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
@@ -2151,12 +2176,7 @@ function renderDayPlan(){
         </button>
         <div class="ec-drop" style="display:${_ecOpen.plan?'block':'none'}">
           <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-            <thead><tr style="background:var(--g1)">
-              <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Teilnehmer</th>
-              <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Datum</th>
-              <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
-              <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
-            </tr></thead><tbody>${rows}</tbody>
+            ${ecThead('plan')}<tbody>${rows}</tbody>
           </table>
         </div>
       </div>`;
@@ -2790,7 +2810,7 @@ function renderMonthly(){
   const moEcList=collectOpenEcase();
   const totalOpen=moEcList.length;
   if(totalOpen>0){
-    const ecRows=moEcList.map(e=>`<tr>
+    const ecRows=ecSorted(moEcList).map(e=>`<tr>
       <td style="padding:4px 10px;font-weight:600">${esc(e.name)}</td>
       <td style="padding:4px 10px;color:var(--g6)">${e.dateLabel}</td>
       <td style="padding:4px 10px;color:var(--red);font-weight:700">${e.abs}</td>
@@ -2804,12 +2824,7 @@ function renderMonthly(){
       </button>
       <div class="ec-drop" style="display:${_ecOpen.mo?'block':'none'}">
         <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-          <thead><tr style="background:var(--g1)">
-            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Teilnehmer</th>
-            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Datum</th>
-            <th style="padding:5px 10px;text-align:left;font-size:11px;color:var(--g6)">Code</th>
-            <th style="padding:5px 10px;font-size:11px;color:var(--g6)">✓ eCase</th>
-          </tr></thead><tbody>${ecRows}</tbody>
+          ${ecThead('mo')}<tbody>${ecRows}</tbody>
         </table>
       </div></div>`;
   } else {
