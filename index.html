@@ -4183,8 +4183,10 @@ function genNeophytPDF(){
 // unabhängig vom Eintrittsdatum. Identifikation per ID, nie nur per Name.
 // Programmstatus: aktiv/praktikum/lehrstelle/prklehr → 'Aktiv', schnupper → 'Schnuppern',
 // alles andere → 'Status unklar' (bleibt in der Liste sichtbar, zählt in keiner Kennzahl).
+// Total = Aktiv + Schnuppern (Schnupper-Personen sind aktiv); 'schnupper' ist eine Teilmenge davon.
 // Alle Kennzahlen werden aus denselben Listenzeilen gezählt: Zahlen und Liste bleiben deckungsgleich.
 // Feldwerte je Zeile: true = Ja, false = Nein, null = nicht auswertbar (Status unklar).
+// Sortierung: Vorname, dann Nachname.
 function tnStats(participants, refDate){
   const d=new Date(refDate); d.setHours(0,0,0,0);
   const seen=new Set(), rows=[];
@@ -4197,11 +4199,11 @@ function tnStats(participants, refDate){
     const st=p.status;
     const aktiv=['aktiv','praktikum','lehrstelle','prklehr'].includes(st);
     const schnupper=st==='schnupper';
-    const flag=v=>aktiv?v:(schnupper?false:null);
+    const flag=v=>aktiv?v:(schnupper?false:null);   // Status 'schnupper' schliesst Lehrstelle/Praktikum aus
     rows.push({
       id:p.id, vorname:vn, nachname:nn,
       programm:aktiv?'Aktiv':(schnupper?'Schnuppern':'Status unklar'),
-      iiz:flag(p.iiz==='ja'),
+      iiz:(aktiv||schnupper)?p.iiz==='ja':null,
       lehrstelle:flag(st==='lehrstelle'||st==='prklehr'),
       praktikum:flag(st==='praktikum'||st==='prklehr'),
       beides:flag(st==='prklehr'),
@@ -4209,15 +4211,15 @@ function tnStats(participants, refDate){
       eintritt:(p.einsatzVon&&pd(p.einsatzVon)>d)?p.einsatzVon:'',
     });
   });
-  rows.sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')
-    ||a.vorname.localeCompare(b.vorname,'de')||(a.id<b.id?-1:1));
+  rows.sort((a,b)=>a.vorname.localeCompare(b.vorname,'de')
+    ||a.nachname.localeCompare(b.nachname,'de')||(a.id<b.id?-1:1));
   const n=f=>rows.filter(f).length;
   const nameCnt={};
   rows.forEach(r=>{const k=`${r.nachname}|${r.vorname}`.toLowerCase(); nameCnt[k]=(nameCnt[k]||0)+1;});
   return {
     rows,
     kz:{
-      total:     n(r=>r.programm==='Aktiv'),
+      total:     n(r=>r.programm!=='Status unklar'),
       iiz:       n(r=>r.iiz===true),
       lehrstelle:n(r=>r.lehrstelle===true),
       praktikum: n(r=>r.praktikum===true),
@@ -4244,14 +4246,14 @@ function genTNPDF(){
   const topY=pdfHead(doc,{W,mg,title:'Teilnehmer-Statistik LERNWERKSTATT',
     sub:`Erstellt am ${dateStr} · Aktive Teilnehmende: ${kz.total} · Datenbasis: Wochenplanung`});
 
-  // 1) Kennzahlen (Total und Schnupperwoche dezent hervorgehoben)
+  // 1) Kennzahlen (Total und Schnupperwoche dezent hervorgehoben; Schnupperwoche ist Teilmenge des Totals)
   const kzBody=[
-    ['Aktive Teilnehmende im Programm (Total)', String(kz.total)],
+    ['Aktive Teilnehmende im Programm inkl. Schnupperwoche (Total)', String(kz.total)],
     ['Davon Teilnehmende mit aktivem IIZ-Status', String(kz.iiz)],
     ['Davon Teilnehmende mit Lehrstelle', String(kz.lehrstelle)],
     ['Davon Teilnehmende mit Praktikum', String(kz.praktikum)],
     ['Davon Teilnehmende mit Lehrstelle und Praktikum', String(kz.prklehr)],
-    ['Teilnehmende derzeit in der Schnupperwoche LW', String(kz.schnupper)],
+    ['Davon Teilnehmende in der Schnupperwoche', String(kz.schnupper)],
   ];
   const kzW=160;
   doc.autoTable({
@@ -4276,10 +4278,11 @@ function genTNPDF(){
   const notes=[
     'Mehrfachzuordnungen sind möglich: Die Summe der Einzelkennzahlen kann das Total übersteigen. Jede Person zählt je Kennzahl höchstens einmal.',
     'Personen mit Lehrstelle und Praktikum sind in beiden Einzelkennzahlen enthalten.',
-    'Die Schnupperwoche LW wird separat ausgewiesen und ist nicht im Total enthalten.',
+    'Die Schnupperwoche ist im Total enthalten und wird zusätzlich als Davon-Zeile ausgewiesen.',
     'Nicht enthalten sind Personen im Archiv (Ende ZV abgelaufen).',
-    'IIZ, Lehrstelle und Praktikum werden nur für aktive Teilnehmende im Programm ausgewiesen.',
   ];
+  const nUnklar=s.rows.filter(r=>r.programm==='Status unklar').length;
+  if(nUnklar>0) notes.push(`${nUnklar} ${nUnklar===1?'Person hat':'Personen haben'} einen unklaren Status. Sie stehen in der Liste, zählen aber in keiner Kennzahl.`);
   if(s.dupNamen>0) notes.push(`Hinweis: ${s.dupNamen} ${s.dupNamen===1?'Name kommt':'Namen kommen'} mehrfach unter verschiedenen IDs vor. Bitte Duplikate prüfen.`);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);
   doc.text('Hinweise',nx,topY+3.5);
@@ -4302,7 +4305,7 @@ function genTNPDF(){
   const jn=v=>v===true?'Ja':(v===false?'Nein':'–');
   const listBody=cnt
     ? s.rows.map(r=>[
-        (r.nachname&&r.vorname)?`${r.nachname}, ${r.vorname}`:(r.nachname||r.vorname),
+        [r.vorname,r.nachname].filter(Boolean).join(' '),
         r.programm+(r.eintritt?` (ab ${fd(r.eintritt)})`:''),
         jn(r.iiz),jn(r.lehrstelle),jn(r.praktikum),jn(r.schnupper),
       ])
@@ -4344,7 +4347,7 @@ function genTNPDF(){
   pdfFoot(doc,{W,mg,y:202});
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
-  toast(`👥 TN-Statistik: ${kz.total} aktive Teilnehmende, ${kz.schnupper} Schnupperwoche LW`,'t-ok');
+  toast(`👥 TN-Statistik: ${kz.total} aktive Teilnehmende, davon ${kz.schnupper} in der Schnupperwoche`,'t-ok');
 }
 
 // ────────────────────────────────────────────

@@ -171,6 +171,16 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-09 – Teilnehmer-Statistik: Vorname zuerst, Schnupperwoche im Total
+- **Commit:** dieser Commit
+- **Was:** Namen als «Vorname Nachname», Liste nach Vorname sortiert. Das Total umfasst jetzt
+  Aktive und Schnupper-Personen («inkl. Schnupperwoche»); die Schnupperwoche steht als
+  «Davon»-Zeile. Schnupper-Personen zählen bei IIZ nach ihrem IIZ-Feld mit. Hinweisblock
+  angepasst, bei Personen mit unklarem Status erscheint ein zusätzlicher Hinweis.
+- **Warum:** Schnupper-Personen sind aktiv und gehören ins Total.
+- **Betroffen:** `tnStats()`, `genTNPDF()`.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
 ### 2026-10-09 – Zusatzfeld «59d» (Ja/Nein) wie IIZ
 - **Commit:** dieser Commit
 - **Was:** Neues Teilnehmerfeld `f59d` (`ja`/`nein`). Dropdown im Teilnehmerformular, Spalte «59d»
