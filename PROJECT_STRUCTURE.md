@@ -135,7 +135,7 @@ Insgesamt **177 Funktionen**. Die für die Wiederherstellung wichtigsten:
 |---|---|
 | `genPDF` | Zentrale PDF-Erzeugung |
 | `genWeekPDF` | Wochenplan als PDF |
-| `genTNPDF` | Teilnehmerbezogenes PDF |
+| `genTNPDF` | Teilnehmer-Statistik LERNWERKSTATT (A4 quer: Kennzahlen + Teilnehmerübersicht), Berechnung in `tnStats` |
 | `genRapportPDF` | Monatsrapport (BASISJOB-Format) |
 | `genAllRapportsPDF` | Sammel-PDF aller Rapporte |
 | `genBasisjobZIP` | «Monatsrapporte für Sekretariat»: je TN ein eigenes PDF, gebündelt als ZIP |

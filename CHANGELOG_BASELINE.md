@@ -171,6 +171,19 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-09 – Teilnehmer-Statistik: sechs Kennzahlen + Teilnehmerübersicht
+- **Commit:** dieser Commit
+- **Was:** PDF «Teilnehmer-Statistik LERNWERKSTATT» neu aufgebaut (A4 quer). Sechs Kennzahlen
+  mit Mehrfachzuordnung (Lehrstelle und Praktikum zählen auch `prklehr`), darunter eine
+  Liste aller Personen ohne Archiv mit Programmstatus, IIZ, Lehrstelle, Praktikum und
+  Schnupperwoche LW. Unbekannte Status erscheinen als «Status unklar». `isArchived()` nimmt
+  optional einen Stichtag. `*.pdf` in `.gitignore`.
+- **Warum:** Die alte Statistik trennte Lehrstelle/Praktikum als Gruppen, zeigte keine Namen und
+  verwendete eine andere «aktiv»-Definition als die Teilnehmerverwaltung.
+- **Betroffen:** `tnStats()`, `genTNPDF()`, `isArchived()`.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅ (Prüfung nur mit
+  erfundenen Demodaten; die PDF enthält Namen, bleibt lokal, `*.pdf` ist ignoriert)
+
 ### 2026-09-21 – Kurse: ein Zeitraum je Eintrag
 - **Commit:** `7bfbc42`
 - **Was:** Der Bereich „Kurse – manuell, mit Zeiträumen" zeigt nur noch ein Feldpaar

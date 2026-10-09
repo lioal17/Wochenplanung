@@ -332,10 +332,24 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
   kein Netzwerkzugriff, CSP unberührt. Dateinamen UTF-8 (Flag 0x0800) wegen Umlauten.
   Kein Versand, kein E-Mail – nur Download.
 - **`genNeophytPDF`** – Liste „Anzahl Teilnehmende pro Tag" (KW, Datum) übers ganze Jahr.
-- **`genTNPDF`** (Kennzahlen aus `tnStats`) – Teilnehmer-Statistik als PDF: aktive
-  Teilnehmende (exkl. Schnuppern), Anzahl mit aktivem IIZ, Aufschlüsselung nach Status
-  (Lehrstelle/Praktikum/Praktikum+Lehrstelle), Schnuppern separat ausgewiesen.
-  Bezugsmenge = aktive TN (`isActiveOnDay`) am Erstellungstag.
+- **`genTNPDF`** (Berechnung in `tnStats`) – «Teilnehmer-Statistik LERNWERKSTATT» als PDF,
+  A4 quer: sechs Kennzahlen oben, darunter die Teilnehmerübersicht (eine Zeile je Person,
+  Nachname A–Z, Tabellenkopf und Seitenzahl auf jeder Seite). Alles wird bei jedem Export
+  neu aus `DB.participants` berechnet.
+  - **Bezugsmenge:** Teilnehmerliste ohne Archiv (`isArchived`, Ende ZV vor dem Erstellungstag),
+    unabhängig vom Eintrittsdatum. Identifikation per `id`; doppelte IDs und Einträge ohne
+    Namen werden ausgelassen. Bei gleichem Namen mit verschiedener ID erscheint ein Hinweis.
+  - **Programmstatus:** `aktiv`/`praktikum`/`lehrstelle`/`prklehr` → Aktiv, `schnupper` →
+    Schnuppern, jeder andere Wert → «Status unklar» (sichtbar, in keiner Kennzahl gezählt).
+  - **Kennzahlen:** Total = Aktiv · IIZ = Aktiv mit `iiz==='ja'` · Lehrstelle = `lehrstelle`
+    + `prklehr` · Praktikum = `praktikum` + `prklehr` · Lehrstelle und Praktikum = `prklehr` ·
+    Schnupperwoche LW = Programmstatus Schnuppern (nicht im Total). Mehrfachzuordnung
+    möglich, die Summe kann das Total übersteigen. Alle Zahlen werden aus denselben
+    Listenzeilen gezählt.
+  - **Bekannte Grenze:** `sanitizeDB` macht aus leerem Status `aktiv`; ein fehlender Status ist
+    danach nicht mehr erkennbar. Das Wochenplan-Flag `S.LW` fliesst nicht ein.
+  - **Datenschutz:** Die PDF enthält erstmals Namen. Lokaler Download, `*.pdf` ist in
+    `.gitignore`. Nie in Repo, Chat oder an Dritte weitergeben.
 
 ---
 
