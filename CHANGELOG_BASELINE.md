@@ -171,6 +171,22 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-09 – ZV: Felder, einmalige Verlängerung, Montags-Erinnerung, automatische Archivierung
+- **Commit:** dieser Commit
+- **Was:** «Einsatz von/bis» heisst im Formular «ZV von/ZV bis» (Daten unverändert). Neu «Verl. von/Verl. bis»
+  (gesperrt bis «Verlängern», höchstens eine Verlängerung, technisch abgesichert). Formular neu angeordnet
+  (Feldpaare nebeneinander, mobil einspaltig). Erinnerung am Montag, der «ZV bis» am nächsten liegt, als Popup
+  (einmal je Person und ZV, wird nachgeholt) und zentrale Übersicht im Reiter «🔔 ZV» mit Badge. Dritte Aktion
+  «Nicht verlängern». Archivierung rechnet nach dem endgültigen Enddatum; ein offener Entscheid verhindert die
+  Archivierung. Schweizer Datum (`Europe/Zurich`). Neue Felder `verlVon`, `verlBis`, `zvEntscheid`, `zvRef`,
+  `zvPopup` in `sanitizeDB`.
+- **Altbestand:** Abgelaufenes ZV bis gilt beim ersten Laden als entschieden «keine Verlängerung» (bleibt archiviert,
+  keine Erinnerung). Alle bisherigen Teilnehmer-, Plan- und Rapportdaten bleiben unverändert.
+- **Hinweis:** Schnupper-Personen haben keine ZV-Logik (Archivierung wie bisher am Folgetag).
+- **Betroffen:** `isArchived()`, `isActiveOnDay()`, `isRapportArchived()`, Rapport-Ende, `savePM()`, `openPM()`,
+  `loadDB()`/`sanitizeDB()`, Import-Übernahmen, WB-«Austritt».
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
 ### 2026-10-09 – Teilnehmer-Statistik: Vorname zuerst, Schnupperwoche im Total
 - **Commit:** dieser Commit
 - **Was:** Namen als «Vorname Nachname», Liste nach Vorname sortiert. Das Total umfasst jetzt

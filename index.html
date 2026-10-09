@@ -500,6 +500,16 @@ input,select,textarea{font-family:inherit}
 
 /* Form */
 .fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg2 .fi{min-width:0;width:100%}
+@media(max-width:420px){ .fg2{grid-template-columns:1fr} }
+/* ZV-Erinnerungen (Popup + Übersicht) */
+.zv-row{border:1px solid var(--g3);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;
+  display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.zv-row b{font-size:14px;color:var(--g9)}
+.zv-meta{font-size:12.5px;color:var(--g7);margin-top:2px;line-height:1.5}
+.zv-act{display:flex;gap:8px;flex-wrap:wrap}
+.nav-btn.nav-zv{color:#b45309;font-weight:700}
+.nav-btn.nav-zv:hover{color:#fff;background:#b45309}
 .fg{display:flex;flex-direction:column;gap:5px}
 .fg.full{grid-column:1/-1}
 .fg label{font-size:11px;font-weight:700;color:var(--g6);text-transform:uppercase;letter-spacing:.5px}
@@ -608,6 +618,7 @@ input,select,textarea{font-family:inherit}
   <button class="nav-btn"        data-v="person"  onclick="show('person')"  >👥 Teilnehmer</button>
   <button class="nav-btn"        data-v="import"  onclick="show('import')" style="display:none">📥 Dokument-Import</button>
   <button class="nav-btn nav-wbtn" data-v="wbtn"  onclick="show('wbtn')" title="Wirkungsberichte: Übersicht & Erinnerungen">📅 WB-TN</button>
+  <button class="nav-btn nav-zv" data-v="zv" onclick="show('zv')" title="Zielvereinbarungen: offene Entscheide über Verlängerungen">🔔 ZV</button>
   <button class="nav-btn nav-tn" onclick="genTNPDF()" title="Teilnehmer-Statistik (Kennzahlen) als PDF generieren">👥 TN-Statistik</button>
   <button class="nav-btn nav-neophyt" onclick="openNeophytModal()" title="Neophyten-Auswertung: Jahr wählen, Jahres-PDF erzeugen">🌱 Neophyt</button>
 </nav>
@@ -667,6 +678,19 @@ input,select,textarea{font-family:inherit}
         <span class="ar-hint">Sortiert nach nächstfälligem Wirkungsbericht · Ablauf: Arbeitsagoge → Job Coach</span>
       </div>
       <div id="wbtnList" class="wb-cards"></div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════╗
+       ║  VIEW: ZV-ERINNERUNGEN                   ║
+       ╚══════════════════════════════════════════╝ -->
+  <div class="view" id="view-zv">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">🔔 Zielvereinbarungen – offene Entscheide</span>
+        <span class="ar-hint">Fällig am Montag, der «ZV bis» am nächsten liegt · pro Teilnehmer höchstens eine Verlängerung</span>
+      </div>
+      <div id="zvList"></div>
     </div>
   </div>
 
@@ -831,7 +855,7 @@ input,select,textarea{font-family:inherit}
         <option value="yvi">Yvi (Yvonne)</option>
       </select>
     </div>
-    <div class="fg">
+    <div class="fg" style="grid-column:1/-1">
       <label>Bewerben-Zuteilung <small style="text-transform:none;letter-spacing:0">(welcher JC)</small></label>
       <select class="fi" id="f_bwjc">
         <option value="">– gleich wie JC –</option>
@@ -851,14 +875,6 @@ input,select,textarea{font-family:inherit}
       </select>
     </div>
     <div class="fg">
-      <label>Einsatz von <small style="text-transform:none;letter-spacing:0">(Eintritt-Datum)</small></label>
-      <input class="fi" type="date" id="f_von">
-    </div>
-    <div class="fg">
-      <label>Einsatz bis <small style="text-transform:none;letter-spacing:0">(Ende-ZV-Datum)</small></label>
-      <input class="fi" type="date" id="f_bis">
-    </div>
-    <div class="fg">
       <label>IIZ</label>
       <select class="fi" id="f_iiz">
         <option value="nein">Nein</option>
@@ -871,6 +887,26 @@ input,select,textarea{font-family:inherit}
         <option value="nein">Nein</option>
         <option value="ja">Ja</option>
       </select>
+    </div>
+    <div class="fg">
+      <label>ZV von</label>
+      <input class="fi" type="date" id="f_von">
+    </div>
+    <div class="fg">
+      <label>ZV bis</label>
+      <input class="fi" type="date" id="f_bis">
+    </div>
+    <div class="fg">
+      <label>Verl. von</label>
+      <input class="fi" type="date" id="f_vvon" disabled>
+    </div>
+    <div class="fg">
+      <label>Verl. bis</label>
+      <input class="fi" type="date" id="f_vbis" disabled>
+    </div>
+    <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:-4px">
+      <button type="button" class="btn btn-secondary btn-sm" id="btnVerl" onclick="verlFreigeben()" style="display:none">🔁 Verlängern</button>
+      <span id="verlHint" style="font-size:12px;color:var(--g6);line-height:1.4"></span>
     </div>
   </div>
 
@@ -984,6 +1020,20 @@ input,select,textarea{font-family:inherit}
   <div class="modal-foot">
     <button class="btn btn-secondary" onclick="closeRapportModal()">Abbrechen</button>
     <button class="btn btn-primary" onclick="genRapportPDF()">📊 PDF exportieren</button>
+  </div>
+</div>
+</div>
+
+<!-- ZV-ERINNERUNG (Popup am Montag der Teamsitzung) -->
+<div class="overlay" id="zvOverlay">
+<div class="modal" style="max-width:640px">
+  <div class="modal-head">
+    <div class="modal-title">🔔 Zielvereinbarung prüfen</div>
+    <button class="modal-x" onclick="zvClose()">&times;</button>
+  </div>
+  <div id="zvPopupList"></div>
+  <div class="modal-foot">
+    <button class="btn btn-secondary" onclick="zvClose()">Später entscheiden</button>
   </div>
 </div>
 </div>
@@ -1615,6 +1665,8 @@ function sanitizeDB(d){
     .map(p=>{
       let id=_str(p.id);
       if(!_ID_RE.test(id)){ const nid=uid(); if(id) idMap[id]=nid; id=nid; }
+      // Verlängerung nur vollständig (beide Daten): dann gilt 'verlaengert', sonst keine Verl.-Daten.
+      const vv=_dstr2(p.verlVon), vb=_dstr2(p.verlBis), verl=!!(vv&&vb);
       return { id,
         vorname:_str(p.vorname), nachname:_str(p.nachname),
         status:_str(p.status)||'aktiv',
@@ -1623,6 +1675,10 @@ function sanitizeDB(d){
         einsatzVon:_dstr2(p.einsatzVon), einsatzBis:_dstr2(p.einsatzBis),
         iiz:p.iiz==='ja'?'ja':'nein',
         f59d:p.f59d==='ja'?'ja':'nein',
+        verlVon:verl?vv:'', verlBis:verl?vb:'',
+        zvEntscheid:verl?'verlaengert':(p.zvEntscheid==='keine'?'keine':'offen'),
+        zvRef:(typeof p.zvRef==='string')?_dstr2(p.zvRef):null,   // null = Altbestand, noch nicht synchronisiert
+        zvPopup:!!p.zvPopup,
         bemerkung:_str(p.bemerkung),
         wbRounds: Number.isInteger(p.wbRounds) ? p.wbRounds : (p.wb10 ? 1 : 0),
         wbAgInformed: !!p.wbAgInformed,
@@ -1664,6 +1720,7 @@ function loadDB(){
   }catch(e){ console.warn('Load error',e); }
   migrateSchnupper();
   migrateSchulCodes();
+  if(zvSyncAll()) persistQuiet();   // ZV-Entscheid-Status für Altbestand einmalig setzen
 }
 
 // Alt-Daten: frühere Schnupperwoche steckte in plan.bemerkung==='S.LW' → eigenes Feld plan.sw.
@@ -1815,9 +1872,73 @@ function getBlocks(p, date){
   return {vmB,nmB,fullB,vmL,nmL};
 }
 
+// ────────────────────────────────────────────
+// ZIELVEREINBARUNG (ZV): einmalige Verlängerung, Montags-Erinnerung, Archiv
+// Archiv bleibt ABGELEITET (kein gespeichertes Flag): Es gibt nichts auszuführen, das verpasst
+// oder doppelt laufen könnte. Gespeichert wird nur der Entscheid je Person.
+//   zvEntscheid: 'offen' | 'keine' (bewusst keine Verlängerung) | 'verlaengert'
+//   zvRef: ZV bis, auf das sich Entscheid und Popup beziehen. Ändert sich ZV bis, beginnt der
+//          Ablauf neu (zvSync). Altbestand hat zvRef=null und wird beim Laden einmalig gesetzt.
+// ────────────────────────────────────────────
+// Schweizer Datum (Europe/Zurich) als lokales Mitternacht-Date.
+function heuteCH(){
+  let s='';
+  try{ s=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Zurich',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }catch(e){}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) s=ds(new Date());
+  return pd(s);
+}
+const zvGilt=p=>p.status!=='schnupper';            // Schnupper-Personen: keine ZV, keine Erinnerung
+const zvVerlaengert=p=>p.zvEntscheid==='verlaengert'&&!!p.verlVon&&!!p.verlBis;
+const zvEnde=p=>zvVerlaengert(p)?p.verlBis:(p.einsatzBis||'');
+// Nächstgelegener Montag zu einem Datum: Mo–Do zurück zum Montag, Fr–So vor zum nächsten Montag.
+function zvMontag(iso){
+  const d=pd(iso); if(!d) return '';
+  const wd=(d.getDay()+6)%7;                       // Mo=0 … So=6
+  d.setDate(d.getDate()+(wd<=3?-wd:7-wd));
+  return ds(d);
+}
+// Entscheid am Stichtag t (ISO). Nicht synchronisierter Stand wird wie zvSync bewertet.
+function zvEntscheidEff(p,t){
+  if(zvVerlaengert(p)) return 'verlaengert';
+  const bis=p.einsatzBis||'';
+  if(p.zvRef===bis) return p.zvEntscheid==='keine'?'keine':'offen';
+  return (bis&&bis<t)?'keine':'offen';
+}
+// Entscheid-Zustand an das aktuelle ZV bis anbinden. Wirkt nur bei ÄNDERUNG von ZV bis (oder Altbestand):
+// ZV bis in der Vergangenheit = bewusst beendet ('keine'), sonst 'offen' und Erinnerung neu.
+function zvSync(p){
+  if(zvVerlaengert(p)) return false;
+  const bis=p.einsatzBis||'';
+  if(p.zvRef===bis) return false;
+  p.zvEntscheid=zvEntscheidEff(p,ds(heuteCH()));
+  p.zvRef=bis; p.zvPopup=false;
+  return true;
+}
+function zvSyncAll(){ let ch=false; DB.participants.forEach(p=>{ if(zvSync(p)) ch=true; }); return ch; }
+const _okDate=v=>_DATE_RE.test(v||'')&&ds(pd(v))===v;
+function kannVerlaengern(p){ return !!p&&zvGilt(p)&&!!p.einsatzBis&&!zvVerlaengert(p)&&!p.verlVon&&!p.verlBis; }
+// EINZIGER Schreibpfad für die Verlängerung (höchstens einmal). null = gespeichert, sonst Fehlermeldung.
+function applyVerl(p,von,bis){
+  if(!kannVerlaengern(p)) return 'Eine Verlängerung ist nicht möglich (bereits verlängert, Schnuppern oder «ZV bis» fehlt).';
+  if(!_okDate(von)||!_okDate(bis)) return '«Verl. von» und «Verl. bis» müssen beide erfasst werden.';
+  if(von<=p.einsatzBis) return '«Verl. von» muss nach «ZV bis» liegen.';
+  if(bis<=von) return '«Verl. bis» muss nach «Verl. von» liegen.';
+  p.verlVon=von; p.verlBis=bis; p.zvEntscheid='verlaengert'; p.zvRef=p.einsatzBis;
+  return null;
+}
+// Fällig: Entscheid offen, ZV bis gesetzt und der nächstgelegene Montag ist erreicht (Nachholen an jedem Tag).
+function zvFaellig(p,today){
+  if(!p||!zvGilt(p)||!p.einsatzBis||zvVerlaengert(p)) return false;
+  const t=ds(today||heuteCH());
+  return zvEntscheidEff(p,t)==='offen' && zvMontag(p.einsatzBis)<=t;
+}
+
 function isActiveOnDay(p, date){
   if(p.einsatzVon && pd(p.einsatzVon)>date) return false;
-  if(p.einsatzBis && pd(p.einsatzBis)<date) return false;
+  if(p.einsatzBis && pd(p.einsatzBis)<date){
+    // Nach ZV bis nur noch im Zeitraum der (einmaligen) Verlängerung aktiv.
+    return zvVerlaengert(p) && pd(p.verlVon)<=date && date<=pd(p.verlBis);
+  }
   return true;
 }
 
@@ -1945,6 +2066,7 @@ function show(name){
   if(name==='monthly') renderMonthly();
   if(name==='rapport') renderRapport();
   if(name==='wbtn')    renderWBTN();
+  if(name==='zv')      renderZV();
 }
 
 // ────────────────────────────────────────────
@@ -2358,9 +2480,13 @@ function clearCurrentDay(){
 // Daten bleiben unverändert erhalten; wird das Datum wieder in die Zukunft
 // gesetzt (oder geleert), erscheint der TN automatisch wieder in der Liste.
 function isArchived(p, ref){
+  const today=(ref instanceof Date)?new Date(ref):heuteCH(); today.setHours(0,0,0,0);
+  if(zvVerlaengert(p)) return pd(p.verlBis)<today;          // verlängert: erst nach «Verl. bis»
   if(!p.einsatzBis) return false;
-  const today=(ref instanceof Date)?new Date(ref):new Date(); today.setHours(0,0,0,0);
-  return pd(p.einsatzBis)<today;
+  if(pd(p.einsatzBis)>=today) return false;
+  if(!zvGilt(p)) return true;                                // Schnuppern: wie bisher am Folgetag
+  // ZV abgelaufen: archiviert erst nach dem Entscheid «keine Verlängerung». Offener Entscheid hält aktiv.
+  return zvEntscheidEff(p,ds(today))==='keine';
 }
 let _showArchive=false;
 function toggleArchive(){ _showArchive=!_showArchive; renderPersons(); }
@@ -2397,6 +2523,8 @@ function renderPersons(){
           ${p.f59d==='ja'?'<span>🔗 59d</span>':''}
           ${p.einsatzVon?`<span>▶ ${fd(p.einsatzVon)}</span>`:''}
           ${p.einsatzBis?`<span>⏹ ${fd(p.einsatzBis)}</span>`:''}
+          ${zvVerlaengert(p)?`<span>🔁 Verl. ${fd(p.verlVon)} – ${fd(p.verlBis)}</span>`:''}
+          ${zvFaellig(p)?'<span>⏳ ZV-Entscheid offen</span>':''}
           ${p.status!=='schnupper'?`<span>📚 ${sch}</span>`:''}
           ${p.status!=='schnupper'&&krs?`<span>🎓 Kurse: ${krs}</span>`:''}
           ${p.status!=='schnupper'&&p.sporttermine?.length?`<span>🏃 Sport: ${spt}</span>`:''}
@@ -2476,7 +2604,7 @@ function renderWBTN(){
         <div class="wb-field"><b>Eintritt:</b>${fd(p.einsatzVon)}</div>
         <div class="wb-field"><b>Input Arbeitsagoge:</b>${fd(inputAG)}</div>
         <div class="wb-card-status"><span class="wb-pill ${s.cls}">${s.icon} ${s.label}</span></div>
-        <div class="wb-field"><b>Austritt:</b>${p.einsatzBis?fd(p.einsatzBis):'–'}</div>
+        <div class="wb-field"><b>Austritt:</b>${zvEnde(p)?fd(zvEnde(p)):'–'}</div>
         <div class="wb-field"><b>WB Job Coach:</b>${fd(wb)}</div>
       </div>
       <div class="wb-card-actions">
@@ -2541,7 +2669,7 @@ function wbUpdateBadge(){
   }
 }
 
-function openPM(id=null){
+function openPM(id=null,opts={}){
   editId=id; tSch=[]; tSpt=[]; tKurse=[];
   document.getElementById('pmTitle').textContent=id?'Teilnehmer bearbeiten':'Teilnehmer hinzufügen';
   const p=id?DB.participants.find(x=>x.id===id):null;
@@ -2554,6 +2682,9 @@ function openPM(id=null){
   g('f_sw').value=p?.stammwerkstatt||'';
   g('f_von').value=p?.einsatzVon||'';
   g('f_bis').value=p?.einsatzBis||'';
+  g('f_vvon').value=p?.verlVon||'';
+  g('f_vbis').value=p?.verlBis||'';
+  verlUi(p,!!opts.verlaengern);
   g('f_iiz').value=p?.iiz||'nein';
   g('f_59d').value=p?.f59d||'nein';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tKurse=[...(p.kurse||[])]; }
@@ -2564,6 +2695,29 @@ function openPM(id=null){
 }
 
 function closePM(){ document.getElementById('pmOverlay').classList.remove('open'); }
+
+// Verl.-Felder sind gesperrt, bis «Verlängern» gewählt wird. Nach gespeicherter Verlängerung bleiben
+// sie sichtbar und gesperrt (höchstens eine Verlängerung).
+let _verlFrei=false;
+function verlUi(p,freigeben){
+  const g=id=>document.getElementById(id);
+  const verl=!!p&&zvVerlaengert(p);
+  const kann=!!p&&kannVerlaengern(p);
+  const frei=kann&&!!freigeben;
+  _verlFrei=frei;
+  g('f_vvon').disabled=!frei; g('f_vbis').disabled=!frei;
+  g('btnVerl').style.display=(kann&&!frei)?'':'none';
+  g('verlHint').textContent=verl?'Verlängerung gespeichert. Eine weitere Verlängerung ist nicht möglich.'
+    :frei?'Beide Daten erfassen und speichern. Die Verlängerung kann danach nicht mehr geändert werden.'
+    :!p?'Verlängerung erst nach dem Speichern der Person möglich.'
+    :!zvGilt(p)?'Für Schnupper-Personen gibt es keine Verlängerung.'
+    :!p.einsatzBis?'Zuerst «ZV bis» erfassen und speichern.':'';
+}
+function verlFreigeben(){
+  const p=DB.participants.find(x=>x.id===editId);
+  verlUi(p,true);
+  document.getElementById('f_vvon').focus();
+}
 
 function onSt(){
   const s=document.getElementById('f_st').value;
@@ -2666,31 +2820,48 @@ function onBemChange(sel, pid, day){
 }
 
 function savePM(){
-  const vn=document.getElementById('f_vn').value.trim();
-  const nn=document.getElementById('f_nn').value.trim();
+  const g=id=>document.getElementById(id);
+  const vn=g('f_vn').value.trim();
+  const nn=g('f_nn').value.trim();
   if(!vn||!nn){toast('Vor- und Nachname erforderlich','t-err');return;}
   const data={
     vorname:vn,nachname:nn,
-    status:document.getElementById('f_st').value,
-    jobCoach:document.getElementById('f_jc').value,
-    bewerbenJC:document.getElementById('f_bwjc').value,
-    stammwerkstatt:document.getElementById('f_sw').value,
-    einsatzVon:document.getElementById('f_von').value,
-    einsatzBis:document.getElementById('f_bis').value,
-    iiz:document.getElementById('f_iiz').value,
-    f59d:document.getElementById('f_59d').value,
-    bemerkung:document.getElementById('f_pbm').value,
+    status:g('f_st').value,
+    jobCoach:g('f_jc').value,
+    bewerbenJC:g('f_bwjc').value,
+    stammwerkstatt:g('f_sw').value,
+    einsatzVon:g('f_von').value,
+    einsatzBis:g('f_bis').value,
+    iiz:g('f_iiz').value,
+    f59d:g('f_59d').value,
+    bemerkung:g('f_pbm').value,
     schultage:[...tSch],sporttermine:[...tSpt],kurse:[...tKurse],
   };
-  if(editId){
-    const idx=DB.participants.findIndex(p=>p.id===editId);
-    DB.participants[idx]={...DB.participants[idx],...data};
-  } else {
-    DB.participants.push({id:uid(),...data});
+  const ex=editId?DB.participants.find(p=>p.id===editId):null;
+  // Verlängerung (höchstens einmal): erst prüfen, dann nach Rückfrage speichern.
+  let verl=null;
+  if(ex&&_verlFrei){
+    const von=g('f_vvon').value, bis=g('f_vbis').value;
+    if(von||bis){
+      const err=applyVerl({...ex,...data},von,bis);   // Probelauf auf einer Kopie
+      if(err){toast(err,'t-err');return;}
+      if(!confirm(`Verlängerung speichern?\n\n${vn} ${nn}\nVerl. von: ${fd(von)}\nVerl. bis: ${fd(bis)}\n\nDie Verlängerung kann danach nicht mehr geändert werden. Eine weitere Verlängerung ist nicht möglich.`)) return;
+      verl={von,bis};
+    }
   }
+  // Bestehende Verlängerung: ZV bis darf sie nicht unterlaufen.
+  if(ex&&zvVerlaengert(ex)){
+    if(!data.einsatzBis){toast('«ZV bis» darf bei vorhandener Verlängerung nicht leer sein','t-err');return;}
+    if(ex.verlVon<=data.einsatzBis){toast('«ZV bis» muss vor «Verl. von» liegen','t-err');return;}
+  }
+  let p;
+  if(ex){ Object.assign(ex,data); p=ex; }
+  else { p={id:uid(),...data,verlVon:'',verlBis:'',zvEntscheid:'offen',zvRef:null,zvPopup:false}; DB.participants.push(p); }
+  if(verl) applyVerl(p,verl.von,verl.bis);
+  zvSync(p);   // ZV bis geändert? Dann Entscheid/Erinnerung neu (Datum in der Vergangenheit = bewusst beendet)
   _pSortDay=null; // invalidate sort cache
-  saveDB(); closePM(); renderPersons(); renderWBTN();
-  toast(`✓ ${vn} ${nn} gespeichert`,'t-ok');
+  saveDB(); closePM(); renderPersons(); renderWBTN(); zvRefresh();
+  toast(`✓ ${vn} ${nn} gespeichert${verl?' · Verlängerung erfasst':''}`,'t-ok');
 }
 
 function delPerson(id){
@@ -2868,9 +3039,10 @@ function setRptNote(pid,y,month,txt){ if(!DB.rptNotes)DB.rptNotes={}; DB.rptNote
 // (damit der letzte Monatsrapport noch erstellt werden kann) und verschwinden
 // danach automatisch – analog zum Archiv der Teilnehmerliste.
 function isRapportArchived(p){
-  if(!p.einsatzBis) return false;
+  const ende=zvEnde(p);
+  if(!ende) return false;
   const cutoff=new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate()-14);
-  return pd(p.einsatzBis)<cutoff;
+  return pd(ende)<cutoff;
 }
 
 function renderRapport(){
@@ -3613,7 +3785,7 @@ function genRapportPDF(){
   //   Daher den Endpunkt bis zum letzten tatsächlich eingesteuerten Planungstag (planMax) ziehen.
   const todayEnd=new Date(); todayEnd.setHours(23,59,59,999);
   let endBase=todayEnd;
-  if(p.einsatzBis){ const bis=pd(p.einsatzBis); if(bis<endBase) endBase=bis; }
+  if(zvEnde(p)){ const bis=pd(zvEnde(p)); if(bis<endBase) endBase=bis; }
   endDate=endBase;
   if(planMax && planMax>endDate) endDate=planMax;   // eingesteuerte Planung über heute/Austritt hinaus
   rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
@@ -4279,7 +4451,7 @@ function genTNPDF(){
     'Mehrfachzuordnungen sind möglich: Die Summe der Einzelkennzahlen kann das Total übersteigen. Jede Person zählt je Kennzahl höchstens einmal.',
     'Personen mit Lehrstelle und Praktikum sind in beiden Einzelkennzahlen enthalten.',
     'Die Schnupperwoche ist im Total enthalten und wird zusätzlich als Davon-Zeile ausgewiesen.',
-    'Nicht enthalten sind Personen im Archiv (Ende ZV abgelaufen).',
+    'Nicht enthalten sind Personen im Archiv (ZV bzw. Verlängerung abgelaufen und entschieden).',
   ];
   const nUnklar=s.rows.filter(r=>r.programm==='Status unklar').length;
   if(nUnklar>0) notes.push(`${nUnklar} ${nUnklar===1?'Person hat':'Personen haben'} einen unklaren Status. Sie stehen in der Liste, zählen aber in keiner Kennzahl.`);
@@ -4348,6 +4520,86 @@ function genTNPDF(){
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
   toast(`👥 TN-Statistik: ${kz.total} aktive Teilnehmende, davon ${kz.schnupper} in der Schnupperwoche`,'t-ok');
+}
+
+// ────────────────────────────────────────────
+// ZV-ERINNERUNGEN: Popup (einmal je Teilnehmer und ZV) + zentrale Übersicht
+// ────────────────────────────────────────────
+// Speichert ohne das «ungesichert»-Flag (Migration/Popup-Merker sind keine Nutzeränderung).
+function persistQuiet(){ try{ localStorage.setItem(DBKEY,JSON.stringify(DB)); }catch(e){ console.warn('Speichern fehlgeschlagen',e); } }
+
+function zvFaelligListe(){
+  const t=heuteCH();
+  return DB.participants.filter(p=>zvFaellig(p,t))
+    .sort((a,b)=>a.einsatzBis.localeCompare(b.einsatzBis)||byName(a,b));
+}
+function zvRowHtml(p){
+  const id=esc(p.id);
+  return `<div class="zv-row">
+    <div>
+      <b>${esc(p.vorname)} ${esc(p.nachname)}</b>
+      <div class="zv-meta">Job Coach: ${esc(JC_LBL[p.jobCoach]||'–')} · ZV bis: ${fd(p.einsatzBis)}<br>Eine Entscheidung über die Verlängerung ist notwendig.</div>
+    </div>
+    <div class="zv-act">
+      <button class="btn btn-primary btn-sm" onclick="zvVerlaengern('${id}')">Verlängern</button>
+      <button class="btn btn-secondary btn-sm" onclick="zvNichtVerlaengern('${id}')">Nicht verlängern</button>
+    </div>
+  </div>`;
+}
+function zvBadge(n){
+  const tab=document.querySelector('.nav-btn[data-v="zv"]');
+  tab?.querySelector('.n-badge')?.remove();
+  if(n){ const b=document.createElement('span'); b.className='n-badge'; b.textContent=n; tab?.appendChild(b); }
+}
+function renderZV(){
+  const el=document.getElementById('zvList'); if(!el) return;
+  const due=zvFaelligListe();
+  el.innerHTML=due.length?due.map(zvRowHtml).join('')
+    :`<div class="empty-state" style="padding:26px;text-align:center;color:var(--g6)">Keine offenen Entscheide.</div>`;
+  zvBadge(due.length);
+}
+function zvOpen(list){
+  document.getElementById('zvPopupList').innerHTML=list.map(zvRowHtml).join('');
+  document.getElementById('zvOverlay').classList.add('open');
+}
+function zvClose(){ document.getElementById('zvOverlay').classList.remove('open'); }
+// Nach jeder Änderung: Badge, Übersicht und offenes Popup aktualisieren.
+function zvRefresh(){
+  const due=zvFaelligListe();
+  zvBadge(due.length);
+  if(document.getElementById('view-zv').classList.contains('active')) renderZV();
+  const ov=document.getElementById('zvOverlay');
+  if(ov.classList.contains('open')){
+    const ids=new Set([...ov.querySelectorAll('[onclick^="zvVerlaengern"]')].map(b=>/'([^']+)'/.exec(b.getAttribute('onclick'))[1]));
+    const rest=due.filter(p=>ids.has(p.id));
+    if(rest.length) document.getElementById('zvPopupList').innerHTML=rest.map(zvRowHtml).join(''); else zvClose();
+  }
+}
+// Beim Start und beim Zurückkehren in den Tab: fällige Erinnerungen nachholen (an jedem Wochentag).
+// Das Popup erscheint nur für Personen, bei denen es für dieses ZV noch nicht gezeigt wurde.
+function zvCheck(){
+  if(zvSyncAll()) persistQuiet();
+  const due=zvFaelligListe();
+  zvBadge(due.length);
+  if(document.getElementById('view-zv').classList.contains('active')) renderZV();
+  const neu=due.filter(p=>!p.zvPopup);
+  if(!neu.length) return;
+  if(document.getElementById('zvOverlay').classList.contains('open')||document.getElementById('pmOverlay').classList.contains('open')) return;
+  neu.forEach(p=>{ p.zvPopup=true; });
+  persistQuiet();
+  zvOpen(neu);
+}
+function zvVerlaengern(id){
+  const p=DB.participants.find(x=>x.id===id); if(!p||!zvFaellig(p)) return;
+  zvClose(); show('person'); openPM(id,{verlaengern:true});
+}
+function zvNichtVerlaengern(id){
+  const p=DB.participants.find(x=>x.id===id); if(!p||!zvFaellig(p)) return;
+  const abgelaufen=pd(p.einsatzBis)<heuteCH();
+  if(!confirm(`Keine Verlängerung für ${p.vorname} ${p.nachname}?\n\nZV bis: ${fd(p.einsatzBis)}. Die Person wird ${abgelaufen?'sofort':'am Tag nach «ZV bis»'} archiviert.`)) return;
+  p.zvEntscheid='keine'; p.zvRef=p.einsatzBis||'';
+  saveDB(); renderPersons(); renderWBTN(); zvRefresh();
+  toast(`✓ ${p.vorname} ${p.nachname}: keine Verlängerung`,'t-ok');
 }
 
 // ────────────────────────────────────────────
@@ -4488,8 +4740,8 @@ async function doImportFSA(){
 function _jsonImportDiff(incoming, incomingPlans){
   const FIELDS=[
     ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
-    ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
-    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['f59d','59d'],['bemerkung','Bemerkung'],
+    ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','ZV von'],
+    ['einsatzBis','ZV bis'],['verlVon','Verl. von'],['verlBis','Verl. bis'],['iiz','IIZ'],['f59d','59d'],['bemerkung','Bemerkung'],
     ['schultage','Schultage'],['sporttermine','Sport'],
     ['wbRounds','WB-Runden'],
   ];
@@ -4568,6 +4820,7 @@ function confirmImportPreview(){
   closeImportPreview();
   if(!d) return;
   DB.participants=d.participants||[]; DB.plans=d.plans||{}; DB.rptNotes=d.rptNotes||{};
+  zvSyncAll();
   saveDB(); dirty=false; updateSaveInfo();
   toast('📂 Daten erfolgreich importiert','t-ok');
   const active=document.querySelector('.nav-btn.active');
@@ -4750,9 +5003,9 @@ function _impConflicts(existing,p){
     c.push({field:'sporttermine',label:'Sport',
       old:existing.sporttermine.map(d=>WD[d]).join(', '),neu:p.spt.map(d=>WD[d]).join(', ')});
   if(p.von && existing.einsatzVon && existing.einsatzVon!==p.von)
-    c.push({field:'einsatzVon',label:'Einsatz von',old:fd(existing.einsatzVon),neu:fd(p.von)});
+    c.push({field:'einsatzVon',label:'ZV von',old:fd(existing.einsatzVon),neu:fd(p.von)});
   if(p.bis && existing.einsatzBis && existing.einsatzBis!==p.bis)
-    c.push({field:'einsatzBis',label:'Einsatz bis',old:fd(existing.einsatzBis),neu:fd(p.bis)});
+    c.push({field:'einsatzBis',label:'ZV bis',old:fd(existing.einsatzBis),neu:fd(p.bis)});
   return c;
 }
 
@@ -4968,6 +5221,7 @@ function doImportDoc(){
   });
 
   if(added+updated>0){
+    zvSyncAll();
     saveDB(); renderWBTN(); renderImpTable();
     toast(`✓ ${added} hinzugefügt${updated?', '+updated+' aktualisiert':''}`, 't-ok');
     setTimeout(()=>show('person'),700);
@@ -5027,6 +5281,8 @@ function init(){
     dz.addEventListener('dragleave',()=>dz.classList.remove('dz-over'));
   }
   show('plan');
+  zvCheck();
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) zvCheck(); });
 }
 
 init();
