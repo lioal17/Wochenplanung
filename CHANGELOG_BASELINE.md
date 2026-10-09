@@ -171,6 +171,27 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-09 – Teilnehmer-Statistik: Vorname zuerst, Schnupperwoche im Total
+- **Commit:** dieser Commit
+- **Was:** Namen als «Vorname Nachname», Liste nach Vorname sortiert. Das Total umfasst jetzt
+  Aktive und Schnupper-Personen («inkl. Schnupperwoche»); die Schnupperwoche steht als
+  «Davon»-Zeile. Schnupper-Personen zählen bei IIZ nach ihrem IIZ-Feld mit. Hinweisblock
+  angepasst, bei Personen mit unklarem Status erscheint ein zusätzlicher Hinweis.
+- **Warum:** Schnupper-Personen sind aktiv und gehören ins Total.
+- **Betroffen:** `tnStats()`, `genTNPDF()`.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
+### 2026-10-09 – Zusatzfeld «59d» (Ja/Nein) wie IIZ
+- **Commit:** dieser Commit
+- **Was:** Neues Teilnehmerfeld `f59d` (`ja`/`nein`). Dropdown im Teilnehmerformular, Spalte «59d»
+  rechts von IIZ im Tagesplan, Badge auf der Teilnehmerkarte. Aufgenommen in `sanitizeDB`
+  (sonst würde das Feld beim Laden gelöscht), in die Vorschau des JSON-Imports und in die
+  Neuanlage per Dokument-Import (`nein`). Alte Sicherungen ohne Feld ergeben `nein`.
+- **Warum:** Zusätzliche Kennzeichnung bei den Teilnehmenden, die in der Wocheneinplanung sichtbar sein soll.
+- **Betroffen:** Teilnehmerformular, `sanitizeDB()`, `renderDayPlan()`, `renderPersons()`,
+  `_jsonImportDiff()`, Dokument-Import. Nicht in Teilnehmer-Statistik und Wochenplan-PDF.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
 ### 2026-10-09 – Teilnehmer-Statistik: sechs Kennzahlen + Teilnehmerübersicht
 - **Commit:** dieser Commit
 - **Was:** PDF «Teilnehmer-Statistik LERNWERKSTATT» neu aufgebaut (A4 quer). Sechs Kennzahlen

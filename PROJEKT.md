@@ -59,7 +59,8 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `stammwerkstatt` | string | Stammwerkstatt |
 | `einsatzVon` | `YYYY-MM-DD` | **Eintritt** (= Einsatz von) |
 | `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
-| `iiz` | string | IIZ-Feld |
+| `iiz` | string | IIZ-Feld (`ja`/`nein`) |
+| `f59d` | string | Feld «59d» (`ja`/`nein`), gleiche Regel wie `iiz`: im Teilnehmerformular gesetzt, als Spalte im Tagesplan und als Badge auf der Teilnehmerkarte sichtbar. Reine Kennzeichnung, keine Wirkung auf die Planung. Fehlt das Feld (alte Sicherung), gilt `nein`. |
 | `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
 | `wbAgInformed` | bool | „Arbeitsagoge informiert" der **laufenden** WB-Runde (Ampel 🔴→🟡; wird bei Rundenabschluss/-reset auf `false` gesetzt) |
 | `bemerkung` | string | Freitext |
@@ -334,16 +335,17 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
 - **`genNeophytPDF`** – Liste „Anzahl Teilnehmende pro Tag" (KW, Datum) übers ganze Jahr.
 - **`genTNPDF`** (Berechnung in `tnStats`) – «Teilnehmer-Statistik LERNWERKSTATT» als PDF,
   A4 quer: sechs Kennzahlen oben, darunter die Teilnehmerübersicht (eine Zeile je Person,
-  Nachname A–Z, Tabellenkopf und Seitenzahl auf jeder Seite). Alles wird bei jedem Export
+  «Vorname Nachname», sortiert nach Vorname, Tabellenkopf und Seitenzahl auf jeder Seite). Alles wird bei jedem Export
   neu aus `DB.participants` berechnet.
   - **Bezugsmenge:** Teilnehmerliste ohne Archiv (`isArchived`, Ende ZV vor dem Erstellungstag),
     unabhängig vom Eintrittsdatum. Identifikation per `id`; doppelte IDs und Einträge ohne
     Namen werden ausgelassen. Bei gleichem Namen mit verschiedener ID erscheint ein Hinweis.
   - **Programmstatus:** `aktiv`/`praktikum`/`lehrstelle`/`prklehr` → Aktiv, `schnupper` →
     Schnuppern, jeder andere Wert → «Status unklar» (sichtbar, in keiner Kennzahl gezählt).
-  - **Kennzahlen:** Total = Aktiv · IIZ = Aktiv mit `iiz==='ja'` · Lehrstelle = `lehrstelle`
-    + `prklehr` · Praktikum = `praktikum` + `prklehr` · Lehrstelle und Praktikum = `prklehr` ·
-    Schnupperwoche LW = Programmstatus Schnuppern (nicht im Total). Mehrfachzuordnung
+  - **Kennzahlen:** Total = Aktiv + Schnuppern (Schnupper-Personen sind aktiv) · IIZ = Aktiv
+    oder Schnuppern mit `iiz==='ja'` · Lehrstelle = `lehrstelle` + `prklehr` · Praktikum =
+    `praktikum` + `prklehr` · Lehrstelle und Praktikum = `prklehr` · «Davon in der
+    Schnupperwoche» = Programmstatus Schnuppern (Teilmenge des Totals). Mehrfachzuordnung
     möglich, die Summe kann das Total übersteigen. Alle Zahlen werden aus denselben
     Listenzeilen gezählt.
   - **Bekannte Grenze:** `sanitizeDB` macht aus leerem Status `aktiv`; ein fehlender Status ist
