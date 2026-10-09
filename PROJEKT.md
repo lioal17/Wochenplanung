@@ -57,8 +57,12 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `jobCoach` | `lio`\|`tom`\|`yvi` | zuständiger Jobcoach |
 | `bewerbenJC` | string | Jobcoach für „Bewerben" (Fallback: `jobCoach`) |
 | `stammwerkstatt` | string | Stammwerkstatt |
-| `einsatzVon` | `YYYY-MM-DD` | **Eintritt** (= Einsatz von) |
-| `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
+| `einsatzVon` | `YYYY-MM-DD` | **ZV von** (Eintritt). Datenfeld unverändert, nur die Beschriftung im Formular ist «ZV von» |
+| `einsatzBis` | `YYYY-MM-DD` | **ZV bis** (Ende der Zielvereinbarung). Beschriftung «ZV bis» |
+| `verlVon`, `verlBis` | `YYYY-MM-DD` | Einmalige **Verlängerung** (siehe §5.2a). Nur vollständig (beide Daten) gültig |
+| `zvEntscheid` | string | `offen` \| `keine` (bewusst keine Verlängerung) \| `verlaengert` |
+| `zvRef` | `YYYY-MM-DD`\|`null` | ZV bis, auf das sich Entscheid und Popup beziehen. `null` = Altbestand, wird beim Laden einmalig gesetzt |
+| `zvPopup` | bool | Erinnerungs-Popup für dieses ZV bereits gezeigt |
 | `iiz` | string | IIZ-Feld (`ja`/`nein`) |
 | `f59d` | string | Feld «59d» (`ja`/`nein`), gleiche Regel wie `iiz`: im Teilnehmerformular gesetzt, als Spalte im Tagesplan und als Badge auf der Teilnehmerkarte sichtbar. Reine Kennzeichnung, keine Wirkung auf die Planung. Fehlt das Feld (alte Sicherung), gilt `nein`. |
 | `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
@@ -206,6 +210,7 @@ Top-Navigation (`show(view)`):
 5. **📥 Dokument-Import** (`import`) – Teilnehmerlisten aus PDF/Excel/Word einlesen.
 6. **🌱 Neophyt** – direkter PDF-Export (Anzahl Teilnehmende pro Tag mit KW & Datum).
 7. **👥 TN-Statistik** – direkter PDF-Export mit Teilnehmer-Kennzahlen (siehe §7).
+8. **🔔 ZV** (`zv`) – offene Entscheide über Verlängerungen (siehe §5.2a), mit Zähler-Badge.
 
 Zusätzlich: **Teilnehmer-Rapport** (Modal, siehe §6) und diverse Speicher-/Import-Knöpfe.
 
@@ -229,7 +234,33 @@ Bestimmt „gesperrte" Slots (Schule/Sport/Praktikum), die nicht frei einteilbar
 - Aus `p.sporttermine` → NM-Slot Label `Sport`.
 
 ### 5.2 `isActiveOnDay(p, date)`
-`false`, wenn `date` vor `einsatzVon` oder nach `einsatzBis` liegt.
+`false`, wenn `date` vor `einsatzVon` liegt. Nach `einsatzBis` nur noch aktiv, wenn eine Verlängerung
+gespeichert ist und `date` im Zeitraum `verlVon … verlBis` liegt (Tage dazwischen sind inaktiv).
+
+### 5.2a Zielvereinbarung (ZV), Verlängerung, Erinnerung, Archiv
+- **Archiv ist abgeleitet** (`isArchived`), es gibt kein gespeichertes Archiv-Flag. Damit gibt es nichts,
+  was verpasst oder doppelt ausgeführt werden könnte; wird die App später geöffnet, gilt der Stand sofort.
+  - Verlängert: archiviert ab dem Tag nach `verlBis`. `einsatzBis` löst dann nichts mehr aus.
+  - Nicht verlängert: archiviert ab dem Tag nach `einsatzBis`, **aber nur wenn der Entscheid «keine
+    Verlängerung» vorliegt**. Ein offener Entscheid hält die Person aktiv (Teamsitzung am Montag).
+  - Status `schnupper`: keine ZV-Logik, Archivierung wie bisher am Tag nach `einsatzBis`.
+  - Kein `einsatzBis`: nie archiviert.
+- **Erinnerung:** fällig am Montag, der `einsatzBis` am nächsten liegt (`zvMontag`: Mo–Do zurück zum Montag,
+  Fr–So vor zum nächsten Montag), solange der Entscheid offen ist. Wird die App später geöffnet, wird
+  nachgeholt. Das Popup erscheint je Person und ZV genau einmal (`zvPopup`); offene Entscheide bleiben im
+  Reiter «🔔 ZV» sichtbar. Prüfung beim Start und beim Zurückkehren in den Tab (`zvCheck`).
+- **Aktionen:** «Verlängern» (öffnet die Maske mit freigeschalteten Verl.-Feldern), «Nicht verlängern»
+  (setzt `zvEntscheid='keine'`, nach Rückfrage), «Später entscheiden» (schliesst nur das Popup).
+- **Verlängerung höchstens einmal.** Einziger Schreibpfad ist `applyVerl(p,von,bis)`: `verlVon > einsatzBis`,
+  `verlBis > verlVon`, nur wenn `kannVerlaengern(p)`. Die Maske ignoriert Verl.-Felder, wenn sie nicht
+  freigeschaltet sind, `sanitizeDB` verwirft unvollständige Verlängerungen. Nach dem Speichern sind die
+  Daten sichtbar, aber nicht mehr änderbar (Rückfrage vor dem Speichern).
+- **`zvSync`:** Ändert sich `einsatzBis` (Maske, Import) oder ist es Altbestand, wird der Entscheid neu
+  gesetzt: ZV bis in der Vergangenheit = bewusst beendet (`keine`, damit bleibt «manuell archivieren» durch
+  ein vergangenes Enddatum erhalten), sonst `offen` mit neuem Erinnerungsdatum. Altbestand mit bereits
+  abgelaufenem ZV bis gilt damit als entschieden und bleibt archiviert, ohne Erinnerung.
+- Datum = Schweizer Datum (`heuteCH`, `Europe/Zurich`). Rapport-Ende, Rapport-Auswahl und WB-«Austritt»
+  rechnen mit `zvEnde(p)` (= `verlBis`, sonst `einsatzBis`).
 
 ### 5.3 Slot-Priorität bei der Darstellung
 **Absenz (je Halbtag) > manueller Tages-Eintrag (`plan.vm`/`plan.nm`, Schule- oder
