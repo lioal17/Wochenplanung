@@ -59,7 +59,8 @@ let DB = { participants:[], plans:{}, rptNotes:{} };
 | `stammwerkstatt` | string | Stammwerkstatt |
 | `einsatzVon` | `YYYY-MM-DD` | **Eintritt** (= Einsatz von) |
 | `einsatzBis` | `YYYY-MM-DD` | **Ende ZV** (= Einsatz bis) |
-| `iiz` | string | IIZ-Feld |
+| `iiz` | string | IIZ-Feld (`ja`/`nein`) |
+| `f59d` | string | Feld «59d» (`ja`/`nein`), gleiche Regel wie `iiz`: im Teilnehmerformular gesetzt, als Spalte im Tagesplan und als Badge auf der Teilnehmerkarte sichtbar. Reine Kennzeichnung, keine Wirkung auf die Planung. Fehlt das Feld (alte Sicherung), gilt `nein`. |
 | `wbRounds` | number | Anzahl abgeschlossener Wirkungsbericht-Runden (Zyklus ab `einsatzVon`; Default `0`) |
 | `wbAgInformed` | bool | „Arbeitsagoge informiert" der **laufenden** WB-Runde (Ampel 🔴→🟡; wird bei Rundenabschluss/-reset auf `false` gesetzt) |
 | `bemerkung` | string | Freitext |

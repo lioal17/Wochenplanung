@@ -171,6 +171,17 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-09 – Zusatzfeld «59d» (Ja/Nein) wie IIZ
+- **Commit:** dieser Commit
+- **Was:** Neues Teilnehmerfeld `f59d` (`ja`/`nein`). Dropdown im Teilnehmerformular, Spalte «59d»
+  rechts von IIZ im Tagesplan, Badge auf der Teilnehmerkarte. Aufgenommen in `sanitizeDB`
+  (sonst würde das Feld beim Laden gelöscht), in die Vorschau des JSON-Imports und in die
+  Neuanlage per Dokument-Import (`nein`). Alte Sicherungen ohne Feld ergeben `nein`.
+- **Warum:** Zusätzliche Kennzeichnung bei den Teilnehmenden, die in der Wocheneinplanung sichtbar sein soll.
+- **Betroffen:** Teilnehmerformular, `sanitizeDB()`, `renderDayPlan()`, `renderPersons()`,
+  `_jsonImportDiff()`, Dokument-Import. Nicht in Teilnehmer-Statistik und Wochenplan-PDF.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
+
 ### 2026-10-09 – Teilnehmer-Statistik: sechs Kennzahlen + Teilnehmerübersicht
 - **Commit:** dieser Commit
 - **Was:** PDF «Teilnehmer-Statistik LERNWERKSTATT» neu aufgebaut (A4 quer). Sechs Kennzahlen

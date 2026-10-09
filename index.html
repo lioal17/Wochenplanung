@@ -865,6 +865,13 @@ input,select,textarea{font-family:inherit}
         <option value="ja">Ja</option>
       </select>
     </div>
+    <div class="fg">
+      <label>59<span style="text-transform:lowercase">d</span></label>
+      <select class="fi" id="f_59d">
+        <option value="nein">Nein</option>
+        <option value="ja">Ja</option>
+      </select>
+    </div>
   </div>
 
   <!-- Schultage / Sport / Fix (hidden for Schnupper) -->
@@ -1615,6 +1622,7 @@ function sanitizeDB(d){
         stammwerkstatt:_str(p.stammwerkstatt),
         einsatzVon:_dstr2(p.einsatzVon), einsatzBis:_dstr2(p.einsatzBis),
         iiz:p.iiz==='ja'?'ja':'nein',
+        f59d:p.f59d==='ja'?'ja':'nein',
         bemerkung:_str(p.bemerkung),
         wbRounds: Number.isInteger(p.wbRounds) ? p.wbRounds : (p.wb10 ? 1 : 0),
         wbAgInformed: !!p.wbAgInformed,
@@ -2133,6 +2141,7 @@ function renderDayPlan(){
       <td><span class="cell-name${nameGreen?' cell-name-green':''}">${esc(p.vorname)} ${esc(p.nachname)}</span>${chip}</td>
       <td style="text-align:center">${jcBadge}</td>
       <td style="text-align:center;font-size:11px;font-weight:600">${p.iiz==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
+      <td style="text-align:center;font-size:11px;font-weight:600">${p.f59d==='ja'?'<span style="color:var(--green)">Ja</span>':'Nein'}</td>
       <td style="text-align:center">${bwDot}</td>
       <td>${vmCell}</td>
       <td>${nmCell}</td>
@@ -2192,6 +2201,7 @@ function renderDayPlan(){
           <th style="width:210px">Name</th>
           <th style="width:58px;text-align:center">JC</th>
           <th style="width:44px;text-align:center">IIZ</th>
+          <th style="width:44px;text-align:center">59d</th>
           <th style="width:38px;text-align:center">BW</th>
           <th style="text-align:center">VM 08:15–12:00</th>
           <th style="text-align:center">NM 13:15–17:00</th>
@@ -2384,6 +2394,7 @@ function renderPersons(){
           <span>📌 ${esc(stLbl[p.status]||p.status)}</span>
           ${p.jobCoach?`<span>👤 JC: ${JC_LBL[p.jobCoach]||''}</span>`:''}
           ${p.iiz==='ja'?'<span>🔗 IIZ</span>':''}
+          ${p.f59d==='ja'?'<span>🔗 59d</span>':''}
           ${p.einsatzVon?`<span>▶ ${fd(p.einsatzVon)}</span>`:''}
           ${p.einsatzBis?`<span>⏹ ${fd(p.einsatzBis)}</span>`:''}
           ${p.status!=='schnupper'?`<span>📚 ${sch}</span>`:''}
@@ -2544,6 +2555,7 @@ function openPM(id=null){
   g('f_von').value=p?.einsatzVon||'';
   g('f_bis').value=p?.einsatzBis||'';
   g('f_iiz').value=p?.iiz||'nein';
+  g('f_59d').value=p?.f59d||'nein';
   if(p){ tSch=[...(p.schultage||[])]; tSpt=[...(p.sporttermine||[])]; tKurse=[...(p.kurse||[])]; }
   g('f_pbm').value=p?.bemerkung||'';
   [...Z_FIELDS,...SZ_FIELDS].forEach(id=>{const el=g(id); if(el) el.value='';});
@@ -2666,6 +2678,7 @@ function savePM(){
     einsatzVon:document.getElementById('f_von').value,
     einsatzBis:document.getElementById('f_bis').value,
     iiz:document.getElementById('f_iiz').value,
+    f59d:document.getElementById('f_59d').value,
     bemerkung:document.getElementById('f_pbm').value,
     schultage:[...tSch],sporttermine:[...tSpt],kurse:[...tKurse],
   };
@@ -4473,7 +4486,7 @@ function _jsonImportDiff(incoming, incomingPlans){
   const FIELDS=[
     ['vorname','Vorname'],['nachname','Nachname'],['status','Status'],['jobCoach','JC'],
     ['bewerbenJC','Bewerben-JC'],['stammwerkstatt','Stammwerkstatt'],['einsatzVon','Einsatz von'],
-    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['bemerkung','Bemerkung'],
+    ['einsatzBis','Einsatz bis'],['iiz','IIZ'],['f59d','59d'],['bemerkung','Bemerkung'],
     ['schultage','Schultage'],['sporttermine','Sport'],
     ['wbRounds','WB-Runden'],
   ];
@@ -4940,6 +4953,7 @@ function doImportDoc(){
         status:'aktiv',
         jobCoach:p.jc||'',
         iiz:'nein',
+        f59d:'nein',
         einsatzVon:p.von||'',einsatzBis:p.bis||'',
         schultage:p.sch,
         sporttermine:p.spt,
