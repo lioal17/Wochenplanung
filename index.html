@@ -2347,9 +2347,9 @@ function clearCurrentDay(){
 // ZV ausgelaufen → Teilnehmer ist archiviert (Ende-ZV-Datum liegt vor heute).
 // Daten bleiben unverändert erhalten; wird das Datum wieder in die Zukunft
 // gesetzt (oder geleert), erscheint der TN automatisch wieder in der Liste.
-function isArchived(p){
+function isArchived(p, ref){
   if(!p.einsatzBis) return false;
-  const today=new Date(); today.setHours(0,0,0,0);
+  const today=(ref instanceof Date)?new Date(ref):new Date(); today.setHours(0,0,0,0);
   return pd(p.einsatzBis)<today;
 }
 let _showArchive=false;
@@ -4165,21 +4165,53 @@ function genNeophytPDF(){
   toast(`🌱 Neophyten-Einsatz ${Y}: ${yearTotal} Einteilungen an ${dayCount} Tagen`,'t-ok');
 }
 
-// Teilnehmer-Kennzahlen (reine Berechnung, testbar/wiederverwendbar).
-// Bezugsmenge = aktuell aktive TN (isActiveOnDay am Stichtag refDate).
-// Status 'schnupper' zählt NUR in der Kennzahl 'schnupper', sonst überall ausgeschlossen.
+// Teilnehmer-Statistik (reine Berechnung, testbar/wiederverwendbar).
+// Bezugsmenge = Teilnehmerliste OHNE Archiv (isArchived: Ende ZV vor dem Stichtag),
+// unabhängig vom Eintrittsdatum. Identifikation per ID, nie nur per Name.
+// Programmstatus: aktiv/praktikum/lehrstelle/prklehr → 'Aktiv', schnupper → 'Schnuppern',
+// alles andere → 'Status unklar' (bleibt in der Liste sichtbar, zählt in keiner Kennzahl).
+// Alle Kennzahlen werden aus denselben Listenzeilen gezählt: Zahlen und Liste bleiben deckungsgleich.
+// Feldwerte je Zeile: true = Ja, false = Nein, null = nicht auswertbar (Status unklar).
 function tnStats(participants, refDate){
   const d=new Date(refDate); d.setHours(0,0,0,0);
-  const A=(participants||[]).filter(p=>isActiveOnDay(p,d));
-  const isS=p=>p.status==='schnupper';
+  const seen=new Set(), rows=[];
+  (participants||[]).forEach(p=>{
+    if(!p||!p.id||seen.has(p.id)) return;
+    seen.add(p.id);
+    if(isArchived(p,d)) return;
+    const vn=(p.vorname||'').trim(), nn=(p.nachname||'').trim();
+    if(!vn&&!nn) return;
+    const st=p.status;
+    const aktiv=['aktiv','praktikum','lehrstelle','prklehr'].includes(st);
+    const schnupper=st==='schnupper';
+    const flag=v=>aktiv?v:(schnupper?false:null);
+    rows.push({
+      id:p.id, vorname:vn, nachname:nn,
+      programm:aktiv?'Aktiv':(schnupper?'Schnuppern':'Status unklar'),
+      iiz:flag(p.iiz==='ja'),
+      lehrstelle:flag(st==='lehrstelle'||st==='prklehr'),
+      praktikum:flag(st==='praktikum'||st==='prklehr'),
+      beides:flag(st==='prklehr'),
+      schnupper:schnupper?true:(aktiv?false:null),
+      eintritt:(p.einsatzVon&&pd(p.einsatzVon)>d)?p.einsatzVon:'',
+    });
+  });
+  rows.sort((a,b)=>a.nachname.localeCompare(b.nachname,'de')
+    ||a.vorname.localeCompare(b.vorname,'de')||(a.id<b.id?-1:1));
+  const n=f=>rows.filter(f).length;
+  const nameCnt={};
+  rows.forEach(r=>{const k=`${r.nachname}|${r.vorname}`.toLowerCase(); nameCnt[k]=(nameCnt[k]||0)+1;});
   return {
-    total:        A.length,                                        // alle aktiven (inkl. Schnuppern)
-    lernwerkstatt:A.filter(p=>!isS(p)).length,                     // aktiv+praktikum+lehrstelle+prklehr
-    iiz:          A.filter(p=>!isS(p)&&p.iiz==='ja').length,
-    praktikum:    A.filter(p=>p.status==='praktikum').length,
-    lehrstelle:   A.filter(p=>p.status==='lehrstelle').length,
-    prklehr:      A.filter(p=>p.status==='prklehr').length,
-    schnupper:    A.filter(p=>isS(p)).length,
+    rows,
+    kz:{
+      total:     n(r=>r.programm==='Aktiv'),
+      iiz:       n(r=>r.iiz===true),
+      lehrstelle:n(r=>r.lehrstelle===true),
+      praktikum: n(r=>r.praktikum===true),
+      prklehr:   n(r=>r.beides===true),
+      schnupper: n(r=>r.schnupper===true),
+    },
+    dupNamen:Object.values(nameCnt).filter(c=>c>1).length,
   };
 }
 
@@ -4189,62 +4221,117 @@ function genTNPDF(){
 
   const now=new Date();
   const s=tnStats(DB.participants,now);
+  const kz=s.kz;
   const dateStr=`${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}`;
   const isoStr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
 
-  // Tabellen-Body. Hauptkennzahl (aktive TN exkl. Schnuppern), dann IIZ, dann die
-  // Status-Aufschlüsselung (davon …); Schnuppern separat (eigene Hervorhebung).
-  const body=[
-    ['Aktive Teilnehmende', String(s.lernwerkstatt)],
-    ['Teilnehmende mit aktivem IIZ', String(s.iiz)],
-    ['    davon Status Lehrstelle', String(s.lehrstelle)],
-    ['    davon Status Praktikum', String(s.praktikum)],
-    ['    davon Status Lehrstelle + Praktikum', String(s.prklehr)],
-    ['Schnuppern (Schnupperwoche in der LW)', String(s.schnupper)],
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,mg=14;
+
+  const topY=pdfHead(doc,{W,mg,title:'Teilnehmer-Statistik LERNWERKSTATT',
+    sub:`Erstellt am ${dateStr} · Aktive Teilnehmende: ${kz.total} · Datenbasis: Wochenplanung`});
+
+  // 1) Kennzahlen (Total und Schnupperwoche dezent hervorgehoben)
+  const kzBody=[
+    ['Aktive Teilnehmende im Programm (Total)', String(kz.total)],
+    ['Davon Teilnehmende mit aktivem IIZ-Status', String(kz.iiz)],
+    ['Davon Teilnehmende mit Lehrstelle', String(kz.lehrstelle)],
+    ['Davon Teilnehmende mit Praktikum', String(kz.praktikum)],
+    ['Davon Teilnehmende mit Lehrstelle und Praktikum', String(kz.prklehr)],
+    ['Teilnehmende derzeit in der Schnupperwoche LW', String(kz.schnupper)],
   ];
-  const mainRow=0, iizRow=1, schnupperRow=5;
-
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const W=210,mg=14;
-
-  // Einheitlicher Haupttitel
-  const topY=pdfHead(doc,{W,mg,title:'Teilnehmer-Statistik',
-    sub:`Stand: ${dateStr} · ${s.lernwerkstatt} aktive Teilnehmende · ${s.schnupper} Schnuppern`});
-
+  const kzW=160;
   doc.autoTable({
-    startY:topY,margin:{left:mg,right:mg,top:18},
-    head:[['Kennzahl','Anzahl']],
-    body,
-    theme:'grid',
-    styles:{fontSize:12,cellPadding:3,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
-    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',fontSize:12,halign:'left'},
-    alternateRowStyles:{fillColor:PDF_ZEBRA},
-    columnStyles:{0:{cellWidth:'auto'},1:{cellWidth:32,halign:'center',fontStyle:'bold'}},
+    startY:topY,margin:{left:mg},tableWidth:kzW,
+    head:[['Kennzahl','Anzahl']],body:kzBody,theme:'grid',
+    styles:{fontSize:10,cellPadding:2,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',halign:'left'},
+    columnStyles:{0:{cellWidth:'auto'},1:{cellWidth:24,halign:'center'}},
     didParseCell:(data)=>{
-      if(data.section!=='body') return;
-      const r=data.row.index;
-      if(r===mainRow){ // Hauptkennzahl hervorheben (Kopfgrau + fett)
-        data.cell.styles.fillColor=PDF_HEAD_BG;
+      if(data.section==='head'){ if(data.column.index===1) data.cell.styles.halign='center'; return; }
+      if(data.row.index===0||data.row.index===5){   // Total grau, Schnupperwoche gelb wie in der Liste
+        data.cell.styles.fillColor=data.row.index===0?PDF_HEAD_BG:PDF_ZEBRA;
         data.cell.styles.fontStyle='bold';
         data.cell.styles.textColor=[0,0,0];
-      } else if(r===iizRow){
+      }
+    },
+  });
+  const kzEnd=(doc.lastAutoTable&&doc.lastAutoTable.finalY)||topY+60;
+
+  // Hinweise rechts neben den Kennzahlen
+  const nx=mg+kzW+10, nw=W-mg-nx;
+  const notes=[
+    'Mehrfachzuordnungen sind möglich: Die Summe der Einzelkennzahlen kann das Total übersteigen. Jede Person zählt je Kennzahl höchstens einmal.',
+    'Personen mit Lehrstelle und Praktikum sind in beiden Einzelkennzahlen enthalten.',
+    'Die Schnupperwoche LW wird separat ausgewiesen und ist nicht im Total enthalten.',
+    'Nicht enthalten sind Personen im Archiv (Ende ZV abgelaufen).',
+    'IIZ, Lehrstelle und Praktikum werden nur für aktive Teilnehmende im Programm ausgewiesen.',
+  ];
+  if(s.dupNamen>0) notes.push(`Hinweis: ${s.dupNamen} ${s.dupNamen===1?'Name kommt':'Namen kommen'} mehrfach unter verschiedenen IDs vor. Bitte Duplikate prüfen.`);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);
+  doc.text('Hinweise',nx,topY+3.5);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(110);
+  let ny=topY+8.5;
+  notes.forEach(t=>{
+    const ls=doc.splitTextToSize(t,nw);
+    doc.text(ls,nx,ny);
+    ny+=ls.length*3.6+1.8;
+  });
+  doc.setTextColor(0);
+
+  // 2) Teilnehmerübersicht
+  let yL=Math.max(kzEnd,ny)+8;
+  if(yL>170){doc.addPage();yL=18;}
+  const cnt=s.rows.length;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0);
+  doc.text(`Teilnehmerübersicht (${cnt} ${cnt===1?'Person':'Personen'})`,mg,yL);
+
+  const jn=v=>v===true?'Ja':(v===false?'Nein':'–');
+  const listBody=cnt
+    ? s.rows.map(r=>[
+        (r.nachname&&r.vorname)?`${r.nachname}, ${r.vorname}`:(r.nachname||r.vorname),
+        r.programm+(r.eintritt?` (ab ${fd(r.eintritt)})`:''),
+        jn(r.iiz),jn(r.lehrstelle),jn(r.praktikum),jn(r.schnupper),
+      ])
+    : [[{content:'Keine Teilnehmenden erfasst.',colSpan:6,styles:{halign:'center',textColor:[120,120,120]}}]];
+
+  doc.autoTable({
+    startY:yL+3,margin:{left:mg,right:mg,top:14,bottom:16},
+    head:[['Name','Programmstatus','IIZ','Lehrstelle','Praktikum','Schnupperwoche LW']],
+    body:listBody,theme:'grid',showHead:'everyPage',rowPageBreak:'avoid',
+    styles:{fontSize:9.5,cellPadding:1.7,lineColor:[210,210,210],lineWidth:0.3,textColor:[20,20,20]},
+    headStyles:{fillColor:PDF_HEAD_BG,textColor:[0,0,0],fontStyle:'bold',halign:'left'},
+    columnStyles:{
+      0:{cellWidth:'auto'},
+      1:{cellWidth:62},
+      2:{cellWidth:22,halign:'center'},
+      3:{cellWidth:28,halign:'center'},
+      4:{cellWidth:28,halign:'center'},
+      5:{cellWidth:44,halign:'center'},
+    },
+    didParseCell:(data)=>{
+      if(data.section==='head'){ if(data.column.index>=2) data.cell.styles.halign='center'; return; }
+      if(!cnt) return;
+      const r=s.rows[data.row.index], c=data.column.index;
+      if(r.programm==='Schnuppern'){        // Schnupperteilnehmende klar erkennbar
+        data.cell.styles.fillColor=PDF_ZEBRA;
+        if(c===1) data.cell.styles.fontStyle='bold';
+      } else if(r.programm==='Status unklar'){
+        data.cell.styles.fillColor=PDF_HEAD_BG;
         data.cell.styles.fontStyle='bold';
-      } else if(r===schnupperRow){ // Schnuppern hervorheben (fett, ohne Sonderfarbe)
-        data.cell.styles.fontStyle='bold';
+      }
+      if(c>=2){
+        if(data.cell.raw==='Ja') data.cell.styles.fontStyle='bold';
+        else if(data.cell.raw==='Nein') data.cell.styles.textColor=[140,140,140];
       }
     },
   });
 
-  // Hinweis-Fußnote zur Schnuppern-Regel
-  let yEnd=(doc.lastAutoTable&&doc.lastAutoTable.finalY)||60;
-  doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(120);
-  doc.text('Schnuppern wird separat ausgewiesen und ist in den übrigen Kennzahlen nicht enthalten.',mg,yEnd+8);
-
-  // Fuß- und Seitenzahlen (ohne Zeitstempel)
-  pdfFoot(doc,{W,mg,y:287});
+  // Fuß- und Seitenzahlen auf allen Seiten (Querformat: Seitenhöhe 210 mm)
+  pdfFoot(doc,{W,mg,y:202});
 
   doc.save(`TN-Statistik_${isoStr}.pdf`);
-  toast(`👥 TN-Statistik: ${s.lernwerkstatt} aktive Teilnehmende, ${s.schnupper} Schnuppern`,'t-ok');
+  toast(`👥 TN-Statistik: ${kz.total} aktive Teilnehmende, ${kz.schnupper} Schnupperwoche LW`,'t-ok');
 }
 
 // ────────────────────────────────────────────

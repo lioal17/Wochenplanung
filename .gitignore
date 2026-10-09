@@ -13,6 +13,8 @@ backup*.json
 *.csv
 *.xlsx
 *.xls
+# Exportierte PDFs (z. B. TN-Statistik mit Namensliste) enthalten Personendaten.
+*.pdf
 
 # GitHub-Pages-Build-Ausgabe
 _site/
