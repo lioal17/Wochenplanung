@@ -2709,7 +2709,7 @@ function verlUi(p,freigeben){
   _verlFrei=frei;
   g('f_vvon').disabled=!frei; g('f_vbis').disabled=!frei;
   g('btnVerl').style.display=(kann&&!frei)?'':'none';
-  g('verlHint').textContent=verl?'Verlängerung gespeichert. Die Daten können angepasst werden. Eine weitere Verlängerung ist nicht möglich.'
+  g('verlHint').textContent=verl?''
     :frei?'Beide Daten erfassen und speichern. Die Verlängerung kann danach nur noch angepasst werden.'
     :!p?'Verlängerung erst nach dem Speichern der Person möglich.'
     :!zvGilt(p)?'Für Schnupper-Personen gibt es keine Verlängerung.'
