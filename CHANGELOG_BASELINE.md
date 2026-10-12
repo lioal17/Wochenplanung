@@ -171,6 +171,14 @@ form-action 'none'
 > - **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅
 > ```
 
+### 2026-10-12 – ZV: gespeicherte Verlängerung nachträglich anpassbar
+- **Commit:** dieser Commit
+- **Was:** «Verl. von/Verl. bis» bleiben nach dem Speichern editierbar. Die Rückfrage-Meldung erscheint nur beim
+  Erfassen; dort heisst es neu «kann danach nur noch angepasst werden». Eine zweite Verlängerung bleibt ausgeschlossen,
+  Leeren ist nicht möglich. Dieselben Prüfungen wie beim Erfassen (Verl. von nach ZV bis, Verl. bis nach Verl. von).
+- **Betroffen:** `applyVerl()`, `verlUi()`, `savePM()`.
+- **Datenschutz geprüft:** offline ✅ · CSP unverändert ✅ · keine TN-Daten ✅ (Test mit erfundener Demo-Person)
+
 ### 2026-10-09 – ZV: Felder, einmalige Verlängerung, Montags-Erinnerung, automatische Archivierung
 - **Commit:** dieser Commit
 - **Was:** «Einsatz von/bis» heisst im Formular «ZV von/ZV bis» (Daten unverändert). Neu «Verl. von/Verl. bis»

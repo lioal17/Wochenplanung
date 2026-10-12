@@ -1917,9 +1917,11 @@ function zvSync(p){
 function zvSyncAll(){ let ch=false; DB.participants.forEach(p=>{ if(zvSync(p)) ch=true; }); return ch; }
 const _okDate=v=>_DATE_RE.test(v||'')&&ds(pd(v))===v;
 function kannVerlaengern(p){ return !!p&&zvGilt(p)&&!!p.einsatzBis&&!zvVerlaengert(p)&&!p.verlVon&&!p.verlBis; }
-// EINZIGER Schreibpfad für die Verlängerung (höchstens einmal). null = gespeichert, sonst Fehlermeldung.
+// EINZIGER Schreibpfad für die Verlängerung (höchstens eine; die bestehende bleibt anpassbar).
+// null = gespeichert, sonst Fehlermeldung.
 function applyVerl(p,von,bis){
-  if(!kannVerlaengern(p)) return 'Eine Verlängerung ist nicht möglich (bereits verlängert, Schnuppern oder «ZV bis» fehlt).';
+  if(!kannVerlaengern(p)&&!zvVerlaengert(p)) return 'Eine Verlängerung ist nicht möglich (Schnuppern oder «ZV bis» fehlt).';
+  if(!p.einsatzBis) return '«ZV bis» darf bei vorhandener Verlängerung nicht leer sein.';
   if(!_okDate(von)||!_okDate(bis)) return '«Verl. von» und «Verl. bis» müssen beide erfasst werden.';
   if(von<=p.einsatzBis) return '«Verl. von» muss nach «ZV bis» liegen.';
   if(bis<=von) return '«Verl. bis» muss nach «Verl. von» liegen.';
@@ -2696,19 +2698,19 @@ function openPM(id=null,opts={}){
 
 function closePM(){ document.getElementById('pmOverlay').classList.remove('open'); }
 
-// Verl.-Felder sind gesperrt, bis «Verlängern» gewählt wird. Nach gespeicherter Verlängerung bleiben
-// sie sichtbar und gesperrt (höchstens eine Verlängerung).
+// Verl.-Felder sind gesperrt, bis «Verlängern» gewählt wird. Nach gespeicherter Verlängerung sind sie
+// editierbar (Anpassen), eine weitere Verlängerung gibt es nicht (höchstens eine Verlängerung).
 let _verlFrei=false;
 function verlUi(p,freigeben){
   const g=id=>document.getElementById(id);
   const verl=!!p&&zvVerlaengert(p);
   const kann=!!p&&kannVerlaengern(p);
-  const frei=kann&&!!freigeben;
+  const frei=verl||(kann&&!!freigeben);
   _verlFrei=frei;
   g('f_vvon').disabled=!frei; g('f_vbis').disabled=!frei;
   g('btnVerl').style.display=(kann&&!frei)?'':'none';
-  g('verlHint').textContent=verl?'Verlängerung gespeichert. Eine weitere Verlängerung ist nicht möglich.'
-    :frei?'Beide Daten erfassen und speichern. Die Verlängerung kann danach nicht mehr geändert werden.'
+  g('verlHint').textContent=verl?'Verlängerung gespeichert. Die Daten können angepasst werden. Eine weitere Verlängerung ist nicht möglich.'
+    :frei?'Beide Daten erfassen und speichern. Die Verlängerung kann danach nur noch angepasst werden.'
     :!p?'Verlängerung erst nach dem Speichern der Person möglich.'
     :!zvGilt(p)?'Für Schnupper-Personen gibt es keine Verlängerung.'
     :!p.einsatzBis?'Zuerst «ZV bis» erfassen und speichern.':'';
@@ -2838,22 +2840,20 @@ function savePM(){
     schultage:[...tSch],sporttermine:[...tSpt],kurse:[...tKurse],
   };
   const ex=editId?DB.participants.find(p=>p.id===editId):null;
-  // Verlängerung (höchstens einmal): erst prüfen, dann nach Rückfrage speichern.
-  let verl=null;
+  // Verlängerung (höchstens eine): erst prüfen. Neu erfassen nach Rückfrage, bestehende direkt anpassen.
+  // Bei bestehender Verlängerung prüft applyVerl auch «ZV bis» gegen «Verl. von».
+  let verl=null, verlNeu=false;
   if(ex&&_verlFrei){
     const von=g('f_vvon').value, bis=g('f_vbis').value;
-    if(von||bis){
+    const anpassen=zvVerlaengert(ex);
+    if(anpassen||von||bis){
       const err=applyVerl({...ex,...data},von,bis);   // Probelauf auf einer Kopie
       if(err){toast(err,'t-err');return;}
-      if(!confirm(`Verlängerung speichern?\n\n${vn} ${nn}\nVerl. von: ${fd(von)}\nVerl. bis: ${fd(bis)}\n\nDie Verlängerung kann danach nicht mehr geändert werden. Eine weitere Verlängerung ist nicht möglich.`)) return;
-      verl={von,bis};
+      if(!anpassen&&!confirm(`Verlängerung speichern?\n\n${vn} ${nn}\nVerl. von: ${fd(von)}\nVerl. bis: ${fd(bis)}\n\nDie Verlängerung kann danach nur noch angepasst werden. Eine weitere Verlängerung ist nicht möglich.`)) return;
+      verl={von,bis}; verlNeu=!anpassen;
     }
   }
-  // Bestehende Verlängerung: ZV bis darf sie nicht unterlaufen.
-  if(ex&&zvVerlaengert(ex)){
-    if(!data.einsatzBis){toast('«ZV bis» darf bei vorhandener Verlängerung nicht leer sein','t-err');return;}
-    if(ex.verlVon<=data.einsatzBis){toast('«ZV bis» muss vor «Verl. von» liegen','t-err');return;}
-  }
+  const verlGeaendert=!!verl&&!verlNeu&&(verl.von!==ex.verlVon||verl.bis!==ex.verlBis);
   let p;
   if(ex){ Object.assign(ex,data); p=ex; }
   else { p={id:uid(),...data,verlVon:'',verlBis:'',zvEntscheid:'offen',zvRef:null,zvPopup:false}; DB.participants.push(p); }
@@ -2861,7 +2861,7 @@ function savePM(){
   zvSync(p);   // ZV bis geändert? Dann Entscheid/Erinnerung neu (Datum in der Vergangenheit = bewusst beendet)
   _pSortDay=null; // invalidate sort cache
   saveDB(); closePM(); renderPersons(); renderWBTN(); zvRefresh();
-  toast(`✓ ${vn} ${nn} gespeichert${verl?' · Verlängerung erfasst':''}`,'t-ok');
+  toast(`✓ ${vn} ${nn} gespeichert${verlNeu?' · Verlängerung erfasst':verlGeaendert?' · Verlängerung angepasst':''}`,'t-ok');
 }
 
 function delPerson(id){
