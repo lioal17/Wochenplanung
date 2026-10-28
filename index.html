@@ -1013,8 +1013,8 @@ input,select,textarea{font-family:inherit}
       <select class="fi" id="rptRP" style="width:100%"></select>
     </div>
     <div style="font-size:12px;color:#667;line-height:1.5">
-      Der Rapport wird automatisch über die gesamte Teilnahmedauer
-      (vom ersten bis zum letzten Einsatztag) erstellt.
+      Der Rapport wird automatisch tagesaktuell erstellt
+      (vom ersten Einsatztag bis und mit heute, ohne Zukunft).
     </div>
   </div>
   <div class="modal-foot">
@@ -3757,8 +3757,8 @@ function genRapportPDF(){
   const p=DB.participants.find(x=>x.id===pid); if(!p) return;
 
   const fmtD=d=>`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
-  // Gesamtrapport: immer über die gesamte Teilnahmedauer
-  // (vom ersten Log-Eintrag "Einsatz von" bis zum letzten "Einsatz bis").
+  // Gesamtrapport: tagesaktuell – vom ersten Log-Eintrag "Einsatz von" bis und mit heute
+  // (bei früherem Austritt bis "Einsatz bis"). Nie Zukunft.
   let startDate, endDate, rangeLabel;
   let planMin=null, planMax=null;
   Object.keys(DB.plans).forEach(dstr=>{
@@ -3779,15 +3779,16 @@ function genRapportPDF(){
   //   Grundregel: bis heute (Generierung), höchstens bis Austritt (Einsatz bis), falls dieser
   //   schon vergangen ist  →  endBase = min(heute, Einsatz bis). So werden bei laufendem Einsatz
   //   mit künftigem Ende-ZV keine leeren Zukunftstage gezählt.
-  //   PLUS (Nutzerwunsch "Planung immer zählen"): eingesteuerte Planung IMMER mitzählen – auch
-  //   über heute UND über das Ende-ZV-Datum hinaus. Läuft das Ende-ZV ab, der TN gilt damit als
-  //   archiviert, wird aber weiter eingesteuert, fiel sonst diese ganze Planung raus (→ alles 0).
-  //   Daher den Endpunkt bis zum letzten tatsächlich eingesteuerten Planungstag (planMax) ziehen.
+  //   PLUS: eingesteuerte Planung zählt auch über das Ende-ZV-Datum hinaus. Läuft das Ende-ZV ab,
+  //   der TN gilt damit als archiviert, wird aber weiter eingesteuert, fiel sonst diese ganze
+  //   Planung raus (→ alles 0). Daher den Endpunkt bis zum letzten eingesteuerten Planungstag
+  //   (planMax) ziehen – aber NIE über heute hinaus: Der Rapport ist tagesaktuell, künftige
+  //   Planung (Schule, FöA, Ferien, …) zählt erst, wenn der Tag erreicht ist.
   const todayEnd=new Date(); todayEnd.setHours(23,59,59,999);
   let endBase=todayEnd;
   if(zvEnde(p)){ const bis=pd(zvEnde(p)); if(bis<endBase) endBase=bis; }
   endDate=endBase;
-  if(planMax && planMax>endDate) endDate=planMax;   // eingesteuerte Planung über heute/Austritt hinaus
+  if(planMax && planMax>endDate) endDate=(planMax>todayEnd?todayEnd:planMax);   // Planung nach Austritt bis heute
   rangeLabel=`${fmtD(startDate)} – ${fmtD(endDate)}`;
 
   const stats=countPersonStats(p,startDate,endDate);
