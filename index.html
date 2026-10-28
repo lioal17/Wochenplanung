@@ -3813,6 +3813,8 @@ function genRapportPDF(){
   const fmtN=v=>Number.isInteger(v)?`${v}`:v.toFixed(1);
   const tg=v=>`${fmtN(v)} ${v===1?'Tag':'Tage'}`;     // Tage
   const lk=v=>`${fmtN(v)} Lektionen`;                 // Lektionen
+  // Schul-Zeilen: Lektionen UND Schultage (8 Lektionen = 1 Schultag, ein Halbtag = 0.5)
+  const lkTg=v=>`${lk(v)} = ${fmtN(v/8)} ${v/8===1?'Schultag':'Schultage'}`;
   // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
   // Jede Einheit (Abwesenheiten/Schule/Lernwerkstatt/Schnupperlehren) ist eine
   // eigene, klar gerahmte Tabelle; der Einheits-Titel steht in der Kopfzeile.
@@ -3826,9 +3828,9 @@ function genRapportPDF(){
     ['Zu spät (ZS)',               `${stats.zs}×`],
   ];
   const secSchule=[
-    ['Schultage (S)',               lk(s_lek)],
-    ['DAZ – Deutsch als Zweitsprache', lk(daz_lek)],
-    ['FöA – Förderatelier',         lk(foa_lek)],
+    ['Schultage (S)',               lkTg(s_lek)],
+    ['DAZ – Deutsch als Zweitsprache', lkTg(daz_lek)],
+    ['FöA – Förderatelier',         lkTg(foa_lek)],
     ...(stats.dk>0?[['DK – Deutschkurs Migros', lk(dk_lek)]]:[]),
     ...(stats.ikpc>0?[['IKPC – Informatik/PC', lk(ikpc_lek)]]:[]),
     ['Total Schul-Lektionen',       lk(total_sch)],
@@ -3842,7 +3844,7 @@ function genRapportPDF(){
     ['Schnupperlehre (ganze Woche)',tg(stats.schnupperwoche)],
   ];
 
-  const secTable=(title,rowsSec,totalLbl)=>{
+  const secTable=(title,rowsSec,totalLbl,colW=[126,56])=>{
     const y0=yp;
     doc.autoTable({
       startY:yp,
@@ -3858,8 +3860,8 @@ function genRapportPDF(){
         cellPadding:{top:3,right:6,bottom:3,left:6},
       },
       columnStyles:{
-        0:{cellWidth:126},
-        1:{cellWidth:56,halign:'right',fontStyle:'bold'},
+        0:{cellWidth:colW[0]},
+        1:{cellWidth:colW[1],halign:'right',fontStyle:'bold'},
       },
       didParseCell:(d)=>{
         if(d.section==='head'&&d.column.index===1){d.cell.styles.halign='right';return;}
@@ -3881,7 +3883,7 @@ function genRapportPDF(){
   };
 
   secTable('ABWESENHEITEN',secAbw,'Total');
-  secTable('SCHULE',secSchule,'');
+  secTable('SCHULE',secSchule,'8 Lektionen = 1 Schultag',[96,86]);   // breitere Wertspalte für «40 Lektionen = 5 Schultage»
   secTable('LERNWERKSTATT',secLw,'');
   secTable('SCHNUPPERLEHREN',secSl,'');
 
