@@ -3813,8 +3813,9 @@ function genRapportPDF(){
   const fmtN=v=>Number.isInteger(v)?`${v}`:v.toFixed(1);
   const tg=v=>`${fmtN(v)} ${v===1?'Tag':'Tage'}`;     // Tage
   const lk=v=>`${fmtN(v)} Lektionen`;                 // Lektionen
-  // Schul-Zeilen: Lektionen UND Schultage (8 Lektionen = 1 Schultag, ein Halbtag = 0.5)
-  const lkTg=v=>`${lk(v)} = ${fmtN(v/8)} ${v/8===1?'Schultag':'Schultage'}`;
+  // Schul-Zeilen: Schultage zuerst, in der Klammer die Lektionen und die Regel
+  // (8 Lektionen = 1 Schultag, ein Halbtag = 0.5), z. B. «5 Schultage (40 Lektionen; 8 Lektionen = 1 Schultag)»
+  const lkTg=v=>`${fmtN(v/8)} ${v/8===1?'Schultag':'Schultage'} (${lk(v)}; 8 Lektionen = 1 Schultag)`;
   // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
   // Jede Einheit (Abwesenheiten/Schule/Lernwerkstatt/Schnupperlehren) ist eine
   // eigene, klar gerahmte Tabelle; der Einheits-Titel steht in der Kopfzeile.
@@ -3844,7 +3845,7 @@ function genRapportPDF(){
     ['Schnupperlehre (ganze Woche)',tg(stats.schnupperwoche)],
   ];
 
-  const secTable=(title,rowsSec,totalLbl,colW=[126,56])=>{
+  const secTable=(title,rowsSec,totalLbl,colW=[72,110])=>{   // Wertspalte breit genug für die Schul-Zeilen; alle Tabellen gleich
     const y0=yp;
     doc.autoTable({
       startY:yp,
@@ -3883,7 +3884,7 @@ function genRapportPDF(){
   };
 
   secTable('ABWESENHEITEN',secAbw,'Total');
-  secTable('SCHULE',secSchule,'8 Lektionen = 1 Schultag',[96,86]);   // breitere Wertspalte für «40 Lektionen = 5 Schultage»
+  secTable('SCHULE',secSchule,'');
   secTable('LERNWERKSTATT',secLw,'');
   secTable('SCHNUPPERLEHREN',secSl,'');
 
