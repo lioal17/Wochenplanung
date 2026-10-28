@@ -3816,6 +3816,9 @@ function genRapportPDF(){
   // Schul-Zeilen: Lektionen, Regel in der Klammer, Ergebnis (Schultage) am Schluss
   // (8 Lektionen = 1 Schultag, ein Halbtag = 0.5), z. B. «40 Lektionen (8 Lektionen = 1 Schultag) = 5 Schultage»
   const lkTg=v=>`${lk(v)} (8 Lektionen = 1 Schultag) = ${fmtN(v/8)} ${v/8===1?'Schultag':'Schultage'}`;
+  // Lernwerkstatt-Zeilen: gleiche Darstellung, Tag = 2 Halbtage. Sport zählt 2 Lektionen je Halbtag
+  // (4 Lektionen = 1 Tag), Bewerben 4 Lektionen je Halbtag (8 Lektionen = 1 Tag).
+  const lkTgLw=(v,proTag)=>`${lk(v)} (${proTag} Lektionen = 1 Tag) = ${fmtN(v/proTag)} ${v/proTag===1?'Tag':'Tage'}`;
   // Nur die Endzahl pro Bereich – keine Faktor-Zwischenrechnung im Rapport.
   // Jede Einheit (Abwesenheiten/Schule/Lernwerkstatt/Schnupperlehren) ist eine
   // eigene, klar gerahmte Tabelle; der Einheits-Titel steht in der Kopfzeile.
@@ -3837,8 +3840,8 @@ function genRapportPDF(){
     ['Total Schul-Lektionen',       lk(total_sch)],
   ];
   const secLw=[
-    ['Sport',                       lk(sport_lek)],
-    ['Bewerben (BW)',               lk(bw_lek)],
+    ['Sport',                       lkTgLw(sport_lek,4)],
+    ['Bewerben (BW)',               lkTgLw(bw_lek,8)],
   ];
   const secSl=[
     ['Schnuppertag',                tg(stats.schnuppertag)],
