@@ -871,7 +871,7 @@ input,select,textarea{font-family:inherit}
         <option>Holzwerkstatt</option><option>Bewerben</option><option>Metall</option>
         <option>Metallverpacken</option><option>Crea</option><option>Lernstücke</option>
         <option>Loli</option><option>Neophyten</option><option>Feldeinsatz</option>
-        <option>Textil</option><option>Reinigung</option><option>Lernen</option>
+        <option>Textil</option><option>Reinigung</option><option>Küche</option><option>Lernen</option>
       </select>
     </div>
     <div class="fg">
@@ -1532,12 +1532,12 @@ const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','Se
 
 const WS = [
   'Holzwerkstatt','Bewerben','Metall','Metallverpacken','Crea',
-  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung','Lernen',
+  'Lernstück','Loli','Neophyten','Feldeinsatz','Textil','Reinigung','Küche','Lernen',
 ];
 const WS_ABBR={
   'Holzwerkstatt':'H','Bewerben':'BW','Metall':'M','Metallverpacken':'MV',
   'Crea':'Crea','Lernstück':'LS','Lernstücke':'LS','Loli':'Loli','Neophyten':'NEO',
-  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Sport':'Sport','Lernen':'Lernen',
+  'Feldeinsatz':'FL','Textil':'Text','Reinigung':'Rein','Küche':'Küche','Sport':'Sport','Lernen':'Lernen',
 };
 function wsAbbr(name){return WS_ABBR[name]||(name?name.slice(0,4):'');}
 
@@ -1608,7 +1608,7 @@ const BLK_LABEL = {
 // Werkstatt-Kürzel für Legende
 const WS_LEGEND = [
   ['BW','Bewerben'],['Crea','Crea'],['FL','Feldeinsatz'],['H','Holzwerkstatt'],
-  ['Lernen','Lernen'],['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
+  ['Küche','Küche'],['Lernen','Lernen'],['Loli','Loli'],['LS','Lernstück'],['M','Metall'],['MV','Metallverpacken'],
   ['NEO','Neophyten'],['Sport','Sport'],['Anders','Individuell (Freitext)'],
 ];
 // Absenz-Codes: Basis aus ABS-Array
