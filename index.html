@@ -4716,16 +4716,12 @@ async function changeSaveLocation(){
   } else { toast('Ihr Browser unterstützt diese Funktion nicht (Chrome/Edge empfohlen)','t-err'); }
 }
 
-async function doImportFSA(){
-  if('showOpenFilePicker' in window){
-    try{
-      const[fh]=await window.showOpenFilePicker({
-        types:[{description:'JSON-Datei',accept:{'application/json':['.json']}}],multiple:false
-      });
-      const text=await(await fh.getFile()).text();
-      processImportJSON(text);
-    }catch(e){ if(e.name!=='AbortError') toast('Import fehlgeschlagen','t-err'); }
-  } else { document.getElementById('importFile').click(); }
+// Import bewusst über das klassische Dateifeld statt showOpenFilePicker():
+// Chrome lehnt dort Dateien aus «heiklen» Ordnern (z. B. AppData, Outlook-Anhänge)
+// mit demselben AbortError ab wie einen Abbruch → der Import scheiterte lautlos.
+// Das klassische Feld kennt diese Sperre nicht und läuft in jedem Browser.
+function doImportFSA(){
+  document.getElementById('importFile').click();
 }
 
 // Vergleicht die zu ladende Datei mit dem aktuellen Stand und liefert ein
@@ -4773,7 +4769,11 @@ function processImportJSON(text){
     const diff=_jsonImportDiff(d.participants, d.plans);
     _pendingImport=d;
     openImportPreview(diff);
-  }catch{ toast('Fehler beim Import – ungültige Datei','t-err'); }
+  }catch{
+    // Bewusst ohne err.message: Chrome schreibt bei JSON-Fehlern einen Ausschnitt
+    // des Dateiinhalts (ggf. TN-Namen) in die Meldung.
+    toast('Fehler beim Import – ungültige Datei','t-err');
+  }
 }
 
 function openImportPreview(diff){
@@ -4832,6 +4832,7 @@ function doImport(input){
   const file=input.files[0]; if(!file) return;
   const r=new FileReader();
   r.onload=e=>{ processImportJSON(e.target.result); };
+  r.onerror=()=>{ toast('Datei konnte nicht gelesen werden. Liegt sie auf OneDrive oder einem Netzlaufwerk? Zuerst lokal kopieren.','t-err'); };
   r.readAsText(file); input.value='';
 }
 
@@ -5266,6 +5267,12 @@ function init(){
     _dzDragCount=0; overlay.classList.remove('active');
     if(dz) dz.classList.remove('dz-over');
     const file=e.dataTransfer&&e.dataTransfer.files[0]; if(!file) return;
+    // Datensicherung (.json) → JSON-Import mit Änderungsvorschau, ohne Dateifenster.
+    if(/\.json$/i.test(file.name)){
+      file.text().then(processImportJSON)
+        .catch(()=>toast('Datei konnte nicht gelesen werden. Liegt sie auf OneDrive oder einem Netzlaufwerk? Zuerst lokal kopieren.','t-err'));
+      return;
+    }
     show('import');
     handleDocUpload(file);
   });
