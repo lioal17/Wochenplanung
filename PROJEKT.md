@@ -33,8 +33,11 @@ diverse PDF-Auswertungen.
 
 > **Offline-Betrieb:** App öffnen, planen, speichern, JSON Export/Import und **alle
 > PDF-Exporte** laufen ohne Internet. Nur der PDF-/Word-Import (pdf.js/mammoth) benötigt
-> eine Internetverbindung. Damit ist die Datei für die Weitergabe als eigenständige
-> Offline-Anwendung geeignet.
+> eine Internetverbindung. Beide Bibliotheken werden erst beim ersten PDF- bzw.
+> Word-Import geladen (`_ensurePdfJs`/`_ensureMammoth`), nicht beim Start: Der Start wartet
+> nie auf das Internet, und im normalen Betrieb gibt es keinen CDN-Kontakt. SheetJS ist
+> eingebettet, wird aber ebenfalls erst beim ersten Excel-Import ausgeführt (`_ensureXlsx`).
+> Damit ist die Datei für die Weitergabe als eigenständige Offline-Anwendung geeignet.
 
 ---
 

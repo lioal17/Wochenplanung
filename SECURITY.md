@@ -45,6 +45,11 @@ jsDelivr; nur für den PDF-/Word-Import nötig) tragen jetzt **SRI-Hashes**
 Skripte nur, wenn ihr Inhalt exakt dem erwarteten Stand entspricht — Schutz
 gegen eine CDN-Kompromittierung oder MITM.
 
+Seit 26.11.2026 werden beide erst beim ersten PDF- bzw. Word-Import nachgeladen
+(`_loadCdnScript` in `index.html`, gleiche URLs, gleiche SRI-Hashes, CSP
+unverändert). Beim normalen Start nimmt die App keinen Kontakt zu den CDNs auf.
+Getestet: Eine manipulierte Datei unter der CDN-Adresse wird per SRI abgewiesen.
+
 Die Hashes wurden aus den **identischen npm-Artefakten** berechnet
 (`pdfjs-dist@3.11.174/build/pdf.min.js`, `mammoth@1.6.0/mammoth.browser.min.js`),
 die beide CDNs unverändert ausliefern.
