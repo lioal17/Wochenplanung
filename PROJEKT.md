@@ -33,8 +33,11 @@ diverse PDF-Auswertungen.
 
 > **Offline-Betrieb:** App öffnen, planen, speichern, JSON Export/Import und **alle
 > PDF-Exporte** laufen ohne Internet. Nur der PDF-/Word-Import (pdf.js/mammoth) benötigt
-> eine Internetverbindung. Damit ist die Datei für die Weitergabe als eigenständige
-> Offline-Anwendung geeignet.
+> eine Internetverbindung. Beide Bibliotheken werden erst beim ersten PDF- bzw.
+> Word-Import geladen (`_ensurePdfJs`/`_ensureMammoth`), nicht beim Start: Der Start wartet
+> nie auf das Internet, und im normalen Betrieb gibt es keinen CDN-Kontakt. SheetJS ist
+> eingebettet, wird aber ebenfalls erst beim ersten Excel-Import ausgeführt (`_ensureXlsx`).
+> Damit ist die Datei für die Weitergabe als eigenständige Offline-Anwendung geeignet.
 
 ---
 
@@ -397,7 +400,9 @@ Dateiname: `Rapport_<Nachname>_<Vorname>_Laufzeit.pdf`.
   jedem Neuladen der Seite **einmalig** nach der Schreib-Erlaubnis (nicht abschaltbar);
   innerhalb der Sitzung danach stumm. **Wochenplan generieren** (`genWeekPDF`) erzeugt
   das PDF und löst zugleich diese Sicherung aus.
-- **JSON-Import** (`doImportFSA`/`processImportJSON`): mit **Vorschau der Änderungen**
+- **JSON-Import** (`doImportFSA`/`processImportJSON`): über das klassische Dateifeld
+  (nicht `showOpenFilePicker`, das Dateien aus geschützten Ordnern lautlos ablehnt) oder
+  per Drag & Drop einer `.json` auf die Seite; mit **Vorschau der Änderungen**
   vor dem Überschreiben; schützt bestehende Daten (Abweichungen nur auf Bestätigung).
   Importierte Daten laufen durch `sanitizeDB()` (Whitelist/Typprüfung), bevor sie
   in der Vorschau erscheinen und übernommen werden.

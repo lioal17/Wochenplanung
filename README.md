@@ -65,9 +65,9 @@ Es gibt bewusst **keine** Ordner `src/`, `assets/`, `css/`, `js/`, `img/`,
 | **Logik** | Vanilla JavaScript (ES6) – **kein** Framework, **kein** TypeScript |
 | **Speicherung** | `localStorage` (Schlüssel `lw_db_v3`) – keine Datenbank |
 | **PDF** | jsPDF 2.5.1 + jsPDF-AutoTable 3.8.2 *(eingebettet, offline)* |
-| **Excel-Import** | SheetJS 0.18.5 *(eingebettet, offline)* |
-| **PDF-Import** | pdf.js 3.11.174 *(CDN – nur hierfür Internet nötig)* |
-| **Word-Import** | mammoth 1.6.0 *(CDN – nur hierfür Internet nötig)* |
+| **Excel-Import** | SheetJS 0.18.5 *(eingebettet, offline; wird erst beim ersten Excel-Import ausgeführt)* |
+| **PDF-Import** | pdf.js 3.11.174 *(CDN, erst beim ersten PDF-Import geladen – nur hierfür Internet nötig)* |
+| **Word-Import** | mammoth 1.6.0 *(CDN, erst beim ersten Word-Import geladen – nur hierfür Internet nötig)* |
 | **Deployment** | GitHub Actions → GitHub Pages |
 
 Ohne Internet läuft die App vollständig weiter – es entfällt lediglich der
